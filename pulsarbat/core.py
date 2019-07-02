@@ -18,11 +18,13 @@ class BasebandSignal:
     """Baseband signal class.
 
     Signals are in their complex baseband representation (the spectrum
-    must be centered on zero). Time is axis 0, the rest is the sample
-    shape. The first axis of sample shape (axis 1) is frequency.
+    must be centered on zero frequency). Time is axis 0, the rest is the
+    sample shape. The first axis of sample shape (axis 1) is frequency,
+    representing channels or bands.
     """
 
-    def __init__(self, z, sample_rate=None, center_freq=None):
+    def __init__(self, z, sample_rate=None, center_freq=None,
+                 dtype=np.complex64):
         if not isinstance(sample_rate, u.Quantity):
             raise TypeError('sample_rate must be an astropy Quantity.')
         if not isinstance(center_freq, u.Quantity):
@@ -33,7 +35,7 @@ class BasebandSignal:
         if not center_freq.unit.is_equivalent(u.Hz):
             raise u.UnitTypeError('center_freq must have units of frequency.')
 
-        self._z = np.asarray(z).astype(np.complex64)
+        self._z = np.asarray(z).astype(dtype)
         self._sample_rate = sample_rate
         self._center_freq = center_freq
 
@@ -43,10 +45,6 @@ class BasebandSignal:
     @property
     def dt(self):
         return (1 / self._sample_rate).to(u.s)
-
-    @property
-    def data(self):
-        return self._z
 
     @property
     def sample_rate(self):
@@ -66,4 +64,3 @@ class BasebandReader:
 
         self.start_time = Time(self.fh.start_time, format='isot', precision=9)
         self.stop_time = Time(self.fh.stop_time, format='isot', precision=9)
-        pass
