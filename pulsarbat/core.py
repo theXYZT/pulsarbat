@@ -25,22 +25,32 @@ class BasebandSignal:
 
     def __init__(self, z, sample_rate=None, center_freq=None,
                  dtype=np.complex64):
+        try:
+            self._z = np.asarray(z).astype(dtype)
+        except TypeError:
+            raise TypeError('Invalid signal type.')
+
         if not isinstance(sample_rate, u.Quantity):
             raise TypeError('sample_rate must be an astropy Quantity.')
-        if not isinstance(center_freq, u.Quantity):
-            raise TypeError('center_freq must be an astropy Quantity.')
-
         if not sample_rate.unit.is_equivalent(u.Hz):
             raise u.UnitTypeError('sample_rate must have units of frequency.')
+        self._sample_rate = sample_rate
+
+        if not isinstance(center_freq, u.Quantity):
+            raise TypeError('center_freq must be an astropy Quantity.')
         if not center_freq.unit.is_equivalent(u.Hz):
             raise u.UnitTypeError('center_freq must have units of frequency.')
-
-        self._z = np.asarray(z).astype(dtype)
-        self._sample_rate = sample_rate
         self._center_freq = center_freq
+
+        self.nsamples = self._z.shape[0]
+        self._sample_shape = self._z.shape[1:]
 
     def __repr__(self):
         return f"{self._z.shape} @ {self._sample_rate} [{self._center_freq}]"
+
+    @property
+    def array(self):
+        return self._z
 
     @property
     def dt(self):
@@ -53,6 +63,7 @@ class BasebandSignal:
     @sample_rate.setter
     def sample_rate(self, sample_rate):
         self._sample_rate = sample_rate
+
 
 
 class BasebandReader:
