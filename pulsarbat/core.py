@@ -11,7 +11,8 @@ try:
 except ImportError:
     fftpack = np.fft
 
-__all__ = ['BasebandSignal']
+__all__ = ['BasebandSignal', 'BasebandReader']
+
 
 class BasebandSignal:
     """Baseband signal class.
@@ -54,7 +55,6 @@ class BasebandSignal:
     @sample_rate.setter
     def sample_rate(self, sample_rate):
         self._sample_rate = sample_rate
-
 
 
 class BasebandReader:
