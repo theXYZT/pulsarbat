@@ -13,6 +13,11 @@ Welcome to pulsarbat's documentation!
    authors
    history
 
+
+.. automodule:: pulsarbat
+   :members:
+
+
 Indices and tables
 ==================
 * :ref:`genindex`

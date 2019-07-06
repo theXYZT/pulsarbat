@@ -61,8 +61,6 @@ Example tempo2 call to produce one:
                                            |-- Frequency in MHz
 """
 
-from __future__ import division, print_function
-
 from collections import OrderedDict
 import numpy as np
 from numpy.polynomial import Polynomial
@@ -70,8 +68,6 @@ from astropy.table import Table
 import astropy.units as u
 from astropy.time import Time
 
-
-__doctest_skip__ = ['*']
 __all__ = ['Polyco']
 
 
