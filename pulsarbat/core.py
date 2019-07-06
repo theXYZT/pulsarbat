@@ -33,11 +33,11 @@ class BasebandSignal:
     dimension of `z`) is always frequency (samples). All channels are
     assumed to be Nyquist-sampled (i.e., adjacent channels are separated
     by a bandwidth of `sample_rate`). Thus, the center frequency of
-    channel i is given by::
+    channel `i` is given by::
 
         freq_i = center_freq + sample_rate * (i + 0.5 - nchan/2)
 
-    where i is in [0, ..., nchan - 1].
+    where `i` is in `[0, ..., nchan - 1]`.
 
     Parameters
     ----------
@@ -50,10 +50,11 @@ class BasebandSignal:
         The observing frequency at the center of the signal's band. Must
         be in units of frequency.
     double_precision : bool, optional
-        Whether the signal is stored as 64-bit (False) or 128-bit (True)
-        complex floating point number. Setting this to true will likely
-        slow everything down by more than a factor of two. Only do so if
-        absolutely certain that precision is needed. Default is False.
+        Whether the signal is stored as 64-bit (`False`) or 128-bit
+        (`True`) complex floating point numbers. Setting this to `True`
+        will likely slow everything down by more than a factor of two.
+        Only do so if absolutely certain that precision is needed.
+        Default is False.
     """
 
     def __init__(self, z, sample_rate, center_freq, double_precision=False):
@@ -125,7 +126,7 @@ class BasebandSignal:
 
     @property
     def array(self):
-        """Returns the signal as a Numpy array."""
+        """Returns the signal as a :py:mod:`numpy` array."""
         return self._z
 
     def __repr__(self):

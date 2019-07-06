@@ -36,13 +36,22 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
+    'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
-    'numpydoc',
-    'sphinx_automodapi.automodapi'
+    'numpydoc'
 ]
-numpydoc_show_class_members = False
 
-intersphinx_mapping = {'https://docs.python.org/': None}
+# numpydoc_show_class_members = False
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy', None),
+    'astropy': ('http://docs.astropy.org/en/latest/', None),
+    'baseband': ('https://baseband.readthedocs.io/en/latest/', None),
+    'pyfftw': ('https://pyfftw.readthedocs.io/en/latest/', None),
+}
+
+default_role = 'py:obj'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -101,7 +110,10 @@ html_theme = 'alabaster'
 # theme further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    # 'page_width': '960px',
+    # 'font_size': '16px',
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -166,6 +178,6 @@ texinfo_documents = [
      u'pulsarbat Documentation',
      author,
      'pulsarbat',
-     'One line description of project.',
+     'pulsarbat is for analysis of radio baseband observations of pulsars.',
      'Miscellaneous'),
 ]

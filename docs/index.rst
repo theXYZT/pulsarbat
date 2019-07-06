@@ -12,13 +12,12 @@ Welcome to pulsarbat's documentation!
    authors
    history
 
-.. toctree::
-   :maxdepth: 2
+The primary object of this package is `~pulsarbat.BasebandSignal` which is
+defined as,
 
-   api
 
-.. automodapi:: pulsarbat
-   :no-inheritance-diagram:
+.. autoclass:: pulsarbat.BasebandSignal
+
 
 Indices and tables
 ==================
