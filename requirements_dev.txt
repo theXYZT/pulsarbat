@@ -5,8 +5,12 @@ watchdog==0.9.0
 flake8==3.7.7
 tox==3.13.2
 coverage==4.5.3
-sphinx==2.1.2
 twine==1.13.0
 
 pytest==5.0.0
 pytest-runner==5.1
+
+sphinx==2.1.2
+sphinx-astropy==1.1.1
+sphinx-automodapi==0.11
+numpydoc==0.9.1

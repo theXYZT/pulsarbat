@@ -35,13 +35,12 @@ import pulsarbat
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
-    # 'sphinx.ext.viewcode',
+    'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
-    # 'numpydoc',
-    # 'sphinx_automodapi.automodapi'
+    'numpydoc',
+    'sphinx_automodapi.automodapi'
 ]
-
-# numpydoc_show_class_members = False
+numpydoc_show_class_members = False
 
 intersphinx_mapping = {'https://docs.python.org/': None}
 
