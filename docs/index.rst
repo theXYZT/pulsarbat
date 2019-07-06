@@ -14,8 +14,8 @@ Welcome to pulsarbat's documentation!
    history
 
 
-.. automodule:: pulsarbat
-   :members:
+.. automodapi:: pulsarbat
+:no-inheritance-diagram:
 
 
 Indices and tables
