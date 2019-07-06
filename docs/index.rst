@@ -8,14 +8,15 @@ Welcome to pulsarbat's documentation!
    readme
    installation
    usage
-   modules
    contributing
    authors
    history
 
+The primary object of this package is `~pulsarbat.BasebandSignal` which is
+defined as,
 
-.. automodule:: pulsarbat
-   :members: BasebandSignal
+
+.. autoclass:: pulsarbat.BasebandSignal
 
 
 Indices and tables
