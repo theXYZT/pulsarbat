@@ -37,12 +37,20 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
-    'numpydoc',
-    'sphinx_automodapi.automodapi'
+    'numpydoc'
 ]
-numpydoc_show_class_members = False
 
-intersphinx_mapping = {'https://docs.python.org/': None}
+# numpydoc_show_class_members = False
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy', None),
+    'astropy': ('http://docs.astropy.org/en/latest/', None),
+    'baseband': ('https://baseband.readthedocs.io/en/latest/', None),
+    'pyfftw': ('https://pyfftw.readthedocs.io/en/latest/', None),
+}
+
+# default_role = 'py:obj'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -95,7 +103,7 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see the

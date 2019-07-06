@@ -8,17 +8,15 @@ Welcome to pulsarbat's documentation!
    readme
    installation
    usage
+   modules
    contributing
    authors
    history
 
-.. toctree::
-   :maxdepth: 2
 
-   api
+.. automodule:: pulsarbat
+   :members:
 
-.. automodapi:: pulsarbat
-   :no-inheritance-diagram:
 
 Indices and tables
 ==================
