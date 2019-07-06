@@ -44,9 +44,9 @@ class BasebandSignal:
     z : array_like
         The signal being stored as an array. Must follow specifications
         described above.
-    sample_rate : `~astropy.units.Quantity`
+    sample_rate : :py:class:`~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    center_freq : `~astropy.units.Quantity`
+    center_freq : :py:class:`~astropy.units.Quantity`
         The observing frequency at the center of the signal's band. Must
         be in units of frequency.
     double_precision : bool, optional
@@ -125,7 +125,7 @@ class BasebandSignal:
 
     @property
     def array(self):
-        """Returns the signal as a Numpy array."""
+        """Returns the signal as a :py:mod:`numpy` array."""
         return self._z
 
     def __repr__(self):
