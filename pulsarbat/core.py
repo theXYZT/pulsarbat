@@ -46,7 +46,7 @@ class BasebandSignal:
         described above.
     sample_rate : :py:class:`~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    center_freq : :py:class:`~astropy.units.Quantity`
+    center_freq : `~astropy.units.Quantity`
         The observing frequency at the center of the signal's band. Must
         be in units of frequency.
     double_precision : bool, optional

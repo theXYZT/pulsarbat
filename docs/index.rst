@@ -15,7 +15,7 @@ Welcome to pulsarbat's documentation!
 
 
 .. automodule:: pulsarbat
-   :members:
+   :members: BasebandSignal
 
 
 Indices and tables
