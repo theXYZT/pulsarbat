@@ -14,10 +14,6 @@ Welcome to pulsarbat's documentation!
    history
 
 
-.. automodapi:: pulsarbat
-:no-inheritance-diagram:
-
-
 Indices and tables
 ==================
 * :ref:`genindex`
