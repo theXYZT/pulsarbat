@@ -1,0 +1,4 @@
+sphinx==2.1.2
+sphinx-astropy==1.1.1
+sphinx-automodapi==0.11
+numpydoc==0.9.1
