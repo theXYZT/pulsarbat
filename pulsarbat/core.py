@@ -11,7 +11,7 @@ try:
 except ImportError:
     fftpack = np.fft
 
-__all__ = ['BasebandSignal']
+__all__ = ['BasebandSignal', 'InvalidSignalError']
 
 
 class InvalidSignalError(Exception):

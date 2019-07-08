@@ -8,16 +8,10 @@ Welcome to pulsarbat's documentation!
    readme
    installation
    usage
+   api
    contributing
    authors
    history
-
-The primary object of this package is `~pulsarbat.BasebandSignal` which is
-defined as,
-
-
-.. autoclass:: pulsarbat.BasebandSignal
-
 
 Indices and tables
 ==================
