@@ -43,7 +43,7 @@ def real_to_complex(z, axis=0):
 
     See Also
     --------
-    `~complex_to_real` : The inverse of `~real_to_complex`.
+    complex_to_real : The inverse of `real_to_complex`.
 
     Notes
     -----
