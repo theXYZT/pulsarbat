@@ -16,11 +16,11 @@ defined as,
 Transforms
 ----------
 
-.. automodule:: pulsarbat.transform
+.. automodule:: pulsarbat.transforms
 
-.. autofunction:: pulsarbat.transform.real_to_complex
+.. autofunction:: pulsarbat.transforms.real_to_complex
 
-.. autofunction:: pulsarbat.transform.complex_to_real
+.. autofunction:: pulsarbat.transforms.complex_to_real
 
 
 Exceptions
