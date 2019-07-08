@@ -22,6 +22,12 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
+# try:
+#     from sphinx_astropy.conf.v1 import *  # noqa
+# except ImportError:
+#     print('ERROR: the documentation requires the sphinx-astropy package to be installed')
+#     sys.exit(1)
+
 import pulsarbat
 
 # -- General configuration ---------------------------------------------
@@ -41,7 +47,7 @@ extensions = [
     'numpydoc'
 ]
 
-# numpydoc_show_class_members = False
+numpydoc_show_class_members = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),

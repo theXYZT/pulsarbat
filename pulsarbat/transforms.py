@@ -18,7 +18,7 @@ def real_to_complex(z, axis=0):
     Then, the signal is shifted in frequency domain by -B/2 where B is the
     bandwidth of the signal. Finally, the signal is decimated by a factor
     of 2, which results in the complex baseband representation of the input
-    signal.
+    signal (See [1]_).
 
     Parameters
     ----------
@@ -51,7 +51,7 @@ def real_to_complex(z, axis=0):
 
     References
     ----------
-    .. https://dsp.stackexchange.com/q/43278/17721
+    .. [1] https://dsp.stackexchange.com/a/43281/17721
 
     """
     z = np.asarray(z).real
