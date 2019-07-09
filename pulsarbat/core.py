@@ -81,6 +81,15 @@ class BasebandSignal:
             raise u.UnitTypeError('center_freq must have units of frequency.')
         self._center_freq = center_freq
 
+    def __len__(self):
+        return self.shape[0]
+
+    def __array__(self):
+        return self._z
+
+    def __repr__(self):
+        return f"{self.shape} @ {self.sample_rate} [{self.center_freq}]"
+
     @property
     def dtype(self):
         """Data type of the signal."""
@@ -90,10 +99,6 @@ class BasebandSignal:
     def shape(self):
         """Shape of the signal."""
         return self._z.shape
-
-    @property
-    def __len__(self):
-        return self.shape[0]
 
     @property
     def sample_shape(self):
@@ -123,14 +128,6 @@ class BasebandSignal:
     def center_freq(self):
         """Center observing frequency of the signal."""
         return self._center_freq
-
-    @property
-    def array(self):
-        """Returns the signal as a :py:mod:`numpy` array."""
-        return self._z
-
-    def __repr__(self):
-        return f"{self.shape} @ {self.sample_rate} [{self.center_freq}]"
 
 
 class BasebandReader:
