@@ -82,12 +82,12 @@ class Polyco(Table):
 
         Parameters
         ----------
-        mjd_in : `~astropy.time.Time` or float (array)
+        time : `~astropy.time.Time` or float (array)
             Time instances of MJD's for which phases are to be generated.
             If float, assumed to be MJD (NOTE: less precise!)
         index : int (array), None, float, or `~astropy.time.Time`
             indices into Table for corresponding polyco's; if None, it will be
-            deterined from ``mjd_in`` (giving an explicit index can help speed
+            deterined from ``time`` (giving an explicit index can help speed
             up the evaluation).  If not an index or `None`, it will be used to
             find the index. Hence if one has a large array if closely spaced
             times, one can pass in a single element to speed matters up.
