@@ -4,16 +4,20 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 
-__all__ = ['BasebandSignal', 'DispersionMeasure']
+__all__ = ['Signal', 'RadioSignal', 'BasebandSignal', 'DispersionMeasure']
 
 
-def verify_quantity(unit, *args):
-    for a in args:
-        if not isinstance(a, u.Quantity):
-            raise TypeError(f'Expected astropy Quantity, got {type(a)}')
-        if not a.unit.is_equivalent(unit):
-            expected = f'Expected units of {unit.physical_type}'
-            raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
+def verify_scalar_quantity(unit, a):
+    if not isinstance(a, u.Quantity):
+        raise TypeError(f'Expected astropy Quantity, got {type(a)}')
+
+    if not a.unit.is_equivalent(unit):
+        expected = f'Expected units of {unit.physical_type}'
+        raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
+
+    if not a.isscalar:
+        raise ValueError(f'Expected a scalar quantity.')
+
     return True
 
 
@@ -25,8 +29,12 @@ class InvalidSignalError(ValueError):
 class Signal:
     """Base class for all signals.
 
-    A signal is uniquely described by an array of samples (`z`), a
-    sampling rate (`sample_rate`), and a start time (`start_time`).
+    A signal is sufficiently described by an array of samples (`z`),
+    and a constant sampling rate (`sample_rate`).
+
+    `z` must be a `~numpy.ndarray` object where the zeroth axis refers
+    to time. That is, z[i] is the `i`th sample of the signal, and the
+    sample shape can be arbitrary. `z` must have at least 1 dimension.
 
     Parameters
     ----------
@@ -34,23 +42,22 @@ class Signal:
         The signal being stored as an array.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    start_time : `astropy.time.Time`
-        The start time of the signal (the time at the first sample of
-        the signal).
     """
-    def __init__(self, z: np.ndarray, sample_rate: u.Quantity,
-                 start_time: Time):
+    _min_ndim = 1
+    _dtype = None
 
-        if verify_quantity(u.Hz, sample_rate):
+    def __init__(self, z: np.ndarray, sample_rate: u.Quantity):
+
+        if verify_scalar_quantity(u.Hz, sample_rate):
             self._sample_rate = sample_rate.copy()
 
-        try:
-            self._start_time = Time(start_time, format='isot', precision=9)
-        except ValueError:
-            raise ValueError('Invalid start time provided.')
-
         if not isinstance(z, np.ndarray):
-            raise TypeError('Input signal must be a numpy.ndarray!')
+            raise TypeError('Input signal must be an ndarray object!')
+
+        if z.ndim < self._min_ndim:
+            err = (f'Expected signal with >= {self._min_ndim} dimension(s), '
+                   f'got signal with {z.ndim} dimension(s) instead!')
+            raise InvalidSignalError(err)
 
         try:
             self._z = self._create_signal_template(z)
@@ -59,19 +66,23 @@ class Signal:
             raise InvalidSignalError('Invalid signal provided.')
 
     def _create_signal_template(self, z):
-        return np.empty_like(z, order='F')
+        dtype = self._dtype or z.dtype
+        return np.empty_like(z, order='F', dtype=dtype)
 
-    def copy(self):
-        """Creates a deep copy of the object."""
-        return Signal(self._z, self.sample_rate, self.start_time)
+    def copy(self, z=None, sample_rate=None):
+        """Creates a copy of the object."""
+        return type(self)(z or self._z,
+                          sample_rate or self.sample_rate)
 
     def __array__(self):
         return self._z
 
     def __repr__(self):
-        return (f"Signal Shape: {self.shape}\n"
-                f"Sample Rate: {self.sample_rate}\n"
-                f"Start time: {self.start_time.isot}\n")
+        return (f"{self.__class__.__name__} @ {hex(id(self))}\n"
+                f"--------------------\n"
+                f"Signal shape: {self.shape}\n"
+                f"Signal dtype: {self.dtype}\n"
+                f"Sample rate: {self.sample_rate}")
 
     def __len__(self):
         return len(self._z)
@@ -80,6 +91,11 @@ class Signal:
     def shape(self):
         """Shape of the signal."""
         return self._z.shape
+
+    @property
+    def dtype(self):
+        """Data type of the signal."""
+        return self._z.dtype
 
     @property
     def sample_shape(self):
@@ -93,7 +109,7 @@ class Signal:
 
     @sample_rate.setter
     def sample_rate(self, sample_rate):
-        if verify_quantity(u.Hz, sample_rate):
+        if verify_scalar_quantity(u.Hz, sample_rate):
             self._sample_rate = sample_rate.copy()
 
     @property
@@ -105,6 +121,92 @@ class Signal:
     def time_length(self):
         """Length of signal in time units."""
         return (len(self) * self.dt).to(u.s)
+
+
+class RadioSignal(Signal):
+    """Class for observed radio signals.
+
+    A signal is sufficiently described by an array of samples (`z`),
+    and a sampling rate (`sample_rate`). A radio signal is a signal
+    observed by some antenna or analog receiver of some sort. Thus, it
+    comes with additional metadata such as a start time (`start_time`),
+    a center frequency (`center_freq`), and a bandwidth (`bandwidth`).
+
+    Radio signals can be channelized (split into adjacent channels in
+    frequency). In order to simplify management of these channels, the
+    input signal (`z`) is required to be a `~numpy.ndarray` object with
+    at least 2 dimensions. The first dimension (`axis = 0`) refers to
+    time (as required by the parent class `~Signal`). The second
+    dimension (`axis = 1`) refers to frequency, such that z[:, i] is the
+    `i`th channel of the signal.
+
+    The shape of `z` must be `(nsamples, nchan, ...)`.
+
+    The channels must be adjacent in frequency and of equal bandwidth,
+    such that the center frequency of a channel `i` is given by,
+
+        freq_i = center_freq + (bandwidth / nchan) * (i + 0.5 - nchan/2)
+
+    where `i` is in `[0, ..., nchan - 1]` and `nchan` is the number of
+    channels (`z.shape[1]`) and `bandwidth / nchan` is the bandwidth of
+    a single channel.
+
+    Input data that is unchannelized must still be treated as data with
+    1 channel where `z.shape[1] = 1`.
+
+    Parameters
+    ----------
+    z : `~numpy.ndarray`
+        The signal being stored as an array.
+    sample_rate : `~astropy.units.Quantity`
+        The number of samples per second. Must be in units of frequency.
+    start_time : `~astropy.time.Time`
+        The start time of the signal (that is, the time at the first
+        sample of the signal).
+    center_freq : `~astropy.units.Quantity`
+        The observing frequency at the center of the signal's band. Must
+        be in units of frequency.
+    bandwidth : `~astropy.units.Quantity`
+        The total bandwidth of the signal. The channel bandwidth is this
+        total bandwidth divided by the number of channels. Must be in
+        units of frequency.
+    """
+    _min_ndim = 2
+
+    def __init__(self, z: np.ndarray, sample_rate: u.Quantity,
+                 start_time: Time, center_freq: u.Quantity,
+                 bandwidth: u.Quantity):
+
+        super().__init__(z, sample_rate)
+
+        if verify_scalar_quantity(u.Hz, center_freq):
+            self._center_freq = center_freq.copy()
+
+        if verify_scalar_quantity(u.Hz, bandwidth):
+            self._bandwidth = bandwidth.copy()
+
+        try:
+            self._start_time = Time(start_time, format='isot', precision=9)
+        except ValueError:
+            raise ValueError('Invalid start time provided.')
+
+        if not self._start_time.isscalar:
+            raise ValueError('Start time must be a scalar!')
+
+    def copy(self, z=None, sample_rate=None, start_time=None,
+             center_freq=None, bandwidth=None):
+        """Creates a copy of the object."""
+        return type(self)(z or self._z,
+                          sample_rate or self.sample_rate,
+                          start_time or self.start_time,
+                          center_freq or self.center_freq,
+                          bandwidth or self.bandwidth)
+
+    def __repr__(self):
+        return (f"{super().__repr__()}\n"
+                f"Bandwidth: {self.bandwidth}\n"
+                f"Center Freq.: {self.center_freq}\n"
+                f"Start Time: {self.start_time.isot}\n")
 
     @property
     def start_time(self):
@@ -119,80 +221,10 @@ class Signal:
     def stop_time(self):
         return self.start_time + self.time_length
 
-
-class BasebandSignal(Signal):
-    """Stores complex baseband signals for analysis.
-
-    A complex baseband signal is uniquely described by an array of
-    complex samples (`z`), the sampling rate (`sample_rate`), the start
-    time (`start_time`), and a reference frequency which in this case is
-    the observing frequency at the center of the band (`center_freq`).
-
-    `z` must be an array-like object containing a signal in a complex
-    baseband representation. The shape of `z` is `(nsamples, nchan, ...)`
-    such that the first dimension is always time (samples), and the rest
-    is the sample shape. The first dimension of a sample (second
-    dimension of `z`) is always frequency (channels). All channels are
-    assumed to be Nyquist-sampled (i.e., adjacent channels are separated
-    by a bandwidth of `sample_rate`). Thus, the center frequency of
-    channel `i` is given by:
-
-        freq_i = center_freq + sample_rate * (i + 0.5 - nchan/2)
-
-    where `i` is in `[0, ..., nchan - 1]`.
-
-    The signal is always stored as 64-bit complex floating point numbers.
-    This should be sufficient precision for practically all use cases.
-
-    Parameters
-    ----------
-    z : `~numpy.ndarray`
-        The signal being stored as an array. Must follow specifications
-        described above.
-    sample_rate : `~astropy.units.Quantity`
-        The number of samples per second. Must be in units of frequency.
-    start_time : `astropy.time.Time`
-        The start time of the signal (the time at the first sample of
-        the signal).
-    center_freq : `~astropy.units.Quantity`
-        The observing frequency at the center of the signal's band. Must
-        be in units of frequency.
-    """
-    def __init__(self, z: np.ndarray, sample_rate: u.Quantity,
-                 start_time: Time, center_freq: u.Quantity):
-        if z.ndim < 2:
-            raise InvalidSignalError(f'Expected signal with >= 2 dimensions, '
-                                     f'got signal with {z.ndim} dimension(s).')
-
-        if verify_quantity(u.Hz, center_freq):
-            self._center_freq = center_freq.copy()
-
-        super().__init__(z, sample_rate, start_time)
-
-    def _create_signal_template(self, z):
-        return np.empty_like(z, dtype=np.complex64, order='F')
-
-    def __repr__(self):
-        signal_type = ('BasebandSignal\n'
-                       '--------------\n')
-        return (f"{signal_type}"
-                f"{super().__repr__()}"
-                f"Center Frequency: {self.center_freq}\n")
-
-    def copy(self, z=None, sample_rate=None, start_time=None,
-             center_freq=None):
-        """Creates a copy of the object, unless specified otherwise."""
-        z = z or self._z
-        sample_rate = sample_rate or self.sample_rate
-        start_time = start_time or self.start_time
-        center_freq = center_freq or self.center_freq
-
-        BasebandSignal(z, sample_rate, start_time, center_freq)
-
     @property
     def nchan(self):
         """Number of frequency channels."""
-        return self.sample_shape[0]
+        return self.shape[1]
 
     @property
     def center_freq(self):
@@ -201,14 +233,13 @@ class BasebandSignal(Signal):
 
     @property
     def bandwidth(self):
-        """Total bandwidth of signal (nchan * sample_rate)."""
-        return self.nchan * self.sample_rate
+        """Total bandwidth of signal."""
+        return self._bandwidth.copy()
 
     @property
-    def channel_centers(self):
-        """Returns a list of center frequencies for all channels."""
-        chan_ids = [i + 0.5 - self.nchan / 2 for i in range(self.nchan)]
-        return self.center_freq + self.sample_rate * chan_ids
+    def chan_bandwidth(self):
+        """Bandwidth of a single channel."""
+        return self.bandwidth / self.nchan
 
     @property
     def max_freq(self):
@@ -219,6 +250,57 @@ class BasebandSignal(Signal):
     def min_freq(self):
         """Frequency at the bottom of the band."""
         return self.center_freq - self.bandwidth / 2
+
+    @property
+    def channel_centers(self):
+        """Returns a list of center frequencies for all channels."""
+        chan_ids = [i + 0.5 - self.nchan / 2 for i in range(self.nchan)]
+        return self.center_freq + self.chan_bandwidth * chan_ids
+
+
+class BasebandSignal(RadioSignal):
+    """Stores complex baseband signals for analysis.
+
+    Baseband signals are assumed to be raw radio data which are Nyquist
+    sampled analytic signals (the bandwidth of a channel is equal to the
+    sampling rate).
+
+    See the documentation for `~RadioSignal` for primary specifications.
+
+    `z` must be an array-like object containing a signal in a complex
+    baseband representation. The signal is always stored as 64-bit
+    complex floating point numbers. This should be sufficient precision
+    for practically all use cases.
+
+    Parameters
+    ----------
+    z : `~numpy.ndarray`
+        The signal being stored as an array.
+    sample_rate : `~astropy.units.Quantity`
+        The number of samples per second. Must be in units of frequency.
+    start_time : `~astropy.time.Time`
+        The start time of the signal (that is, the time at the first
+        sample of the signal).
+    center_freq : `~astropy.units.Quantity`
+        The observing frequency at the center of the signal's band. Must
+        be in units of frequency.
+    bandwidth : `~astropy.units.Quantity`
+        The total bandwidth of the signal. The channel bandwidth is this
+        total bandwidth divided by the number of channels. Must be in
+        units of frequency.
+    """
+    _dtype = np.complex64
+
+    def __init__(self, z: np.ndarray, sample_rate: u.Quantity,
+                 start_time: Time, center_freq: u.Quantity,
+                 bandwidth: u.Quantity):
+
+        super().__init__(z, sample_rate, start_time, center_freq,
+                         bandwidth)
+
+        if not u.isclose(self.chan_bandwidth, self.sample_rate):
+            err = 'Sample rate is not equal to channel bandwidth!'
+            raise InvalidSignalError(err)
 
 
 class DispersionMeasure(u.SpecificTypeQuantity):

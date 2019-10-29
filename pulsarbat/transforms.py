@@ -62,7 +62,7 @@ def channelize(z: BasebandSignal, factor: int):
 
     For example, if `factor` is 8, and the input signal has 4 channels,
     the output signal will have 32 channels. A factor less than 8 is not
-    recommended due to artifacts caused from extremely short Fourier
+    recommended due to artifacts caused from extremely small Fourier
     Transforms.
 
     The output signal will also be cropped at the end to accomodate

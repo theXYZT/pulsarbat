@@ -1,8 +1,6 @@
 """Signal-to-signal transforms."""
 
 import numpy as np
-import astropy.units as u
-from .core import BasebandSignal
 from astropy.time import Time
 import baseband
 
@@ -12,17 +10,7 @@ try:
 except ImportError:
     fftpack = np.fft
 
-__all__ = ['verify_quantity']
-
-
-def verify_quantity(unit, *args):
-    for a in args:
-        if not isinstance(a, u.Quantity):
-            raise TypeError(f'Expected astropy Quantity, got {type(a)}')
-        if not a.unit.is_equivalent(unit):
-            expected = f'Expected units of {unit.physical_type}'
-            raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
-    return True
+__all__ = []
 
 
 class BasebandReader:

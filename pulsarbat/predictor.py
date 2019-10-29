@@ -1,5 +1,10 @@
-# Licensed under the GPLv3 (Copyright, Marten H. van Kerkwijk)
-r"""Read in and use tempo1 polyco files (tempo2 predict to come).
+# This code is written by Marten H. van Kerkwijk and licensed under
+# GNU GPL v3.0. It is copied from the 'scintillometry' package
+# repository at: https://github.com/mhvk/scintillometry
+
+# This is done to avoid forcing the user to install scintillometry also.
+
+r"""Read in and use tempo1 polyco files.
 
 Examples
 --------
@@ -61,40 +66,100 @@ Example tempo2 call to produce one:
                                            |-- Frequency in MHz
 """
 
+from __future__ import division, print_function
+
 from collections import OrderedDict
+
 import numpy as np
 from numpy.polynomial import Polynomial
-from astropy.table import Table
-import astropy.units as u
+from astropy import units as u
+from astropy.table import QTable
+from astropy.coordinates import Angle
 from astropy.time import Time
 
+from ..dm import DispersionMeasure
+from .phase import Phase
+
+
+__doctest_skip__ = ['*']
 __all__ = ['Polyco']
 
 
-class Polyco(Table):
-    def __init__(self, name):
+class Polyco(QTable):
+    def __init__(self, *args, **kwargs):
         """Read in polyco file as Table, and set up class."""
-        table = polyco2table(name)
-        super().__init__(table)
+        if len(args):
+            data = args[0]
+            args = args[1:]
+        else:
+            data = kwargs.pop('data', None)
+
+        if isinstance(data, str):
+            data = polyco2table(data)
+
+        super().__init__(data, *args, **kwargs)
+
+    def to_polyco(self, name='polyco.dat', style='tempo2'):
+        """Write the polyco table to a polyco file.
+
+        Parameters
+        ----------
+        name : str
+            Filename
+        style : {'tempo1'|'tempo2'}, optional
+            Package which the writer should emulate.  Default: 'tempo2'
+        """
+        header_fmt = ''.join(
+            [('{' + key + converter['fmt'] + ('}\n' if key == 'lgrms' else '}'))
+             for key, converter in converters.items()
+             if key in self.keys() or key in ('date', 'utc_mid')])
+
+        coeff_fmt = fortran_fmt if style == 'tempo1' else '{:24.17e}'.format
+
+        with open(name, 'w') as fh:
+            for row in self:
+                items = {k: row[k] for k in converters if k in self.keys()}
+                # Special treatment for mjd_mid, date, and utc_mid.
+                mjd_mid = items['mjd_mid']
+                # Hack: unlike Time, Phase can format its int/frac as {:..f}.
+                items['mjd_mid'] = Phase(mjd_mid.jd1-2400000.5, mjd_mid.jd2)
+                item = mjd_mid.datetime.strftime('%d-%b-%y')
+                if style == 'tempo1':
+                    item = item.upper()
+                items['date'] = item if item[0] != '0' else ' '+item[1:]
+                mjd_mid.precision = 2
+                items['utc_mid'] = float(mjd_mid.isot.split('T')[1]
+                                         .replace(':', ''))
+
+                fh.write(header_fmt.format(**items) + '\n')
+
+                coeff = row['coeff']
+                for i in range(0, len(coeff), 3):
+                    fh.write(' ' + ' '.join([coeff_fmt(c)
+                                             for c in coeff[i:i+3]]) + '\n')
 
     def __call__(self, time, index=None, rphase=None, deriv=0, time_unit=None):
         """Predict phase or frequency (derivatives) for given mjd (array)
 
         Parameters
         ----------
-        time : `~astropy.time.Time` or float (array)
+        mjd_in : `~astropy.time.Time` or float (array)
             Time instances of MJD's for which phases are to be generated.
             If float, assumed to be MJD (NOTE: less precise!)
         index : int (array), None, float, or `~astropy.time.Time`
             indices into Table for corresponding polyco's; if None, it will be
-            deterined from ``time`` (giving an explicit index can help speed
+            deterined from ``mjd_in`` (giving an explicit index can help speed
             up the evaluation).  If not an index or `None`, it will be used to
             find the index. Hence if one has a large array if closely spaced
             times, one can pass in a single element to speed matters up.
-        rphase : None, 'fraction' or float (array)
-            phase zero points for relevant polyco's; if None, use those
-            stored in polyco.  (Those are typically large, so one looses
-            some precision.)  Can also set 'fraction' or give the zero point.
+        rphase : None, 'fraction', 'ignore', or float (array)
+            Phase zero point; if None, use the one stored in polyco
+            (those are typically large, so we ensure we preserve precision by
+            using the `~scintillometry.phases.Phase` class for the result.)
+            Can also set 'fraction' to use the stored one modulo 1, which is
+            fine for folding, but breaks cycle count continuity between sets,
+            'ignore' for just keeping the value stored in the coefficients,
+            or a value that should replace the zero point.
         deriv : int
             Derivative to return (Default=0=phase, 1=frequency, etc.)
         time_unit : Unit
@@ -102,8 +167,9 @@ class Polyco(Table):
 
         Returns
         -------
-        phase / time**deriv : `~astropy.units.Quantity`
-            with appropriate units given ``deriv`` and ``time_unit``.
+        result : `~scintillometry.phases.Phase` or `~astropy.units.Quantity`
+            A phase if ``deriv=0`` and ``rphase=None`` to preserve precision;
+            otherwise, a quantity with units of ``cycle / time_unit**deriv``.
         """
         time_unit = time_unit or u.s
         if not hasattr(time, 'mjd'):
@@ -113,27 +179,31 @@ class Polyco(Table):
         except (AttributeError, TypeError):
             index = self.searchclosest(time)
 
-        mjd_mid = self['mjd_mid'][index]
-
-        if np.any(np.abs(time.mjd - mjd_mid)*1440 > self['span'][index]/2):
+        # Convert offsets to minutes for later use in polynomial evaluation.
+        dt = (time - self['mjd_mid'][index]).to(u.min)
+        if np.any(dt > self['span'][index]/2):
             raise ValueError('(some) MJD outside of polyco range')
 
+        # Check whether we need to add the reference phase at the end.
+        do_phase = (deriv == 0 and rphase is None)
+        if do_phase:
+            # If so, do not add it inside the polynomials.
+            rphase = 'ignore'
+
         if time.isscalar:
-            polynomial = self.polynomial(index, rphase, deriv)
-            dt = (time - Time(self['mjd_mid'][index],
-                              format='mjd', scale='utc'))
-            return (polynomial(dt.to(u.min).value) *
-                    u.cycle / u.min**deriv).to(u.cycle / time_unit**deriv)
+            result = self.polynomial(index, rphase, deriv)(dt.value)
         else:
-            results = np.zeros(len(time)) * u.cycle / time_unit**deriv
+            result = np.zeros(time.shape)
             for j in set(index):
-                in_set = index == j
-                polynomial = self.polynomial(j, rphase, deriv)
-                dt = (time[in_set] - Time(self['mjd_mid'][j],
-                                          format='mjd', scale='utc'))
-                results[in_set] = (polynomial(dt.to(u.min).value) *
-                                   u.cycle / u.min**deriv)
-            return results
+                sel = index == j
+                result[sel] = self.polynomial(j, rphase, deriv)(dt[sel].value)
+
+        # Apply units from the polynomials.
+        result = result << u.cycle/u.min**deriv
+        # Convert to requested unit in-place.
+        result <<= u.cycle/time_unit**deriv
+        # Add reference phase to it if needed.
+        return result + self['rphase'][index] if do_phase else result
 
     def polynomial(self, index, rphase=None, deriv=0,
                    t0=None, time_unit=u.min, out_unit=None,
@@ -144,11 +214,13 @@ class Polyco(Table):
         ----------
         index : int or float
             index into the polyco table (or MJD for finding closest)
-        rphase : None or 'fraction' or float
-            phase zero point; if None, use the one stored in polyco.
+        rphase : None or 'fraction' or 'ignore' or float
+            Phase zero point; if None, use the one stored in polyco.
             (Those are typically large, so one looses some precision.)
             Can also set 'fraction' to use the stored one modulo 1, which is
-            fine for folding, but breaks cycle count continuity between sets.
+            fine for folding, but breaks cycle count continuity between sets,
+            'ignore' for just keeping the value stored in the coefficients,
+            or a value that should replace the zero point.
         deriv : int
             derivative of phase to take (1=frequency, 2=fdot, etc.); default 0
 
@@ -170,32 +242,26 @@ class Polyco(Table):
             index = index.__index__()
         except (AttributeError, TypeError):
             index = self.searchclosest(index)
-        window = np.array([-1, 1]) * self['span'][index]/2 * u.min
+        window = np.array([-1, 1]) * self['span'][index]/2
 
         polynomial = Polynomial(self['coeff'][index],
                                 window.value, window.value)
-        polynomial.coef[1] += self['f0'][index]*60.
+        polynomial.coef[1] += self['f0'][index].to_value(u.cycle/u.minute)
 
         if deriv == 0:
             if rphase is None:
-                polynomial.coef[0] += self['rphase'][index]
+                polynomial.coef[0] += self['rphase'][index].value
             elif rphase == 'fraction':
-                polynomial.coef[0] += self['rphase'][index] % 1
-            else:
+                polynomial.coef[0] += self['rphase']['frac'][index].value % 1
+            elif rphase != 'ignore':
                 polynomial.coef[0] = rphase
         else:
             polynomial = polynomial.deriv(deriv)
             polynomial.coef /= u.min.to(out_unit)**deriv
 
-        if t0 is None:
-            dt = 0. * time_unit
-        elif not hasattr(t0, 'jd1') and t0 == 0:
-            dt = (-self['mjd_mid'][index] * u.day).to(time_unit)
-        else:
-            dt = ((t0 - Time(self['mjd_mid'][index], format='mjd', scale='utc')
-                   ).jd * u.day).to(time_unit)
-
-        polynomial.domain = (window.to(time_unit) - dt).value
+        if t0 is not None:
+            dt = Time(t0, format='mjd') - self['mjd_mid'][index]
+            polynomial.domain = (window - dt).to(time_unit).value
 
         if convert:
             return polynomial.convert()
@@ -237,31 +303,65 @@ class Polyco(Table):
         freqpol : Polynomial
             set up for MJDs between mjd_mid +/- span
         """
-        return self.polynomial(index, deriv=1.,
+        return self.polynomial(index, deriv=1,
                                t0=t0, time_unit=time_unit, out_unit=u.s,
                                convert=convert)
 
     def searchclosest(self, mjd):
         """Find index to polyco that is closest in time to (set of) Time/MJD"""
         mjd = getattr(mjd, 'mjd', mjd)
-        i = np.clip(np.searchsorted(self['mjd_mid'], mjd), 1, len(self)-1)
-        i -= mjd-self['mjd_mid'][i-1] < self['mjd_mid'][i]-mjd
+        mjd_mid = self['mjd_mid'].mjd
+        i = np.clip(np.searchsorted(mjd_mid, mjd), 1, len(self)-1)
+        i -= mjd-mjd_mid[i-1] < mjd_mid[i]-mjd
         return i
 
 
-def str_2_float(number_str):
-    """Convert a number string to float. This function handles the fortun float
-       format
-    """
-    try:
-        return float(number_str)
-    except ValueError:
-        number_str = number_str.replace('D', 'e')
-        return float(number_str)
+def int_frac(s):
+    mjd_int, _, frac = s.strip().partition('.')
+    return np.array((int('0' + mjd_int), float('0.' + frac)),
+                    dtype=[('int', int), ('frac', float)])
+
+
+def change_type(cls, **kwargs):
+    def convert(x):
+        if x.dtype.names:
+            args = [x[k] for k in x.dtype.names]
+        else:
+            args = [x]
+        return cls(*args, **kwargs)
+
+    return convert
+
+
+converters = OrderedDict(
+    (('psr', dict(parse=str, fmt=':<10s')),
+     ('date', dict(fmt=':>10s')),  # inferred from mjd_mid
+     ('utc_mid', dict(fmt=':11.2f')),  # inferred from mjd_mid
+     ('mjd_mid', dict(parse=int_frac, fmt=':20.11f',
+                      convert=change_type(Time, format='mjd'))),
+     ('dm', dict(parse=float, fmt='.value:21.6f',
+                 convert=change_type(DispersionMeasure))),
+     ('vbyc_earth', dict(parse=float, fmt='.value:7.3f',
+                         convert=change_type(u.Quantity, unit=1e-4))),
+     ('lgrms', dict(parse=float, fmt=':7.3f')),
+     ('rphase', dict(parse=int_frac, fmt=':20.6f',
+                     convert=change_type(Phase))),
+     ('f0', dict(parse=float, fmt='.value:18.12f',
+                 convert=change_type(u.Quantity, unit=u.cycle/u.s))),
+     ('obs', dict(parse=str, fmt=':>5s')),
+     ('span', dict(parse=int, fmt='.value:5.0f',
+                   convert=change_type(u.Quantity, unit=u.minute))),
+     ('ncoeff', dict(parse=int, fmt=':5d')),
+     ('freq', dict(parse=float, fmt='.value:10.3f',
+                   convert=change_type(u.Quantity, unit=u.MHz))),
+     ('binphase', dict(parse=float, fmt='.value:7.4f',
+                       convert=change_type(Angle, unit=u.cy))),
+     ('forb', dict(parse=float, fmt='.value:9.4f',
+                   convert=change_type(u.Quantity, unit=u.cy/u.day)))))
 
 
 def polyco2table(name):
-    """Read in a tempo1,2 polyco file and convert it to a Table
+    """Parse a tempo1,2 polyco file and convert it to a QTable.
 
     Parameters
     ----------
@@ -270,41 +370,47 @@ def polyco2table(name):
 
     Returns
     -------
-    t : Table
-        each entry in the polyco file corresponds to one row, with columns
-        psr, date, utc_mid, mjd_mid, dm, vbyc_earth, lgrms,
-        rphase, f0, obs, span, ncoeff, freq, binphase, coeff[ncoeff]
+    t : `~astropy.table.QTable`
+        Each entry in the polyco file corresponds to one row; columns
+        hold psr, date, utc_mid, mjd_mid, dm, vbyc_earth, lgrms,
+        rphase, f0, obs, span, ncoeff, freq, binphase & forb (optional),
+        and coeff[ncoeff].
     """
+    d2e = ''.maketrans('Dd', 'ee')
 
+    t = []
     with open(name, 'r') as polyco:
         line = polyco.readline()
-        t = None
         while line != '':
-            d = OrderedDict(zip(['psr', 'date', 'utc_mid', 'mjd_mid',
-                                 'dm', 'vbyc_earth', 'lgrms'],
-                                line.split()))
-            d.update(dict(zip(['rphase', 'f0', 'obs', 'span', 'ncoeff',
-                               'freq', 'binphase'],
-                              polyco.readline().split()[:7])))
-            for key in d:
-                try:
-                    d[key] = int(d[key])
-                except ValueError:
-                    try:
-                        d[key] = float(d[key])
-                    except ValueError:
-                        pass
+            # Parse Header.
+            pieces = line.split() + polyco.readline().split()
+            d = OrderedDict(((key, converter['parse'](piece))
+                             for (key, converter), piece in
+                             zip(converters.items(), pieces)
+                             if 'parse' in converter))
+            # Parse coefficients.
             d['coeff'] = []
             while len(d['coeff']) < d['ncoeff']:
                 d['coeff'] += polyco.readline().split()
 
-            d['coeff'] = np.array([str_2_float(item) for item in d['coeff']])
+            d['coeff'] = np.array([float(c.translate(d2e))
+                                   for c in d['coeff']])
 
-            if t is None:
-                t = Table([[v] for v in d.values()], names=d.keys())
-            else:
-                t.add_row(d.values())
-
+            t.append(d)
             line = polyco.readline()
 
+    t = QTable(t)
+    for key in t.colnames:
+        try:
+            t[key] = converters[key]['convert'](t[key])
+        except KeyError:
+            pass
+
     return t
+
+
+def fortran_fmt(x, base_fmt='23.16e'):
+    s = format(x, base_fmt)
+    pre, _, post = s.partition('.')
+    mant, _, exp = post.partition('e')
+    return pre[:-1] + '0.' + pre[-1] + mant + 'D{:+03d}'.format(int(exp) + 1)
