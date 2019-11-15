@@ -4,12 +4,6 @@ import numpy as np
 from astropy.time import Time
 import baseband
 
-try:
-    import pyfftw
-    fftpack = pyfftw.interfaces.numpy_fft
-except ImportError:
-    fftpack = np.fft
-
 __all__ = []
 
 

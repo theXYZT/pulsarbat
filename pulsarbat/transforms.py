@@ -1,9 +1,11 @@
 """Signal-to-signal transforms."""
 
+import os
+import functools
 import numpy as np
 import astropy.units as u
-import os
-from .core import BasebandSignal, DispersionMeasure
+from .core import (Signal, BasebandSignal, DispersionMeasure,
+                   verify_scalar_quantity, InvalidSignalError)
 
 try:
     import pyfftw
@@ -12,14 +14,28 @@ try:
 except ImportError:
     fftpack = np.fft
 
-__all__ = ['dedisperse', 'channelize']
+__all__ = ['dedisperse', 'channelize', 'linear_to_circular',
+           'circular_to_linear']
 
 
+def transform(func):
+    """Decorator for all transforms."""
+
+    @functools.wraps(func)
+    def wrapper(z, *args, **kwargs):
+        if not isinstance(z, BasebandSignal):
+            raise TypeError('Input signal must be a BasebandSignal object.')
+        return func(z, *args, **kwargs)
+    return wrapper
+
+
+@transform
 def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
     """Dedisperses a signal by a given dispersion measure.
 
     The output signal will be cropped on both ends to avoid wrap-around
-    artifacts caused by dedispersion.
+    artifacts caused by dedispersion. This depends on how the reference
+    frequency (`ref_freq`) compares to the band of the signal.
 
     Parameters
     ----------
@@ -35,15 +51,13 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
     out : `~pulsarbat.BasebandSignal`
         The dedispersed signal.
     """
-    if not isinstance(z, BasebandSignal):
-        raise TypeError('Input signal must be a BasebandSignal object.')
-
     if not isinstance(DM, DispersionMeasure):
         raise TypeError('DM must be a DispersionMeasure object.')
+    verify_scalar_quantity(ref_freq, u.Hz)
 
     N = len(z)
     f = z.channel_centers[None] + np.fft.fftfreq(N, z.dt)[:, None]
-    phase_factor = DM.phase_factor(f, ref_freq)
+    phase_factor = np.asfortranarray(DM.phase_factor(f, ref_freq))
 
     x = fftpack.fft(np.array(z), axis=0)
     x = fftpack.ifft((x.T * phase_factor.T).T, axis=0)
@@ -51,12 +65,13 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
     crop_before = -min(0, DM.sample_delay(z.max_freq, ref_freq, z.sample_rate))
     crop_after = max(0, DM.sample_delay(z.min_freq, ref_freq, z.sample_rate))
 
-    x = x[crop_before:N-crop_after]
+    x = x[crop_before:-crop_after]
     time_cropped = crop_before * z.dt
 
     return z.copy(z=x, start_time=z.start_time + time_cropped)
 
 
+@transform
 def channelize(z: BasebandSignal, factor: int):
     """Channelizes a signal by a given factor.
 
@@ -65,8 +80,8 @@ def channelize(z: BasebandSignal, factor: int):
     recommended due to artifacts caused from extremely small Fourier
     Transforms.
 
-    The output signal will also be cropped at the end to accomodate
-    channelizing.
+    The output signal will also be cropped at the end if `len(z)` is not
+    divisible by `factor`.
 
     Parameters
     ----------
@@ -80,9 +95,6 @@ def channelize(z: BasebandSignal, factor: int):
     out : `~pulsarbat.BasebandSignal`
         The channelized signal.
     """
-    if not isinstance(z, BasebandSignal):
-        raise TypeError('Input signal must be a BasebandSignal object.')
-
     if not isinstance(factor, int):
         raise TypeError("factor must be an integer.")
 
@@ -100,8 +112,35 @@ def channelize(z: BasebandSignal, factor: int):
     return z.copy(z=x, sample_rate=z.sample_rate/factor)
 
 
+@transform
+def convolve(z: BasebandSignal, h: Signal):
+    """Convolves a filter h with a signal z."""
+
+    if not isinstance(h, Signal):
+        raise TypeError('Filter must be a Signal object.')
+
+    if h.sample_rate != z.sample_rate:
+        err = 'Input signal and filter have different sample rates!'
+        raise InvalidSignalError(err)
+
+    if h.ndim > z.ndim:
+        raise InvalidSignalError('Filter has more dimensions than signal!')
+    else:
+        h.expand_dims(z.ndim)
+
+    raise NotImplementedError(':)')
+
+
+@transform
 def linear_to_circular(z: BasebandSignal, axis: int):
     """Converts a baseband signal from linear basis to circular basis.
+
+    The polarization components are expected to be located along the
+    axis provided (`axis`). If `z.shape[axis] != 2`, an exception is
+    raised since there must be exactly two polarization components.
+
+    It is assumed that the linear components are ordered as (X, Y) and
+    circular components are ordered as (R, L).
 
     Parameters
     ----------
@@ -116,7 +155,12 @@ def linear_to_circular(z: BasebandSignal, axis: int):
     out : `~pulsarbat.BasebandSignal`
         The converted signal.
     """
-    assert z.shape[axis] == 2
+    if axis == 0 or axis == 1:
+        raise ValueError('Invalid polarization axis!')
+
+    if not z.shape[axis] == 2:
+        err = 'Polarization axis does not have 2 components!'
+        raise InvalidSignalError(err)
 
     X = np.take(z, 0, axis)
     Y = np.take(z, 1, axis)
@@ -131,8 +175,16 @@ def linear_to_circular(z: BasebandSignal, axis: int):
     return z.copy(z=circular)
 
 
+@transform
 def circular_to_linear(z: BasebandSignal, axis: int):
     """Converts a baseband signal from circular basis to linear basis.
+
+    The polarization components are expected to be located along the
+    axis provided (`axis`). If `z.shape[axis] != 2`, an exception is
+    raised since there must be exactly two polarization components.
+
+    It is assumed that the linear components are ordered as (X, Y) and
+    circular components are ordered as (R, L).
 
     Parameters
     ----------
@@ -147,7 +199,12 @@ def circular_to_linear(z: BasebandSignal, axis: int):
     out : `~pulsarbat.BasebandSignal`
         The converted signal.
     """
-    assert z.shape[axis] == 2
+    if axis == 0 or axis == 1:
+        raise ValueError('Invalid polarization axis!')
+
+    if not z.shape[axis] == 2:
+        err = 'Polarization axis does not have 2 components!'
+        raise InvalidSignalError(err)
 
     R = np.take(z, 0, axis)
     L = np.take(z, 1, axis)
