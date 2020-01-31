@@ -10,10 +10,11 @@ from . import reductions
 from . import pulsar
 from . import utils
 
-from .core import (Signal, RadioSignal, BasebandSignal, IntensitySignal)
+from .core import (Signal, RadioSignal, BasebandSignal, IntensitySignal,
+                   DispersionMeasure)
 from .predictor import Polyco
 from .observation import (Observation, PUPPIObservation)
 
 __all__ = ['core', 'transforms', 'reductions', 'pulsar', 'utils', 'Polyco']
 __all__ += ['Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal']
-__all__ += ['Observation', 'PUPPIObservation']
+__all__ += ['Observation', 'PUPPIObservation', 'DispersionMeasure']

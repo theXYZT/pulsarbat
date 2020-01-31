@@ -1,24 +1,21 @@
-import yaml
 import pulsarbat as pb
+import baseband
+import astropy.units as u
 from pathlib import Path
-from baseband import guppi
-
-def get_config(config_file):
-    yaml_config = yaml.safe_load(open(config_file, 'r'))
-    config = {'source': yaml_config['source'],
-              'DM': pb.DispersionMeasure(yaml_config['DM']),
-              'ref_freq': config['ref_freq'] * u.MHz,
-              'org': config['org']}
-    return config
 
 
-def get_baseband_handle(org, gpu_num=9):
-    assert gpu_num in org['gpu_nums']
-    folder = Path(org['folder'].format(gpu_num))
-    fs = sorted(folder.glob(org['file_pattern']))
-    return guppi.open(fs, 'rs')
+folder = Path('/mnt/scratch-lustre/mahajan/Data/Ar_P3229/B1937+21_58245/gpu09')
+fs = sorted(folder.glob('*.raw'))
+fh = baseband.open(fs, 'rs', format='guppi')
+
+obs = pb.PUPPIObservation(fh)
+DM = pb.DispersionMeasure(71.02227638)
+ref_freq = 375.4375 * u.MHz
+polyco = pb.Polyco("/mnt/scratch-lustre/mahajan/Timing/B1937+21_58245.dat")
 
 
-config = get_config('B1937+21_58245.yml')
-fh = get_baseband_handle(config['org'])
+z = obs.read(2**25)
+z = pb.transforms.dedisperse(z, DM, ref_freq)
+y = pb.reductions.to_intensity(z)
 
+pulse_profile = pb.pulsar.fold(y, polyco, 256)
