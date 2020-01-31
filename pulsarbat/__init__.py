@@ -2,7 +2,7 @@
 
 __author__ = """Nikhil Mahajan"""
 __email__ = 'mahajan@astro.utoronto.ca'
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 from . import core
 from . import transforms
