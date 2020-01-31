@@ -3,7 +3,19 @@
 import numpy as np
 from .core import BasebandSignal, IntensitySignal
 
-__all__ = ['to_stokes']
+__all__ = ['to_stokes', 'to_intensity']
+
+
+def to_intensity(z: BasebandSignal):
+    """Converts a baseband signal to intensities via complex square."""
+    data = np.array(z)
+    intensity = data.real**2 + data.imag**2
+
+    return IntensitySignal(z=intensity,
+                           sample_rate=z.sample_rate,
+                           start_time=z.start_time,
+                           center_freq=z.center_freq,
+                           bandwidth=z.bandwidth)
 
 
 def to_stokes(z: BasebandSignal, pol_type: str, axis: int):
@@ -62,7 +74,7 @@ def linear_to_stokes(z: BasebandSignal, axis: int):
         return tuple(ind)
 
     assert z.shape[axis] == 2
-    stokes_shape = z.shape[:axis] + (4,) + z.shape[axis + 1:]
+    stokes_shape = z.shape[:axis] + (4, ) + z.shape[axis + 1:]
     stokes = np.empty(stokes_shape, dtype=np.float32, order='F')
 
     X = np.take(z, 0, axis)
@@ -70,11 +82,13 @@ def linear_to_stokes(z: BasebandSignal, axis: int):
 
     stokes[get_id(0)] = X.real**2 + X.imag**2 + Y.real**2 + Y.imag**2
     stokes[get_id(1)] = X.real**2 + X.imag**2 - Y.real**2 - Y.imag**2
-    stokes[get_id(2)] = 2 * (X * Y.conj()).real
-    stokes[get_id(3)] = 2 * (X * Y.conj()).imag
+    stokes[get_id(2)] = +2 * (X * Y.conj()).real
+    stokes[get_id(3)] = -2 * (X * Y.conj()).imag
 
-    return IntensitySignal(z=stokes, sample_rate=z.sample_rate,
-                           start_time=z.start_time, center_freq=z.center_freq,
+    return IntensitySignal(z=stokes,
+                           sample_rate=z.sample_rate,
+                           start_time=z.start_time,
+                           center_freq=z.center_freq,
                            bandwidth=z.bandwidth)
 
 
@@ -104,17 +118,19 @@ def circular_to_stokes(z: BasebandSignal, axis: int):
         return tuple(ind)
 
     assert z.shape[axis] == 2
-    stokes_shape = z.shape[:axis] + (4,) + z.shape[axis + 1:]
+    stokes_shape = z.shape[:axis] + (4, ) + z.shape[axis + 1:]
     stokes = np.empty(stokes_shape, dtype=np.float32, order='F')
 
     R = np.take(z, 0, axis)
     L = np.take(z, 1, axis)
 
     stokes[get_id(0)] = R.real**2 + R.imag**2 + L.real**2 + L.imag**2
-    stokes[get_id(1)] = 2 * (R * L.conj()).real
-    stokes[get_id(2)] = 2 * (R * L.conj()).imag
+    stokes[get_id(1)] = +2 * (R * L.conj()).real
+    stokes[get_id(2)] = -2 * (R * L.conj()).imag
     stokes[get_id(3)] = R.real**2 + R.imag**2 - L.real**2 - L.imag**2
 
-    return IntensitySignal(z=stokes, sample_rate=z.sample_rate,
-                           start_time=z.start_time, center_freq=z.center_freq,
+    return IntensitySignal(z=stokes,
+                           sample_rate=z.sample_rate,
+                           start_time=z.start_time,
+                           center_freq=z.center_freq,
                            bandwidth=z.bandwidth)

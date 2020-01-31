@@ -57,8 +57,6 @@ tempo2 -tempo1 \
 #                                     Frequency
 """
 
-from __future__ import division, print_function
-
 from collections import OrderedDict
 import numpy as np
 from numpy.polynomial import Polynomial

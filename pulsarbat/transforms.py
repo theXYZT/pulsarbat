@@ -155,23 +155,17 @@ def linear_to_circular(z: BasebandSignal, axis: int):
     out : `~pulsarbat.BasebandSignal`
         The converted signal.
     """
-    if axis == 0 or axis == 1:
+    if axis in [0, 1]:
         raise ValueError('Invalid polarization axis!')
 
     if not z.shape[axis] == 2:
         err = 'Polarization axis does not have 2 components!'
         raise InvalidSignalError(err)
 
-    X = np.take(z, 0, axis)
-    Y = np.take(z, 1, axis)
+    X = np.expand_dims(np.take(z, 0, axis), axis)
+    Y = np.expand_dims(np.take(z, 1, axis), axis)
 
-    ind = [slice(None)] * len(z.shape)
-    ind[axis] = None
-
-    R = ((X + 1j*Y)/np.sqrt(2))[tuple(ind)]
-    L = ((X - 1j*Y)/np.sqrt(2))[tuple(ind)]
-
-    circular = np.append(R, L, axis=axis)
+    circular = np.append(X - 1j*Y, X + 1j*Y, axis=axis) / np.sqrt(2)
     return z.copy(z=circular)
 
 
@@ -199,21 +193,15 @@ def circular_to_linear(z: BasebandSignal, axis: int):
     out : `~pulsarbat.BasebandSignal`
         The converted signal.
     """
-    if axis == 0 or axis == 1:
+    if axis in [0, 1]:
         raise ValueError('Invalid polarization axis!')
 
     if not z.shape[axis] == 2:
         err = 'Polarization axis does not have 2 components!'
         raise InvalidSignalError(err)
 
-    R = np.take(z, 0, axis)
-    L = np.take(z, 1, axis)
+    R = np.expand_dims(np.take(z, 0, axis), axis)
+    L = np.expand_dims(np.take(z, 1, axis), axis)
 
-    ind = [slice(None)] * len(z.shape)
-    ind[axis] = None
-
-    X = ((L + R)/np.sqrt(2))[tuple(ind)]
-    Y = (1j*(L - R)/np.sqrt(2))[tuple(ind)]
-
-    linear = np.append(X, Y, axis=axis)
+    linear = np.append(R + L, 1j * (R - L), axis=axis) / np.sqrt(2)
     return z.copy(z=linear)

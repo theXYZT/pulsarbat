@@ -4,8 +4,10 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 
-__all__ = ['Signal', 'RadioSignal', 'BasebandSignal', 'DispersionMeasure',
-           'verify_scalar_quantity', 'InvalidSignalError']
+__all__ = [
+    'Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal',
+    'DispersionMeasure', 'verify_scalar_quantity', 'InvalidSignalError'
+]
 
 
 class InvalidSignalError(ValueError):
@@ -95,6 +97,11 @@ class Signal:
         return len(self._z)
 
     @property
+    def data(self):
+        """The signal data."""
+        return np.array(self)
+
+    @property
     def shape(self):
         """Shape of the signal."""
         return self._z.shape
@@ -139,7 +146,7 @@ class Signal:
         if ndim < self.ndim:
             raise ValueError("Given ndim is smaller than signal ndim!")
         else:
-            new_shape = self.shape + (1,) * (ndim - self.ndim)
+            new_shape = self.shape + (1, ) * (ndim - self.ndim)
             self._z = self._z.reshape(new_shape)
 
 
@@ -201,8 +208,12 @@ class RadioSignal(Signal):
         self.bandwidth = bandwidth
         self.start_time = start_time
 
-    def copy(self, z=None, sample_rate=None, start_time=None,
-             center_freq=None, bandwidth=None):
+    def copy(self,
+             z=None,
+             sample_rate=None,
+             start_time=None,
+             center_freq=None,
+             bandwidth=None):
         """Creates a copy of the object."""
         return type(self)(not_none(z, self._z),
                           not_none(sample_rate, self.sample_rate),
@@ -342,7 +353,7 @@ class BasebandSignal(RadioSignal):
                  bandwidth: u.Quantity):
         super().__init__(z, sample_rate, start_time, center_freq, bandwidth)
 
-        if not u.isclose(self.chan_bandwidth, self.sample_rate):
+        if not np.isclose(self.chan_bandwidth, self.sample_rate):
             err = 'Sample rate is not equal to channel bandwidth!'
             raise InvalidSignalError(err)
 

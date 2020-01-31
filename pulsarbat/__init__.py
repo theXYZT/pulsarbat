@@ -6,9 +6,14 @@ __version__ = '0.0.2'
 
 from . import core
 from . import transforms
-from . import predictor
+from . import reductions
+from . import pulsar
+from . import utils
 
-from .core import BasebandSignal
+from .core import (Signal, RadioSignal, BasebandSignal, IntensitySignal)
 from .predictor import Polyco
+from .observation import (Observation, PUPPIObservation)
 
-__all__ = ['BasebandSignal', 'Polyco']
+__all__ = ['core', 'transforms', 'reductions', 'pulsar', 'utils', 'Polyco']
+__all__ += ['Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal']
+__all__ += ['Observation', 'PUPPIObservation']
