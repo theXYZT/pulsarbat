@@ -23,11 +23,15 @@ class PUPPIObservation(Observation):
         self.center_freq = self.hdr['OBSBW'] * u.MHz
         self.bandwidth = self.sample_rate * self.hdr['OBSNCHAN']
 
-    def read(self, timestamp, num_samples):
-        assert self.start_time <= timestamp
-        assert timestamp + num_samples * self.sample_rate < self.stop_time
+        self.fh.seek(0)
 
-        self.fh.seek(timestamp)
+
+    def read(self, num_samples, timestamp=None):
+        if timestamp is not None:
+            assert self.start_time <= timestamp
+            assert timestamp + num_samples / self.sample_rate < self.stop_time
+            self.fh.seek(timestamp)
+
         read_start_time = self.fh.tell('time')
 
         z = self.fh.read(num_samples)
