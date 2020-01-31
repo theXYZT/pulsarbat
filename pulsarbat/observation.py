@@ -20,7 +20,7 @@ class PUPPIObservation(Observation):
         self.hdr = self.fh.header0
 
         self.sample_rate = self.hdr['CHAN_BW'] * u.MHz
-        self.center_freq = self.hdr['OBSBFREQ'] * u.MHz
+        self.center_freq = self.hdr['OBSFREQ'] * u.MHz
         self.bandwidth = self.sample_rate * self.hdr['OBSNCHAN']
 
         self.fh.seek(0)
