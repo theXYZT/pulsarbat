@@ -25,7 +25,6 @@ class PUPPIObservation(Observation):
 
         self.fh.seek(0)
 
-
     def read(self, num_samples, timestamp=None):
         if timestamp is not None:
             assert self.start_time <= timestamp
