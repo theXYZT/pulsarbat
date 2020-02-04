@@ -44,4 +44,4 @@ def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     counts = np.bincount(ph, minlength=ngate)
     profile = np.apply_along_axis(bincount1d, 0, np.array(z), ph, ngate)
 
-    raise NotImplementedError('whoops')
+    return (profile.T/counts.T).T

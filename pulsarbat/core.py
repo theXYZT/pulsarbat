@@ -3,6 +3,7 @@
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
+import inspect
 
 __all__ = [
     'Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal',
@@ -77,6 +78,16 @@ class Signal:
         dtype = self._dtype or z.dtype
         return np.empty_like(z, order='F', dtype=dtype)
 
+    @classmethod
+    def like(cls, signal, *args, **kwargs):
+        """Creates an object like `signal` unless overridden by kwargs."""
+        sig = inspect.signature(cls)
+        params = sig.bind_partial(*args, **kwargs).arguments
+        for p in sig.parameters:
+            if p not in params:
+                params[p] = getattr(signal, p)
+        return cls(**params)
+
     def copy(self, z=None, sample_rate=None):
         """Creates a copy of the object."""
         return type(self)(not_none(z, self._z),
@@ -91,7 +102,8 @@ class Signal:
                 f"{'-' * len(signature)}\n"
                 f"Signal shape: {self.shape}\n"
                 f"Signal dtype: {self.dtype}\n"
-                f"Sample rate: {self.sample_rate}")
+                f"Sample rate: {self.sample_rate}\n"
+                f"Time Length: {self.time_length}")
 
     def __len__(self):
         return len(self._z)
