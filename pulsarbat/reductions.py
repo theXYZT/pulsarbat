@@ -9,13 +9,7 @@ __all__ = ['to_stokes', 'to_intensity']
 def to_intensity(z: BasebandSignal):
     """Converts a baseband signal to intensities via complex square."""
     data = np.array(z)
-    intensity = data.real**2 + data.imag**2
-
-    return IntensitySignal(z=intensity,
-                           sample_rate=z.sample_rate,
-                           start_time=z.start_time,
-                           center_freq=z.center_freq,
-                           bandwidth=z.bandwidth)
+    return IntensitySignal.like(z, data.real**2 + data.imag**2)
 
 
 def to_stokes(z: BasebandSignal, pol_type: str, axis: int):
@@ -85,11 +79,7 @@ def linear_to_stokes(z: BasebandSignal, axis: int):
     stokes[get_id(2)] = +2 * (X * Y.conj()).real
     stokes[get_id(3)] = -2 * (X * Y.conj()).imag
 
-    return IntensitySignal(z=stokes,
-                           sample_rate=z.sample_rate,
-                           start_time=z.start_time,
-                           center_freq=z.center_freq,
-                           bandwidth=z.bandwidth)
+    return IntensitySignal.like(z, stokes)
 
 
 def circular_to_stokes(z: BasebandSignal, axis: int):
@@ -129,8 +119,4 @@ def circular_to_stokes(z: BasebandSignal, axis: int):
     stokes[get_id(2)] = -2 * (R * L.conj()).imag
     stokes[get_id(3)] = R.real**2 + R.imag**2 - L.real**2 - L.imag**2
 
-    return IntensitySignal(z=stokes,
-                           sample_rate=z.sample_rate,
-                           start_time=z.start_time,
-                           center_freq=z.center_freq,
-                           bandwidth=z.bandwidth)
+    return IntensitySignal.like(z, stokes)

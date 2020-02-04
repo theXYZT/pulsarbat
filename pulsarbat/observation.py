@@ -34,7 +34,7 @@ class PUPPIObservation(Observation):
         read_start_time = self.fh.tell('time')
 
         z = self.fh.read(num_samples)
-        return BasebandSignal(z=z.transpose(0, 2, 1),
+        return BasebandSignal(z.transpose(0, 2, 1),
                               sample_rate=self.sample_rate,
                               start_time=read_start_time,
                               center_freq=self.center_freq,

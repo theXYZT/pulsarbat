@@ -68,7 +68,7 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
     x = x[crop_before:-crop_after]
     time_cropped = crop_before * z.dt
 
-    return z.copy(z=x, start_time=z.start_time + time_cropped)
+    return BasebandSignal.like(z, x, start_time=z.start_time + time_cropped)
 
 
 @transform
@@ -109,7 +109,7 @@ def channelize(z: BasebandSignal, factor: int):
     new_shape = (len(x), -1) + x.shape[3:]
     x = x.reshape(new_shape)
 
-    return z.copy(z=x, sample_rate=z.sample_rate/factor)
+    return BasebandSignal.like(z, x, sample_rate=z.sample_rate/factor)
 
 
 @transform
@@ -128,7 +128,7 @@ def convolve(z: BasebandSignal, h: Signal):
     else:
         h.expand_dims(z.ndim)
 
-    raise NotImplementedError(':)')
+    raise NotImplementedError("I promise I'll do this later :)")
 
 
 @transform
@@ -166,7 +166,7 @@ def linear_to_circular(z: BasebandSignal, axis: int):
     Y = np.expand_dims(np.take(z, 1, axis), axis)
 
     circular = np.append(X - 1j*Y, X + 1j*Y, axis=axis) / np.sqrt(2)
-    return z.copy(z=circular)
+    return BasebandSignal.like(z, circular)
 
 
 @transform
@@ -204,4 +204,4 @@ def circular_to_linear(z: BasebandSignal, axis: int):
     L = np.expand_dims(np.take(z, 1, axis), axis)
 
     linear = np.append(R + L, 1j * (R - L), axis=axis) / np.sqrt(2)
-    return z.copy(z=linear)
+    return BasebandSignal.like(z, linear)

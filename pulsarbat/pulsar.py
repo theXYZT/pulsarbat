@@ -6,7 +6,7 @@ from .predictor import Polyco
 from astropy.time import Time
 import astropy.units as u
 
-__all__ = ['fold']
+__all__ = ['PulseProfile', 'get_pulse_phases', 'fold']
 
 
 class PulseProfile:
@@ -17,6 +17,7 @@ class PulseProfile:
 def get_pulse_phases(start_time: Time, num_samples: int,
                      sample_rate: u.Quantity, polyco: Polyco):
     """Returns pulse phases for given parameters."""
+
     if not isinstance(start_time, Time) or not start_time.isscalar:
         raise ValueError('Invalid start time provided.')
 
@@ -28,13 +29,14 @@ def get_pulse_phases(start_time: Time, num_samples: int,
                         t0=start_time,
                         time_unit=u.s,
                         convert=True)
-    ph = p(np.arange(num_samples) * (1 / sample_rate).to(u.s).value)
+    ph = p(np.arange(num_samples) * (1 / sample_rate).to_value(u.s))
     ph -= np.floor(ph[0])
     return ph
 
 
 def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     """Fold a pulse profile."""
+
     def bincount1d(x, ph, ngate):
         return np.bincount(ph, x, minlength=ngate)
 
@@ -44,4 +46,4 @@ def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     counts = np.bincount(ph, minlength=ngate)
     profile = np.apply_along_axis(bincount1d, 0, np.array(z), ph, ngate)
 
-    return (profile.T/counts.T).T
+    return (profile.T / counts.T).T

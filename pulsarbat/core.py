@@ -54,13 +54,13 @@ class Signal:
     _min_ndim = 1
     _dtype = None
 
-    def __init__(self, z: np.ndarray, sample_rate: u.Quantity):
+    def __init__(self, data: np.ndarray, sample_rate: u.Quantity):
         self.sample_rate = sample_rate
 
-        self._verify_signal(z)
+        self._verify_signal(data)
         try:
-            self._z = self._create_signal_template(z)
-            self._z[:] = z
+            self._z = self._create_signal_template(data)
+            self._z[:] = data
         except (ValueError, TypeError):
             raise InvalidSignalError('Invalid signal provided.')
 
@@ -77,21 +77,6 @@ class Signal:
     def _create_signal_template(self, z):
         dtype = self._dtype or z.dtype
         return np.empty_like(z, order='F', dtype=dtype)
-
-    @classmethod
-    def like(cls, signal, *args, **kwargs):
-        """Creates an object like `signal` unless overridden by kwargs."""
-        sig = inspect.signature(cls)
-        params = sig.bind_partial(*args, **kwargs).arguments
-        for p in sig.parameters:
-            if p not in params:
-                params[p] = getattr(signal, p)
-        return cls(**params)
-
-    def copy(self, z=None, sample_rate=None):
-        """Creates a copy of the object."""
-        return type(self)(not_none(z, self._z),
-                          not_none(sample_rate, self.sample_rate))
 
     def __array__(self):
         return self._z
@@ -153,6 +138,16 @@ class Signal:
         """Length of signal in time units."""
         return (len(self) * self.dt).to(u.s)
 
+    @classmethod
+    def like(cls, signal, *args, **kwargs):
+        """Creates an object like `signal` unless overridden by kwargs."""
+        sig = inspect.signature(cls)
+        params = sig.bind_partial(*args, **kwargs).arguments
+        for p in sig.parameters:
+            if p not in params:
+                params[p] = getattr(signal, p)
+        return cls(**params)
+
     def expand_dims(self, ndim):
         """Expand dimensions of signal to provided number of dimensions."""
         if ndim < self.ndim:
@@ -212,26 +207,13 @@ class RadioSignal(Signal):
     """
     _min_ndim = 2
 
-    def __init__(self, z: np.ndarray, sample_rate: u.Quantity,
+    def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
                  start_time: Time, center_freq: u.Quantity,
                  bandwidth: u.Quantity):
-        super().__init__(z, sample_rate)
+        super().__init__(data, sample_rate)
         self.center_freq = center_freq
         self.bandwidth = bandwidth
         self.start_time = start_time
-
-    def copy(self,
-             z=None,
-             sample_rate=None,
-             start_time=None,
-             center_freq=None,
-             bandwidth=None):
-        """Creates a copy of the object."""
-        return type(self)(not_none(z, self._z),
-                          not_none(sample_rate, self.sample_rate),
-                          not_none(start_time, self.start_time),
-                          not_none(center_freq, self.center_freq),
-                          not_none(bandwidth, self.bandwidth))
 
     def __repr__(self):
         return (f"{super().__repr__()}\n"
@@ -253,6 +235,7 @@ class RadioSignal(Signal):
 
     @property
     def stop_time(self):
+        """Stop time of the signal (Time at sample after the last sample)."""
         return self.start_time + self.time_length
 
     @property
@@ -360,10 +343,8 @@ class BasebandSignal(RadioSignal):
     """
     _dtype = np.complex64
 
-    def __init__(self, z: np.ndarray, sample_rate: u.Quantity,
-                 start_time: Time, center_freq: u.Quantity,
-                 bandwidth: u.Quantity):
-        super().__init__(z, sample_rate, start_time, center_freq, bandwidth)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
             err = 'Sample rate is not equal to channel bandwidth!'
