@@ -12,6 +12,8 @@ class Observation:
         self.fh = file_handle
         self.start_time = Time(self.fh.start_time, format='isot', precision=9)
         self.stop_time = Time(self.fh.stop_time, format='isot', precision=9)
+        self.sample_rate = self.fh.sample_rate.to(u.MHz)
+        self.fh.seek(0)
 
 
 class PUPPIObservation(Observation):
@@ -19,11 +21,9 @@ class PUPPIObservation(Observation):
         super().__init__(file_handle)
         self.hdr = self.fh.header0
 
-        self.sample_rate = self.hdr['CHAN_BW'] * u.MHz
+        assert self.sample_rate == self.hdr['CHAN_BW'] * u.MHz
         self.center_freq = self.hdr['OBSFREQ'] * u.MHz
         self.bandwidth = self.sample_rate * self.hdr['OBSNCHAN']
-
-        self.fh.seek(0)
 
     def read(self, num_samples, timestamp=None):
         if timestamp is not None:

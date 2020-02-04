@@ -59,8 +59,8 @@ class Signal:
 
         self._verify_signal(data)
         try:
-            self._z = self._create_signal_template(data)
-            self._z[:] = data
+            self._data = self._create_signal_template(data)
+            self._data[:] = data
         except (ValueError, TypeError):
             raise InvalidSignalError('Invalid signal provided.')
 
@@ -79,7 +79,7 @@ class Signal:
         return np.empty_like(z, order='F', dtype=dtype)
 
     def __array__(self):
-        return self._z
+        return self._data
 
     def __repr__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -91,7 +91,7 @@ class Signal:
                 f"Time Length: {self.time_length}")
 
     def __len__(self):
-        return len(self._z)
+        return len(self._data)
 
     @property
     def data(self):
@@ -101,7 +101,7 @@ class Signal:
     @property
     def shape(self):
         """Shape of the signal."""
-        return self._z.shape
+        return self._data.shape
 
     @property
     def sample_shape(self):
@@ -111,12 +111,12 @@ class Signal:
     @property
     def ndim(self):
         """Number of dimensions in data."""
-        return self._z.ndim
+        return self._data.ndim
 
     @property
     def dtype(self):
         """Data type of the signal."""
-        return self._z.dtype
+        return self._data.dtype
 
     @property
     def sample_rate(self):
@@ -154,7 +154,7 @@ class Signal:
             raise ValueError("Given ndim is smaller than signal ndim!")
         else:
             new_shape = self.shape + (1, ) * (ndim - self.ndim)
-            self._z = self._z.reshape(new_shape)
+            self._data = self._data.reshape(new_shape)
 
 
 class RadioSignal(Signal):

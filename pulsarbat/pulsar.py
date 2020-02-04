@@ -53,15 +53,25 @@ class PulseProfile(IntensitySignal):
                  bandwidth: u.Quantity, counts: np.ndarray):
         super().__init__(data, sample_rate, start_time, center_freq, bandwidth)
 
-        if counts.shape == (self.shape[0], self.shape[-1]):
+        if counts.shape == (len(self), self.ngate):
             self._counts = counts
         else:
             raise ValueError("Incorrect counts for pulse profile.")
 
     @property
+    def ngate(self):
+        """Number of pulse phase bins or gates."""
+        return self.shape[-1]
+
+    @property
     def counts(self):
         """Sample counts of the pulse profile."""
         return np.array(self._counts)
+
+    @property
+    def phase(self):
+        ph = np.linspace(0, 1, self.ngate, endpoint=False)
+        return ph + 0.5/self.ngate
 
     def pulse_profile(self):
         """Returns a normalized pulse profile averaged over time."""
@@ -69,8 +79,10 @@ class PulseProfile(IntensitySignal):
         counts = self.counts.sum(0)
         return profile / counts
 
-    def roll(self, n):
-        pass
+    def roll(self, ngate=None):
+        """Rolls pulse profile by given number of gates."""
+        self._counts = np.roll(self._counts, ngate, axis=-1)
+        self._data = np.roll(self._data, ngate, axis=-1)
 
     def append(self, other):
         pass
