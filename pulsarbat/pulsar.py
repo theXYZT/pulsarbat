@@ -15,8 +15,8 @@ class PulseProfile(IntensitySignal):
     Requires that the last axis of `data` refer to the pulse phase.
     Thus, `data` must have a minimum of 3 dimensions with a shape of
     `(nsamples, nchan, ..., ngate)` where `ngate` refers to the number
-    of pulse phase bins. In the case of pulse profiles, the samples along the time axis are
-    interpreted as sub-integrations.
+    of pulse phase bins. In the case of pulse profiles, the samples along
+    the time axis are interpreted as sub-integrations.
 
     See the documentation for `~pulsarbat.RadioSignal` for other
     specifications.
@@ -71,7 +71,7 @@ class PulseProfile(IntensitySignal):
     @property
     def phase(self):
         ph = np.linspace(0, 1, self.ngate, endpoint=False)
-        return ph + 0.5/self.ngate
+        return ph + 0.5 / self.ngate
 
     def pulse_profile(self):
         """Returns a normalized pulse profile averaged over time."""
@@ -120,5 +120,7 @@ def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     profile = np.apply_along_axis(bincount1d, 0, np.array(z), ph, ngate)
     profile = np.moveaxis(profile[np.newaxis], 1, -1)
 
-    return PulseProfile.like(z, profile, counts=counts,
+    return PulseProfile.like(z,
+                             profile,
+                             counts=counts,
                              sample_rate=1 / z.time_length)

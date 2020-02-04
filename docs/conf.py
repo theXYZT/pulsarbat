@@ -47,7 +47,7 @@ extensions = [
     'numpydoc'
 ]
 
-numpydoc_show_class_members = False
+numpydoc_show_class_members = True
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
@@ -117,7 +117,7 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    # 'page_width': '960px',
+    'page_width': '1200px',
     # 'font_size': '16px',
 }
 
@@ -187,3 +187,5 @@ texinfo_documents = [
      'pulsarbat is for analysis of radio baseband observations of pulsars.',
      'Miscellaneous'),
 ]
+
+autodoc_typehints = 'none'
