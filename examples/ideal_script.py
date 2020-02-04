@@ -3,7 +3,6 @@ import baseband
 import astropy.units as u
 from pathlib import Path
 
-
 folder = Path('/mnt/scratch-lustre/mahajan/Data/Ar_P3229/B1937+21_58245/gpu09')
 fs = sorted(folder.glob('*.raw'))
 fh = baseband.open(fs, 'rs', format='guppi')

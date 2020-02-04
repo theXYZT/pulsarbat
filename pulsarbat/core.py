@@ -37,16 +37,16 @@ def not_none(value, default):
 class Signal:
     """Base class for all signals.
 
-    A signal is sufficiently described by an array of samples (`z`),
+    A signal is sufficiently described by an array of samples (`data`),
     and a constant sampling rate (`sample_rate`).
 
-    `z` must be a `~numpy.ndarray` object where the zeroth axis refers
-    to time. That is, z[i] is the `i`th sample of the signal, and the
-    sample shape can be arbitrary. `z` must have at least 1 dimension.
+    `data` must be a `~numpy.ndarray` object where the zeroth axis refers
+    to time. That is, data[i] is the `i`th sample of the signal, and the
+    sample shape can be arbitrary. `data` must have at least 1 dimension.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`
+    data : `~numpy.ndarray`
         The signal being stored as an array.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
@@ -160,7 +160,7 @@ class Signal:
 class RadioSignal(Signal):
     """Class for observed radio signals.
 
-    A signal is sufficiently described by an array of samples (`z`),
+    A signal is sufficiently described by an array of samples (`data`),
     and a sampling rate (`sample_rate`). A radio signal is a signal
     observed by some antenna or analog receiver of some sort. Thus, it
     comes with additional metadata such as a start time (`start_time`),
@@ -168,13 +168,13 @@ class RadioSignal(Signal):
 
     Radio signals can be channelized (split into adjacent channels in
     frequency). In order to simplify management of these channels, the
-    input signal (`z`) is required to be a `~numpy.ndarray` object with
+    input signal (`data`) is required to be a `~numpy.ndarray` object with
     at least 2 dimensions. The first dimension (`axis = 0`) refers to
     time (as required by the parent class `~Signal`). The second
-    dimension (`axis = 1`) refers to frequency, such that z[:, i] is the
+    dimension (`axis = 1`) refers to frequency, such that data[:, i] is the
     `i`th channel of the signal.
 
-    The shape of `z` must be `(nsamples, nchan, ...)`.
+    The shape of `data` must be `(nsamples, nchan, ...)`.
 
     The channels must be adjacent in frequency and of equal bandwidth,
     such that the center frequency of a channel `i` is given by,
@@ -182,15 +182,15 @@ class RadioSignal(Signal):
         freq_i = center_freq + (bandwidth / nchan) * (i + 0.5 - nchan/2)
 
     where `i` is in `[0, ..., nchan - 1]` and `nchan` is the number of
-    channels (`z.shape[1]`) and `bandwidth / nchan` is the bandwidth of
+    channels (`data.shape[1]`) and `bandwidth / nchan` is the bandwidth of
     a single channel.
 
     Input data that is unchannelized must still be treated as data with
-    1 channel where `z.shape[1] = 1`.
+    1 channel where `data.shape[1] = 1`.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`
+    data : `~numpy.ndarray`
         The signal being stored as an array.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
@@ -292,7 +292,7 @@ class IntensitySignal(RadioSignal):
 
     Parameters
     ----------
-    z : `~numpy.ndarray`
+    data : `~numpy.ndarray`
         The signal being stored as an array.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
@@ -317,16 +317,16 @@ class BasebandSignal(RadioSignal):
     sampled analytic signals (the bandwidth of a channel is equal to the
     sampling rate).
 
-    See the documentation for `~RadioSignal` for specifications.
+    See the documentation for `~RadioSignal` for other specifications.
 
-    `z` must be an array-like object containing a signal in a complex
+    `data` must be an array-like object containing a signal in a complex
     baseband representation. The signal is always stored as 64-bit
     complex floating point numbers. This should be sufficient precision
     for practically all use cases.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`
+    data : `~numpy.ndarray`
         The signal being stored as an array.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.

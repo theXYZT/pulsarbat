@@ -9,9 +9,71 @@ import astropy.units as u
 __all__ = ['PulseProfile', 'get_pulse_phases', 'fold']
 
 
-class PulseProfile:
-    """Class for pulse profiles."""
-    pass
+class PulseProfile(IntensitySignal):
+    """Class for pulse profiles.
+
+    Requires that the last axis of `data` refer to the pulse phase.
+    Thus, `data` must have a minimum of 3 dimensions with a shape of
+    `(nsamples, nchan, ..., ngate)` where `ngate` refers to the number
+    of pulse phase bins. In the case of pulse profiles, the samples along the time axis are
+    interpreted as sub-integrations.
+
+    See the documentation for `~pulsarbat.RadioSignal` for other
+    specifications.
+
+    `counts` is the array of sample counts that make up each pulse phase
+    bin and must have a shape of `(nsamples, ngate)`. These counts are
+    saved separately in the object to ensure accurate normalization of
+    pulse profiles when required.
+
+    Parameters
+    ----------
+    data : `~numpy.ndarray`
+        The pulse profile being stored as an array.
+    sample_rate : `~astropy.units.Quantity`
+        The number of samples per second. Must be in units of frequency.
+        For pulse profiles, this is the rate of sub-integrations.
+    start_time : `~astropy.time.Time`
+        The start time of the signal (that is, the time at the first
+        sample of the signal).
+    center_freq : `~astropy.units.Quantity`
+        The observing frequency at the center of the signal's band. Must
+        be in units of frequency.
+    bandwidth : `~astropy.units.Quantity`
+        The total bandwidth of the signal. The channel bandwidth is this
+        total bandwidth divided by the number of channels. Must be in
+        units of frequency.
+    counts: `~numpy.ndarray`
+        The sample counts in each pulse phase bin of each sub-integration.
+    """
+    _min_ndim = 3
+
+    def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
+                 start_time: Time, center_freq: u.Quantity,
+                 bandwidth: u.Quantity, counts: np.ndarray):
+        super().__init__(data, sample_rate, start_time, center_freq, bandwidth)
+
+        if counts.shape == (self.shape[0], self.shape[-1]):
+            self._counts = counts
+        else:
+            raise ValueError("Incorrect counts for pulse profile.")
+
+    @property
+    def counts(self):
+        """Sample counts of the pulse profile."""
+        return np.array(self._counts)
+
+    def pulse_profile(self):
+        """Returns a normalized pulse profile averaged over time."""
+        profile = self.data.sum(0)
+        counts = self.counts.sum(0)
+        return profile / counts
+
+    def roll(self, n):
+        pass
+
+    def append(self, other):
+        pass
 
 
 def get_pulse_phases(start_time: Time, num_samples: int,
@@ -36,7 +98,6 @@ def get_pulse_phases(start_time: Time, num_samples: int,
 
 def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     """Fold a pulse profile."""
-
     def bincount1d(x, ph, ngate):
         return np.bincount(ph, x, minlength=ngate)
 
@@ -45,5 +106,7 @@ def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
 
     counts = np.bincount(ph, minlength=ngate)
     profile = np.apply_along_axis(bincount1d, 0, np.array(z), ph, ngate)
+    profile = np.moveaxis(profile[np.newaxis], 1, -1)
 
-    return (profile.T / counts.T).T
+    return PulseProfile.like(z, profile, counts=counts,
+                             sample_rate=1 / z.time_length)
