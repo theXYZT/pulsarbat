@@ -343,8 +343,10 @@ class BasebandSignal(RadioSignal):
     """
     _dtype = np.complex64
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
+                 start_time: Time, center_freq: u.Quantity,
+                 bandwidth: u.Quantity):
+        super().__init__(data, sample_rate, start_time, center_freq, bandwidth)
 
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
             err = 'Sample rate is not equal to channel bandwidth!'
