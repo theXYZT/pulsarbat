@@ -4,6 +4,14 @@
 Installation
 ============
 
+Requirements
+------------
+
+Pulsarbat requires:
+
+- `Astropy <https://www.astropy.org/>`_ v4.0 or later
+- `Numpy <https://www.numpy.org/>`_ v1.17 or later
+- `Baseband <https://github.com/mhvk/baseband>`_ v3.1.0 or later
 
 Stable release
 --------------
@@ -40,11 +48,17 @@ Or download the `tarball`_:
 
     $ curl  -OL https://github.com/theXYZT/pulsarbat/tarball/master
 
-Once you have a copy of the source, you can install it with:
+Once you have a copy of the source, you can install it with either:
 
 .. code-block:: console
 
     $ python setup.py install
+
+or
+
+.. code-block:: console
+
+    $ pip install .
 
 
 .. _Github repo: https://github.com/theXYZT/pulsarbat

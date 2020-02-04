@@ -19,8 +19,8 @@ Report bugs at https://github.com/theXYZT/pulsarbat/issues.
 
 If you are reporting a bug, please include:
 
-* Your operating system name and version.
-* Any details about your local setup that might be helpful in troubleshooting.
+* Details about your local setup that might be helpful in troubleshooting
+  such as operating system, package versions, etc.
 * Detailed steps to reproduce the bug.
 
 Fix Bugs
@@ -28,6 +28,17 @@ Fix Bugs
 
 Look through the GitHub issues for bugs. Anything tagged with "bug" and "help
 wanted" is open to whoever wants to implement it.
+
+Request Features / Submit Feedback
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The best way to request a feature or send feedback is to file an issue at https://github.com/theXYZT/pulsarbat/issues.
+
+If you are proposing a feature:
+
+* Explain in detail how it would work.
+* Keep the scope as narrow as possible, to make it easier to implement.
+* Remember that contributions are welcome :)
 
 Implement Features
 ~~~~~~~~~~~~~~~~~~
@@ -38,21 +49,9 @@ and "help wanted" is open to whoever wants to implement it.
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
 
-pulsarbat could always use more documentation, whether as part of the
+Pulsarbat could always use more documentation, whether as part of the
 official pulsarbat docs, in docstrings, or even on the web in blog posts,
 articles, and such.
-
-Submit Feedback
-~~~~~~~~~~~~~~~
-
-The best way to send feedback is to file an issue at https://github.com/theXYZT/pulsarbat/issues.
-
-If you are proposing a feature:
-
-* Explain in detail how it would work.
-* Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that this is a volunteer-driven project, and that contributions
-  are welcome :)
 
 Get Started!
 ------------
@@ -100,11 +99,10 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
 2. If the pull request adds functionality, the docs should be updated. Put
-   your new functionality into a function with a docstring, and add the
-   feature to the list in README.rst.
-3. The pull request should work for Python 2.7, 3.4, 3.5 and 3.6, and for PyPy. Check
+   your new functionality into a function with a docstring.
+3. The pull request should work for all supported Python versions. Check
    https://travis-ci.org/theXYZT/pulsarbat/pull_requests
-   and make sure that the tests pass for all supported Python versions.
+   and make sure that the tests pass!
 
 Tips
 ----
