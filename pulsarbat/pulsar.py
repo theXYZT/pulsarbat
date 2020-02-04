@@ -104,7 +104,7 @@ def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     ph = get_pulse_phases(z.start_time, len(z), z.sample_rate, polyco)
     ph = (np.remainder(ph, 1) * ngate).astype(np.int32)
 
-    counts = np.bincount(ph, minlength=ngate)
+    counts = np.bincount(ph, minlength=ngate)[np.newaxis]
     profile = np.apply_along_axis(bincount1d, 0, np.array(z), ph, ngate)
     profile = np.moveaxis(profile[np.newaxis], 1, -1)
 
