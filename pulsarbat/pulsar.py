@@ -1,12 +1,17 @@
 """Pulsar processing."""
 
 import numpy as np
-from .core import (BasebandSignal, IntensitySignal, verify_scalar_quantity)
+from .core import (IntensitySignal, verify_scalar_quantity)
 from .predictor import Polyco
 from astropy.time import Time
 import astropy.units as u
 
 __all__ = ['fold']
+
+
+class PulseProfile:
+    """Class for pulse profiles."""
+    pass
 
 
 def get_pulse_phases(start_time: Time, num_samples: int,
@@ -30,7 +35,13 @@ def get_pulse_phases(start_time: Time, num_samples: int,
 
 def fold(z: IntensitySignal, polyco: Polyco, ngate: int):
     """Fold a pulse profile."""
-    pulse_profile_shape = (ngate, ) + z.shape[1:]
-    pulse_profile = np.zeros(pulse_profile_shape, dtype=np.float64)
+    def bincount1d(x, ph, ngate):
+        return np.bincount(ph, x, minlength=ngate)
+
+    ph = get_pulse_phases(z.start_time, len(z), z.sample_rate, polyco)
+    ph = (np.remainder(ph, 1) * ngate).astype(np.int32)
+
+    counts = np.bincount(ph, minlength=ngate)
+    profile = np.apply_along_axis(bincount1d, 0, np.array(z), ph, ngate)
 
     raise NotImplementedError('whoops')

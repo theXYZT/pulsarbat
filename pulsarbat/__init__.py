@@ -4,17 +4,8 @@ __author__ = """Nikhil Mahajan"""
 __email__ = 'mahajan@astro.utoronto.ca'
 __version__ = '0.0.3'
 
-from . import core
-from . import transforms
-from . import reductions
-from . import pulsar
-from . import utils
+from . import (transforms, reductions, pulsar, utils)  # noqa
 
-from .core import (Signal, RadioSignal, BasebandSignal, IntensitySignal,
-                   DispersionMeasure)
-from .predictor import Polyco
-from .observation import (Observation, PUPPIObservation)
-
-__all__ = ['core', 'transforms', 'reductions', 'pulsar', 'utils', 'Polyco']
-__all__ += ['Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal']
-__all__ += ['Observation', 'PUPPIObservation', 'DispersionMeasure']
+from .core import *  # noqa
+from .predictor import Polyco  # noqa
+from .observation import (Observation, PUPPIObservation)  # noqa

@@ -18,4 +18,3 @@ z = obs.read(2**25)
 z = pb.transforms.dedisperse(z, DM, ref_freq)
 y = pb.reductions.to_intensity(z)
 
-pulse_profile = pb.pulsar.fold(y, polyco, 256)
