@@ -40,6 +40,7 @@ import pulsarbat
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autodoc.typehints',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
@@ -47,7 +48,8 @@ extensions = [
     'numpydoc',
 ]
 
-numpydoc_show_class_members = True
+numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
@@ -55,6 +57,7 @@ intersphinx_mapping = {
     'astropy': ('http://docs.astropy.org/en/latest/', None),
     'baseband': ('https://baseband.readthedocs.io/en/latest/', None),
     'pyfftw': ('https://pyfftw.readthedocs.io/en/latest/', None),
+    'pulsarbat': ('https://pulsarbat.readthedocs.io/en/latest/', None),
 }
 
 default_role = 'py:obj'
@@ -200,3 +203,6 @@ html_sidebars = {
         'donate.html',
     ]
 }
+
+autodoc_member_order = 'groupwise'
+autodoc_typehints = 'none'

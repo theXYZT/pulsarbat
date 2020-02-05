@@ -2,21 +2,17 @@
 API Documentation
 =================
 
-This is where I test how module documentation shows up.
+Core
+-----
 
-Classes
--------
-
-The primary object of this package is `~pulsarbat.BasebandSignal` which is
-defined as,
-
-.. autoclass:: pulsarbat.BasebandSignal
+.. automodule:: pulsarbat.core
     :members:
 
 Transforms
 ----------
 
-.. autofunction:: pulsarbat.transforms.dedisperse
+.. automodule:: pulsarbat.transforms
+    :members:
 
 
 Reductions
@@ -24,5 +20,4 @@ Reductions
 
 .. automodule:: pulsarbat.reductions
     :members:
-
 

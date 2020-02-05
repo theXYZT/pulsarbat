@@ -41,7 +41,7 @@ class Signal:
     and a constant sampling rate (`sample_rate`).
 
     `data` must be a `~numpy.ndarray` object where the zeroth axis refers
-    to time. That is, data[i] is the `i`th sample of the signal, and the
+    to time. That is, `data[i]` is the `i`-th sample of the signal, and the
     sample shape can be arbitrary. `data` must have at least 1 dimension.
 
     Parameters
@@ -171,13 +171,13 @@ class RadioSignal(Signal):
     input signal (`data`) is required to be a `~numpy.ndarray` object with
     at least 2 dimensions. The first dimension (`axis = 0`) refers to
     time (as required by the parent class `~Signal`). The second
-    dimension (`axis = 1`) refers to frequency, such that data[:, i] is the
-    `i`th channel of the signal.
+    dimension (`axis = 1`) refers to frequency, such that `data[:, i]` is the
+    `i`-th channel of the signal.
 
     The shape of `data` must be `(nsamples, nchan, ...)`.
 
     The channels must be adjacent in frequency and of equal bandwidth,
-    such that the center frequency of a channel `i` is given by,
+    such that the center frequency of a channel `i` is given by,::
 
         freq_i = center_freq + (bandwidth / nchan) * (i + 0.5 - nchan/2)
 
@@ -358,21 +358,25 @@ class DispersionMeasure(u.SpecificTypeQuantity):
     dispersion_constant = u.s * u.MHz**2 * u.cm**3 / u.pc / 2.41E-4
 
     def time_delay(self, f, ref_freq):
+        """Time delay of frequencies relative to reference frequency."""
         coeff = self.dispersion_constant * self
         delay = coeff * (1 / f**2 - 1 / ref_freq**2)
         return delay.to(u.s)
 
     def sample_delay(self, f, ref_freq, sample_rate):
+        """Sample delay of frequencies relative to reference frequency."""
         samples = self.time_delay(f, ref_freq) * sample_rate
         samples = samples.to_value(u.one)
         return int(np.copysign(np.ceil(abs(samples)), samples))
 
     def phase_delay(self, f, ref_freq):
+        """Phase delay of frequencies relative to reference frequency."""
         coeff = self.dispersion_constant * self
         phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
         return phase.to(u.rad)
 
     def phase_factor(self, f, ref_freq):
+        """Dispersion phase factor of frequencies relative to reference."""
         phase = self.phase_delay(f, ref_freq)
         factor = np.exp(-1j * phase.to_value(u.rad))
         return factor.astype(np.complex64)
