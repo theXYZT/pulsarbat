@@ -19,8 +19,10 @@ Transforms
 .. autofunction:: pulsarbat.transforms.dedisperse
 
 
-Exceptions
+Reductions
 ----------
 
-.. autoexception:: pulsarbat.core.InvalidSignalError
+.. automodule:: pulsarbat.reductions
+    :members:
+
 

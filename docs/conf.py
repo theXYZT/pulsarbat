@@ -44,7 +44,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
-    'numpydoc'
+    'numpydoc',
+    'sphinx_autodoc_typehints'
 ]
 
 numpydoc_show_class_members = True
@@ -117,7 +118,7 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    'page_width': '1200px',
+    #'page_width': '1200px',
     # 'font_size': '16px',
 }
 
