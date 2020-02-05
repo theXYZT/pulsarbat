@@ -191,4 +191,12 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-autodoc_typehints = 'none'
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ]
+}
