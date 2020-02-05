@@ -45,7 +45,6 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'numpydoc',
-    'sphinx_autodoc_typehints'
 ]
 
 numpydoc_show_class_members = True
@@ -74,7 +73,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pulsarbat'
-copyright = u"2019, Nikhil Mahajan"
+copyright = u"2020, Nikhil Mahajan"
 author = u"Nikhil Mahajan"
 
 # The version info for the project you're documenting, acts as replacement
@@ -118,8 +117,11 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    #'page_width': '1200px',
-    # 'font_size': '16px',
+    'github_user': 'theXYZT',
+    'github_repo': 'pulsarbat',
+    'description': 'Pulsar Baseband Analysis Tools',
+    'fixed_sidebar': True,
+    'page_width': '980px',
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

@@ -13,22 +13,13 @@ pulsarbat
         :alt: Documentation Status
 
 
-Pulsarbat (PULSAR Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
+Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
 
-For installation instructions, see the `online documentation <https://pulsarbat.readthedocs.io/>`_ or  `docs/install.rst <docs/install.rst>`_ in this source distribution.
-
-| The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
-| For documentation, please go to: https://pulsarbat.readthedocs.io
-
-License
--------
-
-Pulsarbat is licensed under the GNU General Public License v3.
-
-Credits
--------
+| The source code can be found at: https://github.com/theXYZT/pulsarbat
+| For online documentation, please go to: https://pulsarbat.readthedocs.io
 
 This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+
 
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
