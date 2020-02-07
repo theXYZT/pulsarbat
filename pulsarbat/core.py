@@ -30,10 +30,6 @@ def verify_scalar_quantity(a, unit):
     return True
 
 
-def not_none(value, default):
-    return value if value is not None else default
-
-
 class Signal:
     """Base class for all signals.
 
@@ -147,14 +143,6 @@ class Signal:
             if p not in params:
                 params[p] = getattr(signal, p)
         return cls(**params)
-
-    def expand_dims(self, ndim):
-        """Expand dimensions of signal to provided number of dimensions."""
-        if ndim < self.ndim:
-            raise ValueError("Given ndim is smaller than signal ndim!")
-        else:
-            new_shape = self.shape + (1, ) * (ndim - self.ndim)
-            self._data = self._data.reshape(new_shape)
 
 
 class RadioSignal(Signal):

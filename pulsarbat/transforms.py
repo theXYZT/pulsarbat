@@ -123,11 +123,6 @@ def convolve(z: BasebandSignal, h: Signal):
         err = 'Input signal and filter have different sample rates!'
         raise InvalidSignalError(err)
 
-    if h.ndim > z.ndim:
-        raise InvalidSignalError('Filter has more dimensions than signal!')
-    else:
-        h.expand_dims(z.ndim)
-
     raise NotImplementedError("I promise I'll do this later :)")
 
 
