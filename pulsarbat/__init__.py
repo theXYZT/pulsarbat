@@ -6,7 +6,7 @@ __author__ = """Nikhil Mahajan"""
 __email__ = 'mahajan@astro.utoronto.ca'
 __version__ = '0.0.3'
 
-from . import (transforms, reductions, pulsar, utils)
+from . import (utils, transforms, reductions, pulsar, fake)
 
 from .core import *
 from .predictor import Polyco
