@@ -4,8 +4,9 @@ import os
 import functools
 import numpy as np
 import astropy.units as u
-from .core import (Signal, BasebandSignal, DispersionMeasure,
-                   verify_scalar_quantity, InvalidSignalError)
+from .core import (Signal, BasebandSignal)
+from .utils import verify_scalar_quantity
+from .dispersion import DispersionMeasure
 
 try:
     import pyfftw
@@ -14,28 +15,34 @@ try:
 except ImportError:
     fftpack = np.fft
 
-__all__ = ['dedisperse', 'channelize', 'linear_to_circular',
-           'circular_to_linear']
+__all__ = [
+    'dedisperse', 'channelize', 'linear_to_circular', 'circular_to_linear'
+]
 
 
 def transform(func):
     """Decorator for all transforms."""
-
     @functools.wraps(func)
     def wrapper(z, *args, **kwargs):
         if not isinstance(z, BasebandSignal):
             raise TypeError('Input signal must be a BasebandSignal object.')
         return func(z, *args, **kwargs)
+
     return wrapper
 
 
 @transform
-def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
-    """Dedisperses a signal by a given dispersion measure.
+def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity,
+               chirp: np.ndarray = None):
+    """Coherently dedisperses a baseband signal by a given dispersion measure.
 
     The output signal will be cropped on both ends to avoid wrap-around
     artifacts caused by dedispersion. This depends on how the reference
     frequency (`ref_freq`) compares to the band of the signal.
+
+    The chirp function can be provided via the `chirp` argument which will be
+    used instead of computing one from scratch. This can be useful in cases
+    where the chirp function needs to be cached for efficiency.
 
     Parameters
     ----------
@@ -45,6 +52,8 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
         Dispersion measure by which to dedisperse `z`.
     ref_freq : `~astropy.units.Quantity`
         Reference frequency to dedisperse to.
+    chirp: `~numpy.ndarray`, optional
+        The dedispersion chirp function provided to avoid computing a new one.
 
     Returns
     -------
@@ -57,6 +66,7 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity):
 
     N = len(z)
     f = z.channel_centers[None] + np.fft.fftfreq(N, z.dt)[:, None]
+
     phase_factor = np.asfortranarray(DM.phase_factor(f, ref_freq))
 
     x = fftpack.fft(np.array(z), axis=0)
@@ -104,12 +114,12 @@ def channelize(z: BasebandSignal, factor: int):
     new_shape = (-1, factor) + x.shape[1:]
     x = np.swapaxes(x.reshape(new_shape), 1, 2)
 
-    x = np.fft.fftshift(fftpack.fft(x, axis=2), axes=(2,))
+    x = np.fft.fftshift(fftpack.fft(x, axis=2), axes=(2, ))
 
     new_shape = (len(x), -1) + x.shape[3:]
     x = x.reshape(new_shape)
 
-    return BasebandSignal.like(z, x, sample_rate=z.sample_rate/factor)
+    return BasebandSignal.like(z, x, sample_rate=z.sample_rate / factor)
 
 
 @transform
@@ -121,7 +131,7 @@ def convolve(z: BasebandSignal, h: Signal):
 
     if h.sample_rate != z.sample_rate:
         err = 'Input signal and filter have different sample rates!'
-        raise InvalidSignalError(err)
+        raise ValueError(err)
 
     raise NotImplementedError("I promise I'll do this later :)")
 
@@ -155,12 +165,12 @@ def linear_to_circular(z: BasebandSignal, axis: int):
 
     if not z.shape[axis] == 2:
         err = 'Polarization axis does not have 2 components!'
-        raise InvalidSignalError(err)
+        raise ValueError(err)
 
     X = np.expand_dims(np.take(z, 0, axis), axis)
     Y = np.expand_dims(np.take(z, 1, axis), axis)
 
-    circular = np.append(X - 1j*Y, X + 1j*Y, axis=axis) / np.sqrt(2)
+    circular = np.append(X - 1j * Y, X + 1j * Y, axis=axis) / np.sqrt(2)
     return BasebandSignal.like(z, circular)
 
 
@@ -193,7 +203,7 @@ def circular_to_linear(z: BasebandSignal, axis: int):
 
     if not z.shape[axis] == 2:
         err = 'Polarization axis does not have 2 components!'
-        raise InvalidSignalError(err)
+        raise ValueError(err)
 
     R = np.expand_dims(np.take(z, 0, axis), axis)
     L = np.expand_dims(np.take(z, 1, axis), axis)

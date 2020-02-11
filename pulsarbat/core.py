@@ -4,30 +4,17 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 import inspect
+from .utils import verify_scalar_quantity
 
 __all__ = [
     'Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal',
-    'DispersionMeasure', 'verify_scalar_quantity', 'InvalidSignalError'
+    'InvalidSignalError'
 ]
 
 
 class InvalidSignalError(ValueError):
     """Used to catch invalid signals."""
     pass
-
-
-def verify_scalar_quantity(a, unit):
-    if not isinstance(a, u.Quantity):
-        raise TypeError(f'Expected astropy Quantity, got {type(a)}')
-
-    if not a.unit.is_equivalent(unit):
-        expected = f'Expected units of {unit.physical_type}'
-        raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
-
-    if not a.isscalar:
-        raise ValueError(f'Expected a scalar quantity.')
-
-    return True
 
 
 class Signal:
@@ -339,32 +326,3 @@ class BasebandSignal(RadioSignal):
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
             err = 'Sample rate is not equal to channel bandwidth!'
             raise InvalidSignalError(err)
-
-
-class DispersionMeasure(u.SpecificTypeQuantity):
-    _equivalent_unit = _default_unit = u.pc / u.cm**3
-    dispersion_constant = u.s * u.MHz**2 * u.cm**3 / u.pc / 2.41E-4
-
-    def time_delay(self, f, ref_freq):
-        """Time delay of frequencies relative to reference frequency."""
-        coeff = self.dispersion_constant * self
-        delay = coeff * (1 / f**2 - 1 / ref_freq**2)
-        return delay.to(u.s)
-
-    def sample_delay(self, f, ref_freq, sample_rate):
-        """Sample delay of frequencies relative to reference frequency."""
-        samples = self.time_delay(f, ref_freq) * sample_rate
-        samples = samples.to_value(u.one)
-        return int(np.copysign(np.ceil(abs(samples)), samples))
-
-    def phase_delay(self, f, ref_freq):
-        """Phase delay of frequencies relative to reference frequency."""
-        coeff = self.dispersion_constant * self
-        phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
-        return phase.to(u.rad)
-
-    def phase_factor(self, f, ref_freq):
-        """Dispersion phase factor of frequencies relative to reference."""
-        phase = self.phase_delay(f, ref_freq)
-        factor = np.exp(-1j * phase.to_value(u.rad))
-        return factor.astype(np.complex64)
