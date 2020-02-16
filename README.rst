@@ -20,10 +20,21 @@ For installation instructions, see the `online documentation <https://pulsarbat.
 | The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
 | For documentation, please go to: https://pulsarbat.readthedocs.io
 
+
+Requirements
+------------
+
+- **Python 3.7** or later
+- `Astropy <https://www.astropy.org/>`_ v4.0 or later
+- `Numpy <https://www.numpy.org/>`_ v1.17 or later
+- `Baseband <https://github.com/mhvk/baseband>`_ v3.1.0 or later
+
+
 License
 -------
 
 Pulsarbat is licensed under the GNU General Public License v3.
+
 
 Credits
 -------

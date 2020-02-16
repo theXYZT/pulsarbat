@@ -12,4 +12,3 @@ from .core import *
 from .predictor import Polyco
 from .dispersion import DispersionMeasure
 from .observation import (Observation, PUPPIObservation)
-
