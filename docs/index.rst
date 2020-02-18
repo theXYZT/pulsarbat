@@ -29,7 +29,7 @@ This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypack
 
     install
     usage
-    api
+    api/index.rst
     contributing
     history
 
