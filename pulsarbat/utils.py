@@ -30,3 +30,9 @@ def complex_noise(shape: tuple, power: float):
 def abs2(x):
     """Returns the absolute square of an array."""
     return x.real**2 + x.imag**2
+
+
+def taper_function(freqs, bandwidth):
+    x = (freqs / bandwidth).to_value(u.one)
+    taper = 1 + (x / 0.48)**80
+    return taper

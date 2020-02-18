@@ -11,7 +11,8 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['astropy>=4.0', 'numpy>=1.18']
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 setup_requirements = ['pytest-runner', ]
 

@@ -321,8 +321,33 @@ class BasebandSignal(RadioSignal):
     def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
                  start_time: Time, center_freq: u.Quantity,
                  bandwidth: u.Quantity):
-        super().__init__(data, sample_rate, start_time, center_freq, bandwidth)
+        super().__init__(data, sample_rate=sample_rate, start_time=start_time,
+                         center_freq=center_freq, bandwidth=bandwidth)
 
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
             err = 'Sample rate is not equal to channel bandwidth!'
             raise InvalidSignalError(err)
+
+
+class DispersionMeasure(u.SpecificTypeQuantity):
+    _equivalent_unit = _default_unit = u.pc / u.cm**3
+    dispersion_constant = u.s * u.MHz**2 * u.cm**3 / u.pc / 2.41E-4
+
+    def time_delay(self, f, ref_freq):
+        """Time delay of frequencies relative to reference frequency."""
+        coeff = self.dispersion_constant * self
+        delay = coeff * (1 / f**2 - 1 / ref_freq**2)
+        return delay.to(u.s)
+
+    def sample_delay(self, f, ref_freq, sample_rate):
+        """Sample delay of frequencies relative to reference frequency."""
+        samples = self.time_delay(f, ref_freq) * sample_rate
+        samples = samples.to_value(u.one)
+        return int(np.copysign(np.ceil(abs(samples)), samples))
+
+    def transfer_function(self, f, ref_freq):
+        """Returns the transfer function for dedispersion."""
+        coeff = self.dispersion_constant * self
+        phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
+        transfer = np.exp(-1j * phase.to_value(u.rad))
+        return np.asfortranarray(transfer.astype(np.complex64))
