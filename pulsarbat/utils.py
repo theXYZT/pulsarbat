@@ -3,8 +3,7 @@
 import numpy as np
 import astropy.units as u
 
-
-__all__ = ['verify_scalar_quantity', 'complex_noise']
+__all__ = ['verify_scalar_quantity', 'complex_noise', 'abs2']
 
 
 def verify_scalar_quantity(a, unit):
@@ -28,6 +27,6 @@ def complex_noise(shape: tuple, power: float):
     return (r + 1j * i) * np.sqrt(power)
 
 
-def csq(x):
-    """Returns the complex square of a complex array."""
+def abs2(x):
+    """Returns the absolute square of an array."""
     return x.real**2 + x.imag**2

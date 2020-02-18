@@ -4,11 +4,7 @@ from astropy.time import Time
 from .core import BasebandSignal
 
 
-def complex_noise(N, S):
-    """Generates complex gaussian noise of length N and power S."""
-    r = np.random.normal(0, 1 / np.sqrt(2), N)
-    i = np.random.normal(0, 1 / np.sqrt(2), N)
-    return (r + 1j * i) * np.sqrt(S)
+
 
 
 def generate_fake_baseband(shape):
