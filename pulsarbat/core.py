@@ -8,7 +8,7 @@ from .utils import verify_scalar_quantity
 
 __all__ = [
     'Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal',
-    'InvalidSignalError'
+    'InvalidSignalError', 'DispersionMeasure',
 ]
 
 
@@ -349,5 +349,5 @@ class DispersionMeasure(u.SpecificTypeQuantity):
         """Returns the transfer function for dedispersion."""
         coeff = self.dispersion_constant * self
         phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
-        transfer = np.exp(-1j * phase.to_value(u.rad))
+        transfer = np.exp(1j * phase.to_value(u.rad))
         return np.asfortranarray(transfer.astype(np.complex64))

@@ -4,9 +4,8 @@ import os
 import functools
 import numpy as np
 import astropy.units as u
-from .core import (Signal, BasebandSignal)
+from .core import (Signal, BasebandSignal, DispersionMeasure)
 from .utils import verify_scalar_quantity
-from .dispersion import DispersionMeasure
 
 try:
     import pyfftw
@@ -33,7 +32,7 @@ def transform(func):
 
 @transform
 def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity,
-               chirp: np.ndarray = None):
+               chirp: np.ndarray = None) -> BasebandSignal:
     """Coherently dedisperses a baseband signal by a given dispersion measure.
 
     The output signal will be cropped on both ends to avoid wrap-around
@@ -59,35 +58,19 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity,
     -------
     out : `~pulsarbat.BasebandSignal`
         The dedispersed signal.
-
-    Examples
-    --------
-    >>> np.fft.ifft([0, 4, 0, 0])
-    array([ 1.+0.j,  0.+1.j, -1.+0.j,  0.-1.j]) # may vary
-    Create and plot a band-limited signal with random phases:
-    >>> import matplotlib.pyplot as plt
-    >>> t = np.arange(400)
-    >>> n = np.zeros((400,), dtype=complex)
-    >>> n[40:60] = np.exp(1j*np.random.uniform(0, 2*np.pi, (20,)))
-    >>> s = np.fft.ifft(n)
-    >>> plt.plot(t, s.real, 'b-', t, s.imag, 'r--')
-    [<matplotlib.lines.Line2D object at ...>, <matplotlib.lines.Line2D object at ...>]
-    >>> plt.legend(('real', 'imaginary'))
-    <matplotlib.legend.Legend object at ...>
-    >>> plt.show()
-
     """
     if not isinstance(DM, DispersionMeasure):
         raise TypeError('DM must be a DispersionMeasure object.')
     verify_scalar_quantity(ref_freq, u.Hz)
 
-    N = len(z)
-    f = z.channel_centers[None] + np.fft.fftfreq(N, z.dt)[:, None]
+    if chirp is None:
+        f = z.channel_centers[None] + np.fft.fftfreq(len(z), z.dt)[:, None]
+        chirp = DM.transfer_function(f, ref_freq)
+    else:
+        assert chirp.shape != z.shape[:chirp.ndims]
 
-    phase_factor = np.asfortranarray(DM.phase_factor(f, ref_freq))
-
-    x = fftpack.fft(np.array(z), axis=0)
-    x = fftpack.ifft((x.T * phase_factor.T).T, axis=0)
+    x = fftpack.fft(np.asarray(z), axis=0)
+    x = fftpack.ifft((x.T / chirp.T).T, axis=0)
 
     crop_before = -min(0, DM.sample_delay(z.max_freq, ref_freq, z.sample_rate))
     crop_after = max(0, DM.sample_delay(z.min_freq, ref_freq, z.sample_rate))
@@ -99,7 +82,7 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity,
 
 
 @transform
-def channelize(z: BasebandSignal, factor: int):
+def channelize(z: BasebandSignal, factor: int) -> BasebandSignal:
     """Channelizes a signal by a given factor.
 
     For example, if `factor` is 8, and the input signal has 4 channels,
