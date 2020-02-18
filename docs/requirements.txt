@@ -1,10 +1,8 @@
 astropy>=4.0
-numpy>=1.18.0
+numpy>=1.17.0
 baseband>=3.1.0
 
-sphinx>=2.3.1
+sphinx>=2.4.0
 numpydoc>=0.9.0
-
-
 matplotlib>=3.1.0
 ipython>=7.12.0
