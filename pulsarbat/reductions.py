@@ -8,7 +8,7 @@ __all__ = ['to_stokes', 'to_intensity']
 
 def to_intensity(z: BasebandSignal):
     """Converts a baseband signal to intensities via complex square."""
-    data = np.array(z)
+    data = np.asarray(z)
     return IntensitySignal.like(z, data.real**2 + data.imag**2)
 
 

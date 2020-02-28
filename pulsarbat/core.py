@@ -7,8 +7,12 @@ import inspect
 from .utils import verify_scalar_quantity
 
 __all__ = [
-    'Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal',
-    'InvalidSignalError', 'DispersionMeasure',
+    'Signal',
+    'RadioSignal',
+    'BasebandSignal',
+    'IntensitySignal',
+    'InvalidSignalError',
+    'DispersionMeasure',
 ]
 
 
@@ -321,8 +325,11 @@ class BasebandSignal(RadioSignal):
     def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
                  start_time: Time, center_freq: u.Quantity,
                  bandwidth: u.Quantity):
-        super().__init__(data, sample_rate=sample_rate, start_time=start_time,
-                         center_freq=center_freq, bandwidth=bandwidth)
+        super().__init__(data=data,
+                         sample_rate=sample_rate,
+                         start_time=start_time,
+                         center_freq=center_freq,
+                         bandwidth=bandwidth)
 
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
             err = 'Sample rate is not equal to channel bandwidth!'

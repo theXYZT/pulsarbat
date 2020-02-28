@@ -1,4 +1,4 @@
-# This code is written by Marten H. van Kerkwijk and licensed under
+# This module is written by Marten H. van Kerkwijk and licensed under
 # GNU GPL v3.0. It's copied directly from the mhvk/pulsar repository.
 """Read in and use tempo1 polyco files (tempo2 predict to come).
 

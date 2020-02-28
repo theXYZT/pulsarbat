@@ -1,29 +1,58 @@
 """Observation management."""
 
+from abc import ABC, abstractmethod
 import astropy.units as u
 from astropy.time import Time
 from .core import BasebandSignal
+from .utils import verify_scalar_quantity
+from .predictor import Polyco
 
-__all__ = ['Observation', 'PUPPIObservation']
+__all__ = ['PUPPIRawObservation']
 
 
-class Observation:
+class Observation(ABC):
+    """Base class for all observations.
+
+    Observation objects are used to process a stream of data into Signal
+    objects for further processing. Subclasses must define a method to
+    read samples of data with the signature `obj.read(n)` which will
+    read `n` time samples from the current position.
+    """
+    def __init__(self, file_handle, sample_rate):
+        self._fh = file_handle
+        if verify_scalar_quantity(sample_rate, u.Hz):
+            self.sample_rate = sample_rate.to(u.Hz)
+
+    @abstractmethod
+    def read(self, n):
+        """Reads n time samples and returns a Signal object."""
+
+
+class BasebandObservation(Observation):
+    """Observations that use file readers from the baseband package."""
     def __init__(self, file_handle):
-        self.fh = file_handle
-        self.start_time = Time(self.fh.start_time, format='isot', precision=9)
-        self.stop_time = Time(self.fh.stop_time, format='isot', precision=9)
-        self.sample_rate = self.fh.sample_rate.to(u.MHz)
-        self.fh.seek(0)
+        super.__init__(file_handle, file_handle.sample_rate)
+        self.start_time = Time(self._fh.start_time, format='isot', precision=9)
+        self.stop_time = Time(self._fh.stop_time, format='isot', precision=9)
 
 
-class PUPPIObservation(Observation):
+class PulsarObservation(Observation):
+    polyco = None
+    DM = None
+    ref_freq = None
+
+    def add_polyco_from_file(self, filename):
+        self.polyco = Polyco(filename)
+
+
+class PUPPIRawObservation(BasebandObservation, PulsarObservation):
     def __init__(self, file_handle):
         super().__init__(file_handle)
-        self.hdr = self.fh.header0
+        self._header = self.fh.header0
+        assert self.sample_rate == self._header['CHAN_BW'] * u.MHz
 
-        assert self.sample_rate == self.hdr['CHAN_BW'] * u.MHz
-        self.center_freq = self.hdr['OBSFREQ'] * u.MHz
-        self.bandwidth = self.sample_rate * self.hdr['OBSNCHAN']
+        self.center_freq = self._header['OBSFREQ'] * u.MHz
+        self.bandwidth = self.sample_rate * self._header['OBSNCHAN']
 
     def read(self, num_samples, timestamp=None):
         if timestamp is not None:
