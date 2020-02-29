@@ -1,3 +1,7 @@
+astropy>=4.0
+numpy>=1.17.0
+baseband>=3.1.0
+
 pip>=20.0.0
 wheel>=0.34.1
 flake8>=3.7.9

@@ -14,6 +14,8 @@ with open('HISTORY.rst') as history_file:
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
+requirements = ['astropy>=4.0', 'numpy>=1.17.0', 'baseband>=3.1.0']
+
 setup_requirements = ['pytest-runner', ]
 
 test_requirements = ['pytest', ]

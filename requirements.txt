@@ -1,3 +1,0 @@
-astropy>=4.0
-numpy>=1.17.0
-baseband>=3.1.0
