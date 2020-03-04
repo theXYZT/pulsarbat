@@ -1,13 +1,13 @@
-"""Observation management."""
+"""Module for reader classes."""
 
 from abc import ABC, abstractmethod
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from .core import BasebandSignal
+from .core import Signal, BasebandSignal
 from .utils import verify_scalar_quantity, real_to_complex
 
-__all__ = ['AbstractReader', 'BasebandReader']
+__all__ = ['AbstractReader', 'BasebandReader', 'PUPPIRawReader']
 
 
 class AbstractReader(ABC):
@@ -41,10 +41,10 @@ class BasebandReader(AbstractReader):
         if verify_scalar_quantity(self._fh.sample_rate, u.Hz):
             self._sample_rate = self._fh.sample_rate.to(u.Hz)
 
-        self._start_time = Time(self._fh.start_time, format='isot',
+        self._start_time = Time(self._fh.start_time,
+                                format='isot',
                                 precision=9)
-        self._stop_time = Time(self._fh.stop_time, format='isot',
-                               precision=9)
+        self._stop_time = Time(self._fh.stop_time, format='isot', precision=9)
 
     @property
     def sample_rate(self):
@@ -61,8 +61,8 @@ class BasebandReader(AbstractReader):
         """Time at the end of data (time just after the last sample)."""
         return self._stop_time.copy()
 
-    def _convert_to_signal(z, sample_rate, start_time):
-        raise NotImplementedError(":)")
+    def _convert_to_signal(self, data, sample_rate, start_time):
+        return Signal(data, sample_rate, start_time)
 
     def read(self, N: int):
         """Read N time samples of complex baseband data."""
@@ -131,17 +131,9 @@ class PUPPIRawReader(BasebandReader):
         self.center_freq = self._header['OBSFREQ'] * u.MHz
         self.bandwidth = self.sample_rate * self._header['OBSNCHAN']
 
-    def read(self, num_samples, timestamp=None):
-        if timestamp is not None:
-            assert self.start_time <= timestamp
-            assert timestamp + num_samples / self.sample_rate < self.stop_time
-            self.fh.seek(timestamp)
-
-        read_start_time = self.fh.tell('time')
-
-        z = self.fh.read(num_samples)
-        return BasebandSignal(z.transpose(0, 2, 1),
-                              sample_rate=self.sample_rate,
-                              start_time=read_start_time,
+    def _convert_to_signal(self, data, sample_rate, start_time):
+        return BasebandSignal(data=data.tranpose(0, 2, 1),
+                              sample_rate=sample_rate,
+                              start_time=start_time,
                               center_freq=self.center_freq,
                               bandwidth=self.bandwidth)

@@ -9,4 +9,4 @@ __version__ = '0.0.3'
 
 from .core import *
 from .predictor import Polyco
-from . import (transforms, reductions, pulsar, fake, utils, observation)
+from . import (transforms, reductions, pulsar, fake, utils, reader)

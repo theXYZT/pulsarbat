@@ -25,7 +25,9 @@ class Signal:
     """Base class for all signals.
 
     A signal is sufficiently described by an array of samples (`data`),
-    and a constant sampling rate (`sample_rate`).
+    and a constant sampling rate (`sample_rate`). Optionally, a `start_time`
+    can be provided to specify the timestamp at the first sample of the
+    signal.
 
     `data` must be a `~numpy.ndarray` object where the zeroth axis refers
     to time. That is, `data[i]` is the `i`-th sample of the signal, and the
@@ -37,29 +39,39 @@ class Signal:
         The signal being stored as an array.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
+    start_time : `~astropy.time.Time`, optional
+        The start time of the signal (that is, the time at the first
+        sample of the signal). Default is None.
     """
     _min_ndim = 1
     _dtype = None
 
-    def __init__(self, data: np.ndarray, sample_rate: u.Quantity):
-        self.sample_rate = sample_rate
+    def __init__(self,
+                 data: np.ndarray,
+                 sample_rate: u.Quantity,
+                 start_time: Time = None):
 
-        self._verify_signal(data)
+        self.sample_rate = sample_rate
+        self.start_time = start_time
+
+        if not isinstance(data, np.ndarray):
+            raise TypeError('Input signal must be an ndarray object!')
+
+        if data.ndim < self._min_ndim:
+            err = (f'Expected signal with >= {self._min_ndim} dimension(s), '
+                   f'got signal with {data.ndim} dimension(s) instead!')
+            raise InvalidSignalError(err)
+
         try:
             self._data = self._create_signal_template(data)
             self._data[:] = data
         except (ValueError, TypeError):
             raise InvalidSignalError('Invalid signal provided.')
 
-    def _verify_signal(self, z):
-        """Verifies that signal matches specifications."""
-        if not isinstance(z, np.ndarray):
-            raise TypeError('Input signal must be an ndarray object!')
+        self._verification_checks()
 
-        if z.ndim < self._min_ndim:
-            err = (f'Expected signal with >= {self._min_ndim} dimension(s), '
-                   f'got signal with {z.ndim} dimension(s) instead!')
-            raise InvalidSignalError(err)
+    def _verification_checks(self):
+        pass
 
     def _create_signal_template(self, z):
         dtype = self._dtype or z.dtype
@@ -75,6 +87,7 @@ class Signal:
                 f"Signal shape: {self.shape}\n"
                 f"Signal dtype: {self.dtype}\n"
                 f"Sample rate: {self.sample_rate}\n"
+                f"Start Time: {self.start_time.isot}\n"
                 f"Time Length: {self.time_length}")
 
     def __len__(self):
@@ -125,14 +138,49 @@ class Signal:
         """Length of signal in time units."""
         return (len(self) * self.dt).to(u.s)
 
+    @property
+    def start_time(self):
+        """Start time of the signal (Time at first sample)."""
+        if self._start_time is not None:
+            return self._start_time.copy()
+        return None
+
+    @start_time.setter
+    def start_time(self, start_time):
+        if start_time is not None:
+            self._start_time = Time(start_time, format='isot', precision=9)
+
+            if not self._start_time.isscalar:
+                raise ValueError('Start time must be a scalar!')
+        else:
+            self._start_time = start_time
+
+    @property
+    def stop_time(self):
+        """Stop time of the signal (Time at sample after the last sample)."""
+        if self._start_time is not None:
+            return self.start_time + self.time_length
+        return None
+
     @classmethod
     def like(cls, signal, *args, **kwargs):
-        """Creates an object like `signal` unless overridden by kwargs."""
+        """Creates an object like `signal` unless overridden by args/kwargs.
+
+        This classmethod inspects the class signature and creates an object
+        using given `*args` and `**kwargs`. For all arguments required by
+        the signature that are not provided, they are instead acquired
+        pulled from attributes of the same name in given object, `signal`.
+        """
         sig = inspect.signature(cls)
         params = sig.bind_partial(*args, **kwargs).arguments
-        for p in sig.parameters:
-            if p not in params:
-                params[p] = getattr(signal, p)
+        for k, v in sig.parameters.items():
+            if k not in params:
+                if hasattr(signal, k):
+                    params[k] = getattr(signal, k)
+                elif v.default is not v.empty:
+                    params[k] = v.default
+                else:
+                    raise TypeError(f'Missing required argument: {k}')
         return cls(**params)
 
 
@@ -189,33 +237,16 @@ class RadioSignal(Signal):
     def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
                  start_time: Time, center_freq: u.Quantity,
                  bandwidth: u.Quantity):
-        super().__init__(data, sample_rate)
+        super().__init__(data=data,
+                         sample_rate=sample_rate,
+                         start_time=start_time)
         self.center_freq = center_freq
         self.bandwidth = bandwidth
-        self.start_time = start_time
 
     def __repr__(self):
         return (f"{super().__repr__()}\n"
                 f"Bandwidth: {self.bandwidth}\n"
-                f"Center Freq.: {self.center_freq}\n"
-                f"Start Time: {self.start_time.isot}\n")
-
-    @property
-    def start_time(self):
-        """Start time of the signal (Time at first sample)."""
-        return self._start_time.copy()
-
-    @start_time.setter
-    def start_time(self, start_time):
-        self._start_time = Time(start_time, format='isot', precision=9)
-
-        if not self._start_time.isscalar:
-            raise ValueError('Start time must be a scalar!')
-
-    @property
-    def stop_time(self):
-        """Stop time of the signal (Time at sample after the last sample)."""
-        return self.start_time + self.time_length
+                f"Center Freq.: {self.center_freq}\n")
 
     @property
     def nchan(self):
@@ -322,17 +353,12 @@ class BasebandSignal(RadioSignal):
     """
     _dtype = np.complex64
 
-    def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
-                 start_time: Time, center_freq: u.Quantity,
-                 bandwidth: u.Quantity):
-        super().__init__(data=data,
-                         sample_rate=sample_rate,
-                         start_time=start_time,
-                         center_freq=center_freq,
-                         bandwidth=bandwidth)
+    def _verification_checks(self):
+        super()._verification_checks()
 
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
-            err = 'Sample rate is not equal to channel bandwidth!'
+            err = (f"Sample rate ({self.sample_rate}) !="
+                   f"channel bandwidth ({self.chan_bandwidth})!")
             raise InvalidSignalError(err)
 
 

@@ -3,9 +3,7 @@
 import numpy as np
 import astropy.units as u
 
-__all__ = [
-    'verify_scalar_quantity', 'complex_noise', 'real_to_complex'
-]
+__all__ = ['verify_scalar_quantity', 'complex_noise', 'real_to_complex']
 
 
 def verify_scalar_quantity(a, unit):
@@ -40,7 +38,7 @@ def taper_function(freqs, bandwidth):
     return taper
 
 
-def real_to_complex(z, axis=0):
+def real_to_complex(z: np.ndarray, axis: int = 0):
     """
     Convert a real baseband signal to a complex baseband signal.
 
@@ -51,36 +49,28 @@ def real_to_complex(z, axis=0):
     decimated by a factor of 2, which results in the complex baseband
     representation of the input signal [1]_.
 
+    If the input signal is complex-valued, only the real component is
+    used.
+
     Parameters
     ----------
-    z : BasebandSignal
-        Input signal, must be real.
+    z : np.ndarray
+        Input signal.
     axis : int, optional
         Axis over which to convert the signal. This will be the axis
-        that represents time. If not given, the last axis is used.
+        that represents time. Default is 0.
 
     Returns
     -------
-    out : BasebandSignal
+    out : np.ndarray
         The complex baseband representation of the input signal.
-
-    Raises
-    ------
-    TypeError
-        If input parameters are not of the right type.
-    IndexError
-        if `axes` is larger than the last axis of `z`.
-
-    Notes
-    -----
-    This function assumes the input signal is a causal signal.
 
     References
     ----------
     .. [1] https://dsp.stackexchange.com/q/43278/17721
     """
     if np.iscomplexobj(z):
-        raise TypeError('Signal is already complex.')
+        z = z.real
 
     # Pick the correct axis to work on
     if z.ndim > 1:
