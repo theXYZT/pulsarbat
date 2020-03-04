@@ -41,10 +41,10 @@ class BasebandReader(AbstractReader):
         if verify_scalar_quantity(self._fh.sample_rate, u.Hz):
             self._sample_rate = self._fh.sample_rate.to(u.Hz)
 
-        self._start_time = Time(self._fh.start_time,
-                                format='isot',
+        self._start_time = Time(self._fh.start_time, format='isot',
                                 precision=9)
-        self._stop_time = Time(self._fh.stop_time, format='isot', precision=9)
+        self._stop_time = Time(self._fh.stop_time, format='isot',
+                               precision=9)
 
     @property
     def sample_rate(self):

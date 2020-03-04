@@ -358,7 +358,7 @@ class BasebandSignal(RadioSignal):
         super()._verification_checks()
 
         if not np.isclose(self.chan_bandwidth, self.sample_rate):
-            err = (f"Sample rate ({self.sample_rate}) !="
+            err = (f"Sample rate ({self.sample_rate}) != "
                    f"channel bandwidth ({self.chan_bandwidth})!")
             raise InvalidSignalError(err)
 
