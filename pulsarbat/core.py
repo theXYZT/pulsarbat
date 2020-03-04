@@ -237,11 +237,12 @@ class RadioSignal(Signal):
     def __init__(self, data: np.ndarray, sample_rate: u.Quantity,
                  start_time: Time, center_freq: u.Quantity,
                  bandwidth: u.Quantity):
+        self.center_freq = center_freq
+        self.bandwidth = bandwidth
+
         super().__init__(data=data,
                          sample_rate=sample_rate,
                          start_time=start_time)
-        self.center_freq = center_freq
-        self.bandwidth = bandwidth
 
     def __repr__(self):
         return (f"{super().__repr__()}\n"
