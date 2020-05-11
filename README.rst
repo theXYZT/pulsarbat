@@ -24,10 +24,10 @@ For installation instructions, see the `online documentation <https://pulsarbat.
 Requirements
 ------------
 
-- **Python 3.7** or later
+- **Python 3.8** or later
 - `Astropy <https://www.astropy.org/>`_ v4.0 or later
-- `Numpy <https://www.numpy.org/>`_ v1.17 or later
-- `Baseband <https://github.com/mhvk/baseband>`_ v3.1.0 or later
+- `Numpy <https://www.numpy.org/>`_ v1.18 or later
+- `Scipy <https://scipy.org/>`_ v1.14 or later
 
 
 License
