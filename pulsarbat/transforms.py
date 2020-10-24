@@ -1,22 +1,13 @@
 """Signal-to-signal transforms."""
 
-import os
 import functools
 import numpy as np
 import astropy.units as u
 from .core import (Signal, BasebandSignal, DispersionMeasure)
-from .utils import verify_scalar_quantity
+from .utils import fftpack, verify_scalar_quantity
 
-try:
-    import pyfftw
-    pyfftw.config.NUM_THREADS = int(os.environ.get('OMP_NUM_THREADS', 2))
-    fftpack = pyfftw.interfaces.numpy_fft
-except ImportError:
-    fftpack = np.fft
 
-__all__ = [
-    'dedisperse', 'channelize', 'linear_to_circular', 'circular_to_linear'
-]
+__all__ = ['dedisperse', 'channelize', ]
 
 
 def transform(func):
@@ -134,79 +125,3 @@ def convolve(z: BasebandSignal, h: Signal):
         raise ValueError(err)
 
     raise NotImplementedError("I promise I'll do this later :)")
-
-
-@transform
-def linear_to_circular(z: BasebandSignal, axis: int):
-    """Converts a baseband signal from linear basis to circular basis.
-
-    The polarization components are expected to be located along the
-    axis provided (`axis`). If `z.shape[axis] != 2`, an exception is
-    raised since there must be exactly two polarization components.
-
-    It is assumed that the linear components are ordered as (X, Y) and
-    circular components are ordered as (R, L).
-
-    Parameters
-    ----------
-    z : `~pulsarbat.BasebandSignal`
-        The signal to be converted. Must be in linear basis for
-        meaningful results.
-    axis : int
-        Polarization axis.
-
-    Returns
-    -------
-    out : `~pulsarbat.BasebandSignal`
-        The converted signal.
-    """
-    if axis in [0, 1]:
-        raise ValueError('Invalid polarization axis!')
-
-    if not z.shape[axis] == 2:
-        err = 'Polarization axis does not have 2 components!'
-        raise ValueError(err)
-
-    X = np.expand_dims(np.take(z, 0, axis), axis)
-    Y = np.expand_dims(np.take(z, 1, axis), axis)
-
-    circular = np.append(X - 1j * Y, X + 1j * Y, axis=axis) / np.sqrt(2)
-    return BasebandSignal.like(z, circular)
-
-
-@transform
-def circular_to_linear(z: BasebandSignal, axis: int):
-    """Converts a baseband signal from circular basis to linear basis.
-
-    The polarization components are expected to be located along the
-    axis provided (`axis`). If `z.shape[axis] != 2`, an exception is
-    raised since there must be exactly two polarization components.
-
-    It is assumed that the linear components are ordered as (X, Y) and
-    circular components are ordered as (R, L).
-
-    Parameters
-    ----------
-    z : `~pulsarbat.BasebandSignal`
-        The signal to be converted. Must be in circular basis for
-        meaningful results.
-    axis : int
-        Polarization axis.
-
-    Returns
-    -------
-    out : `~pulsarbat.BasebandSignal`
-        The converted signal.
-    """
-    if axis in [0, 1]:
-        raise ValueError('Invalid polarization axis!')
-
-    if not z.shape[axis] == 2:
-        err = 'Polarization axis does not have 2 components!'
-        raise ValueError(err)
-
-    R = np.expand_dims(np.take(z, 0, axis), axis)
-    L = np.expand_dims(np.take(z, 1, axis), axis)
-
-    linear = np.append(R + L, 1j * (R - L), axis=axis) / np.sqrt(2)
-    return BasebandSignal.like(z, linear)

@@ -1,46 +1,66 @@
 """Collection of handy utilities."""
 
+import os
 import numpy as np
 import astropy.units as u
+from scipy.fft import next_fast_len
 
-__all__ = ['verify_scalar_quantity', 'complex_noise', 'real_to_complex']
+try:
+    import pyfftw
+    pyfftw.config.NUM_THREADS = int(os.environ.get('OMP_NUM_THREADS', 2))
+    fftpack = pyfftw.interfaces.numpy_fft
+except ImportError:
+    fftpack = np.fft
+
+
+__all__ = [
+    'fftpack',
+    'next_fast_len',
+    'verify_scalar_quantity',
+    'real_to_complex',
+    'complex_noise',
+]
 
 
 def verify_scalar_quantity(a, unit):
+    """Verify of given obj is a scale astropy Quantity."""
+
     if not isinstance(a, u.Quantity):
         raise TypeError(f'Expected astropy Quantity, got {type(a)}')
+
+    if not a.isscalar:
+        raise ValueError('Expected a scalar quantity.')
 
     if not a.unit.is_equivalent(unit):
         expected = f'Expected units of {unit.physical_type}'
         raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
 
-    if not a.isscalar:
-        raise ValueError(f'Expected a scalar quantity.')
-
     return True
 
 
-def complex_noise(shape: tuple, power: float):
-    """Generates complex gaussian noise with given shape and power."""
-    r = np.random.normal(0, 1 / np.sqrt(2), shape)
-    i = np.random.normal(0, 1 / np.sqrt(2), shape)
-    return (r + 1j * i) * np.sqrt(power)
+def complex_noise(shape, power):
+    """Generates complex gaussian noise with given shape and power.
 
+    Parameters
+    ----------
+    shape : int or tuple of ints
+        Shape of returned array.
+    power : float
+        Noise power.
 
-def abs2(x):
-    """Returns the absolute square of an array."""
-    return x.real**2 + x.imag**2
-
-
-def taper_function(freqs, bandwidth):
-    x = (freqs / bandwidth).to_value(u.one)
-    taper = 1 + (x / 0.48)**80
-    return taper
-
-
-def real_to_complex(z: np.ndarray, axis: int = 0):
+    Returns
+    -------
+    out : `~numpy.ndarray`
+        Complex noise with given power.
     """
-    Convert a real baseband signal to a complex baseband signal.
+    rng = np.random.default_rng()
+    re = rng.normal(0, 1 / np.sqrt(2), shape)
+    im = rng.normal(0, 1 / np.sqrt(2), shape)
+    return (re + 1j * im) * np.sqrt(power)
+
+
+def real_to_complex(z, axis=0):
+    """Convert a real baseband signal to a complex baseband signal.
 
     This function computes the analytic representation of the input
     signal via a Hilbert transform, throwing away negative frequency
@@ -54,7 +74,7 @@ def real_to_complex(z: np.ndarray, axis: int = 0):
 
     Parameters
     ----------
-    z : np.ndarray
+    z : `~numpy.ndarray`
         Input signal.
     axis : int, optional
         Axis over which to convert the signal. This will be the axis
@@ -71,6 +91,7 @@ def real_to_complex(z: np.ndarray, axis: int = 0):
     """
     if np.iscomplexobj(z):
         z = z.real
+    z = z.astype(np.float32)
 
     # Pick the correct axis to work on
     if z.ndim > 1:
@@ -79,7 +100,7 @@ def real_to_complex(z: np.ndarray, axis: int = 0):
     N = z.shape[axis]
 
     # Hilbert transform
-    z = np.fft.fft(z, axis=axis)
+    z = fftpack.fft(z, axis=axis)
     h = np.zeros(N)
     if N % 2 == 0:
         h[0] = h[N // 2] = 1
@@ -89,7 +110,7 @@ def real_to_complex(z: np.ndarray, axis: int = 0):
         h[1:(N + 1) // 2] = 2
     if z.ndim > 1:
         h = h[tuple(ind)]
-    z = np.fft.ifft(z * h, axis=axis)
+    z = fftpack.ifft(z * h, axis=axis)
 
     # Frequency shift signal by -B/2
     h = np.exp(-1j * np.pi / 2 * np.arange(N))
@@ -101,7 +122,10 @@ def real_to_complex(z: np.ndarray, axis: int = 0):
     dec = [slice(None)] * z.ndim
     dec[axis] = slice(None, None, 2)
     z = z[tuple(dec)]
+    return z.astype(np.complex64)
 
-    z = z.astype(np.complex64)
 
-    return z
+def taper_function(freqs, bandwidth):
+    x = (freqs / bandwidth).to_value(u.one)
+    taper = 1 + (x / 0.48)**80
+    return taper
