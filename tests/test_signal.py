@@ -9,38 +9,45 @@ import pulsarbat as pb
 
 
 @pytest.mark.parametrize("use_dask", [True, False])
-@pytest.mark.parametrize("timestamp", [None, '2020-01-01T06:06:06.000'])
+@pytest.mark.parametrize("use_time", [True, False])
 @pytest.mark.parametrize("shape", [(16,), (8, 4)])
 @pytest.mark.parametrize("sample_rate", [1 * u.Hz, 33 * u.kHz])
 @pytest.mark.parametrize("dtype", [np.float16, np.float64])
-def test_signal_basic(use_dask, timestamp, shape, sample_rate, dtype):
-    if timestamp is not None:
-        timestamp = Time(timestamp, format='isot')
-
+def test_signal_basic(use_dask, use_time, shape, sample_rate, dtype):
     if use_dask:
         x = da.random.standard_normal(shape).astype(dtype)
     else:
         x = np.random.standard_normal(shape).astype(dtype)
 
-    z = pb.Signal(x, sample_rate=sample_rate, start_time=timestamp)
+    timestamp = Time.now()
+    if use_time:
+        z = pb.Signal(x, sample_rate=sample_rate, start_time=timestamp)
+    else:
+        z = pb.Signal(x, sample_rate=sample_rate)
 
     assert isinstance(z, pb.Signal)
     assert z.shape == shape
     assert z.ndim == len(shape)
     assert len(z) == shape[0]
+    assert z.sample_shape == shape[1:]
     assert z.sample_rate == sample_rate
     assert z.sample_rate is not sample_rate
     assert u.isclose(z.dt, 1 / sample_rate)
     assert u.isclose(z.time_length, shape[0] / sample_rate)
     assert type(z.data) is type(x)
     assert np.all(np.array(z) == np.array(x))
+    print(z)
+    repr(z)
 
-    if timestamp is not None:
+    if use_time:
         assert z.start_time == timestamp
         assert z.stop_time == timestamp + (shape[0] / sample_rate)
+        assert z.start_time in z
+        assert z.stop_time not in z
     else:
         assert z.start_time is None
         assert z.stop_time is None
+        assert timestamp not in z
 
 
 @pytest.mark.parametrize("shape", [(), (0, ), (0, 4, 2)])

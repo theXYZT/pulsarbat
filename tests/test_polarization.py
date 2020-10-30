@@ -20,6 +20,11 @@ def complex_noise(use_dask):
     return f(SHAPE) + 1j * f(SHAPE)
 
 
+@pytest.fixture(params=['linear', 'circular'])
+def pol_type(request):
+    return request.param
+
+
 @pytest.fixture
 def signal_kwargs():
     return {'sample_rate': 50 * u.MHz,
@@ -33,35 +38,32 @@ def test_invalid_poltype(complex_noise, signal_kwargs):
                                       **signal_kwargs)
 
 
-def test_pol_reversibility(complex_noise, signal_kwargs):
-    z = pb.DualPolarizationSignal(complex_noise, pol_type='linear',
+def test_pol_reversibility(complex_noise, signal_kwargs, pol_type):
+    z = pb.DualPolarizationSignal(complex_noise, pol_type=pol_type,
                                   **signal_kwargs)
-    x = z.to_linear()
-    y = z.to_circular().to_linear()
-    assert np.allclose(np.array(z), np.array(x))
-    assert np.allclose(np.array(z), np.array(y))
+
+    if pol_type == 'linear':
+        x = z.to_linear()
+        y = z.to_circular().to_linear()
+    else:
+        x = z.to_circular()
+        y = z.to_linear().to_circular()
+
     assert z.pol_type == x.pol_type
     assert z.pol_type == y.pol_type
 
-    z = pb.DualPolarizationSignal(complex_noise, pol_type='circular',
-                                  **signal_kwargs)
-    x = z.to_circular()
-    y = z.to_linear().to_circular()
-    assert np.allclose(np.array(z), np.array(x))
-    assert np.allclose(np.array(z), np.array(y))
-    assert z.pol_type == x.pol_type
-    assert z.pol_type == y.pol_type
+    x, y, z = np.array(x), np.array(y), np.array(z)
+    assert np.allclose(z.real, x.real, atol=1E-5)
+    assert np.allclose(z.real, y.real, atol=1E-5)
+    assert np.allclose(z.imag, x.imag, atol=1E-5)
+    assert np.allclose(z.imag, y.imag, atol=1E-5)
 
 
-def test_to_stokes(complex_noise, signal_kwargs):
-    z = pb.DualPolarizationSignal(complex_noise, pol_type='linear',
+def test_to_stokes(complex_noise, signal_kwargs, pol_type):
+    z = pb.DualPolarizationSignal(complex_noise, pol_type=pol_type,
                                   **signal_kwargs)
     x = z.to_linear().to_stokes()
     y = z.to_circular().to_stokes()
-    assert np.allclose(np.array(x), np.array(y))
-
-    z = pb.DualPolarizationSignal(complex_noise, pol_type='circular',
-                                  **signal_kwargs)
-    x = z.to_linear().to_stokes()
-    y = z.to_circular().to_stokes()
-    assert np.allclose(np.array(x), np.array(y))
+    x, y = np.array(x), np.array(y)
+    assert np.allclose(x.real, y.real, atol=1E-5)
+    assert np.allclose(x.imag, y.imag, atol=1E-5)

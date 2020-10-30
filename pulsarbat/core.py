@@ -15,6 +15,7 @@ __all__ = [
     'FullStokesSignal',
     'DualPolarizationSignal',
     'InvalidSignalError',
+    'DispersionMeasure',
 ]
 
 
@@ -80,7 +81,7 @@ class Signal:
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
-        c = type(self._data)
+        c = type(self.data)
         s = f"{signature}\n{'-' * len(signature)}\n"
         s += f"Data Container: {c.__module__}.{c.__name__}"
         s += f"<shape={self.shape}, dtype={self.dtype}>\n"
@@ -168,7 +169,10 @@ class Signal:
         return None
 
     def __contains__(self, time):
-        return self.start_time <= time <= self.stop_time
+        if self.start_time is not None:
+            return self.start_time <= time < self.stop_time
+        else:
+            return False
 
     @classmethod
     def like(cls, obj, z, /, **kwargs):
@@ -351,7 +355,7 @@ class IntensitySignal(RadioSignal):
     intensity signals are necessarily real-valued, and more
     floating-point precision is rarely required.
     """
-    _dtype = np.float64
+    _dtype = np.float32
 
 
 class BasebandSignal(RadioSignal):
@@ -397,7 +401,7 @@ class BasebandSignal(RadioSignal):
     All frequency channels are assumed to be upper side-band (that is,
     the signal isn't reversed in frequency space).
     """
-    _dtype = np.complex128
+    _dtype = np.complex64
 
     def _verification_checks(self):
         super()._verification_checks()
@@ -619,4 +623,4 @@ class DispersionMeasure(u.SpecificTypeQuantity):
         coeff = self.dispersion_constant * self
         phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
         transfer = np.exp(1j * phase.to_value(u.rad))
-        return np.asfortranarray(transfer.astype(np.complex64))
+        return transfer.astype(np.complex64)

@@ -11,13 +11,13 @@ from astropy.time import Time
 
 from .base import AbstractReader
 from ..core import Signal, DualPolarizationSignal
-from ..utils import verify_scalar_quantity, real_to_complex
+from ..utils import verify_scalar_quantity, times_are_close, real_to_complex
 
 __all__ = ['BasebandReader', 'GUPPIRawReader']
 
 
-class BasebandReader(AbstractReader):
-    """Base class for data readable by the `~baseband` package.
+class BasebandRawReader(AbstractReader):
+    """Base class for raw voltage data readable by the `~baseband` package.
 
     Parameters
     ----------
@@ -29,18 +29,21 @@ class BasebandReader(AbstractReader):
         if not isinstance(fh, baseband.base.base.StreamReaderBase):
             raise ValueError('fh must be a Baseband StreamReaderBase object.')
 
+        expected_stop_time = fh.start_time + (fh.shape[0] / fh.sample_rate)
+        if not times_are_close(fh.stop_time, expected_stop_time):
+            err = 'StreamReader stop time does not match number of samples.'
+            raise ValueError(err)
+
+        verify_scalar_quantity(fh.sample_rate, u.Hz)
         self._fh = fh
-        self._complex = self._fh.complex_data
-        verify_scalar_quantity(self._fh.sample_rate, u.Hz)
 
     @property
     def sample_rate(self):
         """Sample rate of the complex baseband representation of the data."""
-        if not self._fh.complex_data:
-            sr = (self._fh.sample_rate / 2).to(u.MHz)
+        if self._fh.complex_data:
+            return self._fh.sample_rate.to(u.MHz)
         else:
-            sr = self._fh.sample_rate.to(u.MHz)
-        return sr
+            return self._fh.sample_rate.to(u.MHz) / 2
 
     @property
     def start_time(self):
@@ -50,13 +53,17 @@ class BasebandReader(AbstractReader):
     @property
     def stop_time(self):
         """Time at the end of data (time after the last sample)."""
-        return Time(self._fh.stop_time, format='isot', precision=9)
+        end = self.start_time + (len(self) / self.sample_rate)
+        return Time(end, format='isot', precision=9)
+
+    def __len__(self):
+        if self._fh.complex_data:
+            return self._fh.shape[0]
+        else:
+            return self._fh.shape[0] // 2
 
     def seek(self, offset, whence=0):
         """Seek to a specific read position.
-
-        This works like a normal filehandle seek, but the offset is in samples
-        (or a relative or absolute time).
 
         Parameters
         ----------
@@ -70,7 +77,13 @@ class BasebandReader(AbstractReader):
             'current', or 'end' for 0, 1, or 2, respectively.  Ignored if
             ``offset`` is a time.
         """
-        self._fh.seek(offset, whence)
+        if self._fh.complex_data:
+            self._fh.seek(offset, whence)
+        elif isinstance(offset, int):
+            self._fh.seek(offset * 2, whence)
+        else:
+            self._fh.seek(offset, whence)
+            self._fh.seek(self.tell() * 2)
 
     def tell(self, unit=None):
         """Current read position (relative to the start position).
@@ -86,16 +99,22 @@ class BasebandReader(AbstractReader):
         -------
         offset : int, `~astropy.units.Quantity`, or `~astropy.time.Time`
         """
-        return self._fh.tell(unit)
+        if unit is None and not self._fh.complex_data:
+            return self._fh.tell() // 2
+        else:
+            return self._fh.tell(unit)
 
     @property
     def time(self):
-        """Timestamp of current read position."""
+        """Timestamp at current read position."""
         return Time(self.tell(unit='time'), format='isot', precision=9)
 
-    def _read_to_array(self, N):
-        """Read N time samples of complex baseband data into a Numpy array."""
-        if self._complex:
+    def _read_array(self, N, offset=None):
+        """Read N samples at given offset into a Numpy array."""
+        if offset is not None:
+            self.seek(offset)
+
+        if self._fh.complex_data:
             shape = (N, ) + self._fh.sample_shape
             z = np.empty(shape, dtype=np.complex64, order='F')
             self._fh.read(out=z)
@@ -106,16 +125,24 @@ class BasebandReader(AbstractReader):
             z = real_to_complex(z)
         return z
 
-    def read(self, N, start=None):
-        """Read N time samples of complex baseband data."""
-        if start is not None:
-            self.seek(start)
-        read_time = self.time
-        z = self._read_to_array(N)
-        return Signal(z, sample_rate=self.sample_rate, start_time=read_time)
+    def read_data(self, N, offset=None):
+        return self._read_array(N, offset)
+
+    @property
+    def signal_kwargs(self):
+        kw = {'sample_rate': self.sample_rate, }
+        return kw
+
+    def read(self, N, offset=None):
+        """Read N samples at given offset into a Signal object."""
+        self.seek(offset)
+        start_time = self.time
+
+        z = self.read_data(N, offset)
+        return Signal(z, start_time=start_time, **self.signal_kwargs)
 
 
-class GUPPIRawReader(BasebandReader):
+class GUPPIRawReader(BasebandRawReader):
     """Baseband reader for GUPPI raw voltage data format."""
 
     def __init__(self, fh):
@@ -153,12 +180,19 @@ class GUPPIRawReader(BasebandReader):
     def pol_type(self):
         return {'LIN': 'linear', 'CIRC': 'circular'}[self.header['FD_POLN']]
 
-    def read(self, N: int):
-        _kwargs = {'sample_rate': self.sample_rate,
-                   'center_freq': self.center_freq,
-                   'bandwidth': self.bandwidth,
-                   'pol_type': self.pol_type,
-                   'start_time': self.time}
+    @property
+    def signal_kwargs(self):
+        kw = {'sample_rate': self.sample_rate,
+              'center_freq': self.center_freq,
+              'bandwidth': self.bandwidth,
+              'pol_type': self.pol_type}
+        return kw
 
-        z = self._read_to_array(N).transpose(0, 2, 1)
-        return DualPolarizationSignal(z, **_kwargs)
+    def read(self, N, offset=None):
+        """Read N samples at given offset into a Signal object."""
+        self.seek(offset)
+        start_time = self.time
+
+        z = self.read_data(N, offset).transpose(0, 2, 1)
+        return DualPolarizationSignal(z, start_time=start_time,
+                                      **self.signal_kwargs)

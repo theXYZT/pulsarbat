@@ -17,6 +17,7 @@ __all__ = [
     'fftpack',
     'next_fast_len',
     'verify_scalar_quantity',
+    'times_are_close',
     'real_to_complex',
     'complex_noise',
 ]
@@ -36,6 +37,10 @@ def verify_scalar_quantity(a, unit):
         raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
 
     return True
+
+
+def times_are_close(t1, t2):
+    return np.all(np.abs(t1 - t2) < 0.1 * u.ns)
 
 
 def complex_noise(shape, power):
