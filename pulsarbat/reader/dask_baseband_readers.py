@@ -14,8 +14,9 @@ class DaskBasebandRawReader(BasebandRawReader):
         _dtype = self._fh.dtype
         _chunk = (N,) + (1,) * len(self._fh.sample_shape)
 
-        z = da.from_delayed(dask.delayed(self._read_array)(N, offset),
-                            shape=_shape, dtype=_dtype)
+        _delayed_func = dask.delayed(self._read_array, pure=True)
+        z = da.from_delayed(_delayed_func(N, offset), shape=_shape,
+                            dtype=_dtype)
         return da.rechunk(z, chunks=_chunk)
 
 

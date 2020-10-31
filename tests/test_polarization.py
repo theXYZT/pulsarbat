@@ -38,6 +38,13 @@ def test_invalid_poltype(complex_noise, signal_kwargs):
                                       **signal_kwargs)
 
 
+def test_str_poltype(complex_noise, signal_kwargs, pol_type):
+    z = pb.DualPolarizationSignal(complex_noise, pol_type=pol_type,
+                                  **signal_kwargs)
+    print(z)
+    repr(z)
+
+
 def test_pol_reversibility(complex_noise, signal_kwargs, pol_type):
     z = pb.DualPolarizationSignal(complex_noise, pol_type=pol_type,
                                   **signal_kwargs)

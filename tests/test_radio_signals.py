@@ -4,7 +4,9 @@ import pytest
 import numpy as np
 import dask.array as da
 import astropy.units as u
+from astropy.time import Time
 import pulsarbat as pb
+from pulsarbat.utils import times_are_close
 
 
 @pytest.mark.parametrize("nchan, channel_centers",
@@ -72,3 +74,60 @@ def test_baseband_to_intensity(A, use_dask):
     zi = z.to_intensity()
     assert isinstance(zi.data, type(z.data))
     assert np.allclose(A**2, np.array(zi))
+
+
+def stack_data(nchan, use_dask=False):
+    shape = (64, nchan, 2)
+    f = da.random.normal if use_dask else np.random.normal
+    return f(0, 1, shape) + 1j * f(0, 1, shape)
+
+
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_stack_basic(use_dask):
+    sigs = [pb.RadioSignal(stack_data(4, use_dask), sample_rate=1*u.Hz,
+                           center_freq=fcen, bandwidth=100*u.MHz)
+            for fcen in [250 * u.MHz, 350 * u.MHz, 450 * u.MHz, 550 * u.MHz]]
+
+    fcens = np.concatenate([s.channel_centers for s in sigs])
+    z = pb.stack(sigs)
+    assert u.allclose(fcens, z.channel_centers)
+    assert u.isclose(z.bandwidth, 400 * u.MHz)
+
+
+def test_stack_comprehensive():
+    st = Time.now()
+
+    a1 = pb.DualPolarizationSignal(stack_data(4), sample_rate=10*u.MHz,
+                                   center_freq=420*u.MHz, bandwidth=40*u.MHz,
+                                   pol_type='linear', start_time=st)
+
+    a2 = pb.DualPolarizationSignal(stack_data(6), sample_rate=10*u.MHz,
+                                   center_freq=470*u.MHz, bandwidth=60*u.MHz,
+                                   pol_type='linear', start_time=st)
+
+    x = pb.stack([a1, a2])
+    assert u.isclose(x.bandwidth, 100 * u.MHz)
+    assert x.pol_type == 'linear'
+    assert times_are_close(st, x.start_time)
+    assert u.isclose(x.center_freq, 450 * u.MHz)
+
+    b = pb.DualPolarizationSignal(stack_data(6), sample_rate=10*u.MHz,
+                                  center_freq=470*u.MHz, bandwidth=60*u.MHz,
+                                  pol_type='circular', start_time=st)
+
+    with pytest.raises(ValueError):
+        _ = pb.stack([a1, b])
+
+    c = pb.Signal(stack_data(4), sample_rate=10*u.MHz)
+
+    with pytest.raises(ValueError):
+        _ = pb.stack([b, c])
+
+    d = pb.RadioSignal(stack_data(6), sample_rate=10*u.MHz,
+                       center_freq=470*u.MHz, bandwidth=60*u.MHz)
+
+    with pytest.raises(ValueError):
+        _ = pb.stack([a1, d])
+
+    with pytest.raises(ValueError):
+        _ = pb.stack([a1, a2, a2])

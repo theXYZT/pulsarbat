@@ -618,9 +618,12 @@ class DispersionMeasure(u.SpecificTypeQuantity):
         samples = np.ceil(samples) if samples > 0 else np.floor(samples)
         return samples.astype(np.int64)
 
-    def transfer_function(self, f, ref_freq):
-        """Returns the transfer function for dedispersion."""
+    def phase_delay(self, f, ref_freq):
         coeff = self.dispersion_constant * self
         phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
-        transfer = np.exp(1j * phase.to_value(u.rad))
+        return phase.to_value(u.rad)
+
+    def transfer_function(self, f, ref_freq):
+        """Returns the transfer function for dedispersion."""
+        transfer = np.exp(1j * self.phase_delay(f, ref_freq))
         return transfer.astype(np.complex64)

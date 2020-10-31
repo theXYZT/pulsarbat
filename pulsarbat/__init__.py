@@ -8,6 +8,7 @@ __version__ = '0.0.3'
 
 
 from .core import *
+from .signal_funcs import *
 from . import utils
 from . import transforms
 from . import reader
