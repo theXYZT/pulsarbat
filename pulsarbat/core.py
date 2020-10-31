@@ -133,6 +133,7 @@ class Signal:
     def sample_rate(self, sample_rate):
         if verify_scalar_quantity(sample_rate, u.Hz):
             self._sample_rate = sample_rate.to(u.MHz)
+        self._verification_checks()
 
     @property
     def dt(self):
@@ -160,6 +161,8 @@ class Signal:
             self._start_time = temp
         else:
             self._start_time = None
+
+        self._verification_checks()
 
     @property
     def stop_time(self):
@@ -288,6 +291,7 @@ class RadioSignal(Signal):
     def center_freq(self, center_freq):
         if verify_scalar_quantity(center_freq, u.Hz):
             self._center_freq = center_freq.to(u.MHz)
+        self._verification_checks()
 
     @property
     def bandwidth(self):
@@ -298,6 +302,7 @@ class RadioSignal(Signal):
     def bandwidth(self, bandwidth):
         if verify_scalar_quantity(bandwidth, u.Hz):
             self._bandwidth = bandwidth.to(u.MHz)
+        self._verification_checks()
 
     @property
     def chan_bandwidth(self):
@@ -527,6 +532,7 @@ class DualPolarizationSignal(BasebandSignal):
             self._pol_type = pol_type
         else:
             raise ValueError("pol_type must be in {'linear', 'circular'}")
+        self._verification_checks()
 
     def to_linear(self):
         """Converts the dual-polarization signal to linear basis.
