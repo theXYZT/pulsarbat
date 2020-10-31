@@ -70,7 +70,7 @@ class Signal:
                    f'got {z.shape} instead!')
             raise InvalidSignalError(err)
 
-        self._data = z.astype(self._dtype or z.dtype)
+        self._data = z.astype(self._dtype or z.dtype, copy=False)
         self._verification_checks()
 
     def _verification_checks(self):
@@ -133,7 +133,6 @@ class Signal:
     def sample_rate(self, sample_rate):
         if verify_scalar_quantity(sample_rate, u.Hz):
             self._sample_rate = sample_rate.to(u.MHz)
-        self._verification_checks()
 
     @property
     def dt(self):
@@ -161,8 +160,6 @@ class Signal:
             self._start_time = temp
         else:
             self._start_time = None
-
-        self._verification_checks()
 
     @property
     def stop_time(self):
@@ -268,7 +265,6 @@ class RadioSignal(Signal):
                  start_time=None):
         self.center_freq = center_freq
         self.bandwidth = bandwidth
-
         super().__init__(z, sample_rate=sample_rate, start_time=start_time)
 
     def __str__(self):
@@ -291,7 +287,6 @@ class RadioSignal(Signal):
     def center_freq(self, center_freq):
         if verify_scalar_quantity(center_freq, u.Hz):
             self._center_freq = center_freq.to(u.MHz)
-        self._verification_checks()
 
     @property
     def bandwidth(self):
@@ -302,7 +297,6 @@ class RadioSignal(Signal):
     def bandwidth(self, bandwidth):
         if verify_scalar_quantity(bandwidth, u.Hz):
             self._bandwidth = bandwidth.to(u.MHz)
-        self._verification_checks()
 
     @property
     def chan_bandwidth(self):
@@ -356,7 +350,7 @@ class IntensitySignal(RadioSignal):
 
     Notes
     -----
-    Signal data is converted to and stored with `dtype=np.float64`, as
+    Signal data is converted to and stored with `dtype=np.float32`, as
     intensity signals are necessarily real-valued, and more
     floating-point precision is rarely required.
     """
@@ -394,7 +388,7 @@ class BasebandSignal(RadioSignal):
     -----
     Baseband signals are Nyquist-sampled analytic signals (the bandwidth
     of a channel is equal to the sampling rate). The signal data is
-    converted to and stored with `dtype=np.complex128` as baseband
+    converted to and stored with `dtype=np.complex64` as baseband
     signals are necessarily complex-valued and more floating-point
     precision is rarely required.
 
@@ -532,7 +526,6 @@ class DualPolarizationSignal(BasebandSignal):
             self._pol_type = pol_type
         else:
             raise ValueError("pol_type must be in {'linear', 'circular'}")
-        self._verification_checks()
 
     def to_linear(self):
         """Converts the dual-polarization signal to linear basis.
@@ -621,8 +614,7 @@ class DispersionMeasure(u.SpecificTypeQuantity):
         """Sample delay of frequencies relative to reference frequency."""
         samples = self.time_delay(f, ref_freq) * sample_rate
         samples = samples.to_value(u.one)
-        samples = np.ceil(samples) if samples > 0 else np.floor(samples)
-        return samples.astype(np.int64)
+        return samples
 
     def phase_delay(self, f, ref_freq):
         coeff = self.dispersion_constant * self

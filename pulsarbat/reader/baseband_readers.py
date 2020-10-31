@@ -13,7 +13,7 @@ from .base import AbstractReader
 from ..core import Signal, DualPolarizationSignal
 from ..utils import verify_scalar_quantity, times_are_close, real_to_complex
 
-__all__ = ['BasebandReader', 'GUPPIRawReader']
+__all__ = ['BasebandRawReader', 'GUPPIRawReader']
 
 
 class BasebandRawReader(AbstractReader):
