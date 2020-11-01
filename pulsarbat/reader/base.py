@@ -14,7 +14,7 @@ class AbstractReader(ABC):
     and `tell()` methods.
     """
     @abstractmethod
-    def seek(self, offset, whence=0):
+    def seek(self, offset, /, whence=0):
         """Change read position to the given offset."""
         pass
 
@@ -24,6 +24,6 @@ class AbstractReader(ABC):
         pass
 
     @abstractmethod
-    def read(self, n, start=None):
-        """Reads n time samples of data from an optional start position."""
+    def read(self, N, /, offset=None):
+        """Reads N time samples of data from a given offset (optional)."""
         pass

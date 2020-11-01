@@ -30,8 +30,10 @@ def vdif_fh(data_dir):
     return fh
 
 
-def test_baseband_reader(vdif_fh):
-    rdr = pb.reader.BasebandRawReader(vdif_fh)
+@pytest.mark.parametrize("sideband", [True, False])
+def test_real_raw_baseband(vdif_fh, sideband):
+    rdr = pb.reader.BasebandRawReader(vdif_fh, center_freq=400*u.MHz,
+                                      bandwidth=128*u.MHz, sideband=sideband)
     assert u.isclose(rdr.sample_rate, 16 * u.MHz)
     st = Time('2014-06-16T05:56:07.000', format='isot')
     assert times_are_close(rdr.start_time, st)
@@ -58,10 +60,12 @@ def test_guppi_reader(guppi_fh):
         assert times_are_close(rdr.time, rdr.start_time + i / rdr.sample_rate)
 
 
+@pytest.mark.parametrize("sb", [True, False])
 @pytest.mark.parametrize("offset", [99.5, 99.6, 99.75, 99.9, 100.0,
                                     100.1, 100.25, 100.4, 100.5])
-def test_baseband_offsets(vdif_fh, offset):
-    rdr = pb.reader.BasebandRawReader(vdif_fh)
+def test_baseband_offsets(vdif_fh, offset, sb):
+    kw = {'center_freq': 400*u.MHz, 'bandwidth': 128*u.MHz, 'sideband': sb}
+    rdr = pb.reader.BasebandRawReader(vdif_fh, **kw)
     rdr.seek(rdr.start_time + offset / rdr.sample_rate)
     t1 = rdr.time
     offset = rdr.tell()
@@ -89,16 +93,18 @@ def use_dask(request):
 
 @pytest.mark.parametrize("bb_format", ['guppi', 'vdif'])
 def test_reader_read(use_dask, bb_format, guppi_fh, vdif_fh):
+    kw = {'center_freq': 400*u.MHz, 'bandwidth': 128*u.MHz, 'sideband': True}
+
     if use_dask:
         if bb_format == 'guppi':
             fh = pb.reader.DaskGUPPIRawReader(guppi_fh)
         elif bb_format == 'vdif':
-            fh = pb.reader.DaskBasebandRawReader(vdif_fh)
+            fh = pb.reader.DaskBasebandRawReader(vdif_fh, **kw)
     else:
         if bb_format == 'guppi':
             fh = pb.reader.GUPPIRawReader(guppi_fh)
         elif bb_format == 'vdif':
-            fh = pb.reader.BasebandRawReader(vdif_fh)
+            fh = pb.reader.BasebandRawReader(vdif_fh, **kw)
 
     N = 1024
     x = fh.read(N, 0)
