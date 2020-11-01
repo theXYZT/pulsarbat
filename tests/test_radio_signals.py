@@ -6,7 +6,10 @@ import dask.array as da
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
-from pulsarbat.utils import times_are_close
+
+
+def times_are_close(t1, t2):
+    return np.all(np.abs(t1 - t2) < 0.1 * u.ns)
 
 
 @pytest.mark.parametrize("nchan, channel_centers",

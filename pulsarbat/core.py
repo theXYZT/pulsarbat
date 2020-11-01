@@ -5,7 +5,6 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 from itertools import zip_longest
-from .utils import verify_scalar_quantity
 
 __all__ = [
     'Signal',
@@ -127,12 +126,15 @@ class Signal:
     @property
     def sample_rate(self):
         """Sample rate of the signal."""
-        return self._sample_rate.copy()
+        return self._sample_rate
 
     @sample_rate.setter
     def sample_rate(self, sample_rate):
-        if verify_scalar_quantity(sample_rate, u.Hz):
+        try:
             self._sample_rate = sample_rate.to(u.MHz)
+            assert self._sample_rate.isscalar
+        except Exception:
+            raise ValueError("Invalid value for sample_rate.")
 
     @property
     def dt(self):
@@ -142,24 +144,23 @@ class Signal:
     @property
     def time_length(self):
         """Length of signal in time units."""
-        return (len(self) * self.dt).to(u.s)
+        return (len(self) / self.sample_rate).to(u.s)
 
     @property
     def start_time(self):
         """Start time of the signal (Time at first sample)."""
-        if self._start_time is not None:
-            return self._start_time.copy()
-        return None
+        return self._start_time
 
     @start_time.setter
-    def start_time(self, start_time):
-        if start_time is not None:
-            temp = Time(start_time, precision=9)
-            if not temp.isscalar:
-                raise ValueError('Start time must be a scalar!')
-            self._start_time = temp
-        else:
+    def start_time(self, st):
+        if st is None:
             self._start_time = None
+        else:
+            try:
+                self._start_time = Time(st, format='isot', precision=9)
+                assert self._start_time.isscalar
+            except Exception:
+                raise ValueError('Invalid start time provided.')
 
     @property
     def stop_time(self):
@@ -281,22 +282,28 @@ class RadioSignal(Signal):
     @property
     def center_freq(self):
         """Center observing frequency of the signal."""
-        return self._center_freq.copy()
+        return self._center_freq
 
     @center_freq.setter
     def center_freq(self, center_freq):
-        if verify_scalar_quantity(center_freq, u.Hz):
+        try:
             self._center_freq = center_freq.to(u.MHz)
+            assert self._center_freq.isscalar
+        except Exception:
+            raise ValueError("Invalid value for center_freq!")
 
     @property
     def bandwidth(self):
         """Total bandwidth of signal."""
-        return self._bandwidth.copy()
+        return self._bandwidth
 
     @bandwidth.setter
     def bandwidth(self, bandwidth):
-        if verify_scalar_quantity(bandwidth, u.Hz):
+        try:
             self._bandwidth = bandwidth.to(u.MHz)
+            assert self._bandwidth.isscalar
+        except Exception:
+            raise ValueError("Invalid value for bandwidth!")
 
     @property
     def chan_bandwidth(self):

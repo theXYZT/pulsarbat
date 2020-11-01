@@ -59,14 +59,14 @@ def test_empty_signal(shape):
 def test_sample_rate():
     x = np.random.standard_normal((8, 4, 2))
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         _ = pb.Signal(x, sample_rate=400)
 
     SR_array = np.arange(100, 200, 10) * u.MHz
     with pytest.raises(ValueError):
         _ = pb.Signal(x, sample_rate=SR_array)
 
-    with pytest.raises(u.UnitTypeError):
+    with pytest.raises(ValueError):
         _ = pb.Signal(x, sample_rate=40 * u.m)
 
     SR = 123456 / u.min

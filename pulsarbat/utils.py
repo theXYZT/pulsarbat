@@ -2,66 +2,22 @@
 
 import os
 import numpy as np
-import astropy.units as u
 from scipy.fft import next_fast_len
+# import astropy.units as u
 
 try:
     import pyfftw
-    pyfftw.config.NUM_THREADS = int(os.environ.get('OMP_NUM_THREADS', 2))
+    pyfftw.config.NUM_THREADS = int(os.environ.get('OMP_NUM_THREADS', 1))
     fftpack = pyfftw.interfaces.numpy_fft
 except ImportError:
     fftpack = np.fft
 
 
 __all__ = [
+    'real_to_complex',
     'fftpack',
     'next_fast_len',
-    'verify_scalar_quantity',
-    'times_are_close',
-    'real_to_complex',
-    'complex_noise',
 ]
-
-
-def verify_scalar_quantity(a, unit):
-    """Verify of given obj is a scale astropy Quantity."""
-
-    if not isinstance(a, u.Quantity):
-        raise TypeError(f'Expected astropy Quantity, got {type(a)}')
-
-    if not a.isscalar:
-        raise ValueError('Expected a scalar quantity.')
-
-    if not a.unit.is_equivalent(unit):
-        expected = f'Expected units of {unit.physical_type}'
-        raise u.UnitTypeError(f'{expected}, got units of {a.unit}')
-
-    return True
-
-
-def times_are_close(t1, t2):
-    return np.all(np.abs(t1 - t2) < 0.1 * u.ns)
-
-
-def complex_noise(shape, power):
-    """Generates complex gaussian noise with given shape and power.
-
-    Parameters
-    ----------
-    shape : int or tuple of ints
-        Shape of returned array.
-    power : float
-        Noise power.
-
-    Returns
-    -------
-    out : `~numpy.ndarray`
-        Complex noise with given power.
-    """
-    rng = np.random.default_rng()
-    re = rng.normal(0, 1 / np.sqrt(2), shape)
-    im = rng.normal(0, 1 / np.sqrt(2), shape)
-    return (re + 1j * im) * np.sqrt(power)
 
 
 def real_to_complex(z, axis=0):
@@ -130,7 +86,7 @@ def real_to_complex(z, axis=0):
     return z.astype(np.complex64)
 
 
-def taper_function(freqs, bandwidth):
-    x = (freqs / bandwidth).to_value(u.one)
-    taper = 1 + (x / 0.48)**80
-    return taper
+# def taper_function(freqs, bandwidth):
+#     x = (freqs / bandwidth).to_value(u.one)
+#     taper = 1 + (x / 0.48)**80
+#     return taper

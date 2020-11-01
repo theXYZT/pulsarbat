@@ -19,17 +19,14 @@ def stack(sigs):
 
     Parameters
     ----------
-    signals : sequence of `~pulsarbat.RadioSignal`
+    signals : sequence of `~pulsarbat.RadioSignal`-like
         The signals being stacked.
 
     Returns
     -------
-    out : `~pulsarbat.RadioSignal`
-        The stacked signal.
+    out : `~pulsarbat.RadioSignal`-like
+        The stacked signal of same type as input signals.
     """
-    if not all(isinstance(s, RadioSignal) for s in sigs):
-        raise ValueError('Some signals are not pb.RadioSignal')
-
     _sig_type = type(sigs[0])
     if not all(type(s) is _sig_type for s in sigs):
         raise ValueError('Signals are not of same type!')

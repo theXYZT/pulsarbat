@@ -6,11 +6,10 @@
 from .base import AbstractReader
 
 try:
-    from .baseband_readers import BasebandRawReader, GUPPIRawReader
+    from .baseband_readers import *
 
     try:
-        from .dask_baseband_readers import (DaskBasebandRawReader,
-                                            DaskGUPPIRawReader)
+        from .dask_baseband_readers import *
     except:
         pass
 

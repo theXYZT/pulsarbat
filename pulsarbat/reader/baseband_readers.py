@@ -5,15 +5,20 @@ import baseband
 if tuple(map(int, baseband.version.version.split('.'))) < (4,):
     raise ImportError('Require baseband >= 4.0')
 
+import operator
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
 
 from .base import AbstractReader
 from ..core import Signal, BasebandSignal, DualPolarizationSignal
-from ..utils import verify_scalar_quantity, times_are_close, real_to_complex
+from ..utils import real_to_complex
 
 __all__ = ['BasebandReader', 'BasebandRawReader', 'GUPPIRawReader']
+
+
+def _times_are_close(t1, t2):
+    return np.abs(t1 - t2) < 0.1 * u.ns
 
 
 class BasebandReader(AbstractReader):
@@ -31,7 +36,7 @@ class BasebandReader(AbstractReader):
 
         self._fh = fh
 
-        if not times_are_close(fh.stop_time, self.stop_time):
+        if not _times_are_close(fh.stop_time, self.stop_time):
             err = 'StreamReader stop time does not match number of samples.'
             raise ValueError(err)
 
@@ -69,7 +74,7 @@ class BasebandReader(AbstractReader):
             'current', or 'end' for 0, 1, or 2, respectively.  Ignored if
             ``offset`` is a time.
         """
-        self._fh.seek(offset, whence)
+        return self._fh.seek(offset, whence)
 
     def tell(self, unit=None):
         """Current read position (relative to the start position).
@@ -103,7 +108,8 @@ class BasebandReader(AbstractReader):
 
     def read(self, N, offset=None):
         """Read N samples at given offset into a Signal object."""
-        self.seek(offset)
+        if offset is not None:
+            self.seek(offset)
         start_time = self.time
         return Signal(self.read_data(N, offset), start_time=start_time,
                       sample_rate=self.sample_rate)
@@ -121,16 +127,22 @@ class BasebandRawReader(BasebandReader):
     def __init__(self, fh, /, center_freq, bandwidth, sideband):
         super().__init__(fh)
 
-        if verify_scalar_quantity(center_freq, u.Hz):
-            self.center_freq = center_freq.to(u.MHz)
+        try:
+            self._center_freq = center_freq.to(u.MHz)
+            assert self._center_freq.isscalar
+        except Exception:
+            raise ValueError("Invalid value for center_freq!")
 
-        if verify_scalar_quantity(bandwidth, u.Hz):
-            self.bandwidth = bandwidth.to(u.MHz)
+        try:
+            self._bandwidth = bandwidth.to(u.MHz)
+            assert self._bandwidth.isscalar
+        except Exception:
+            raise ValueError("Invalid value for bandwidth!")
 
         if type(sideband) is bool:
-            self.sideband = sideband
+            self._sideband = sideband
         else:
-            self.sideband = np.array(sideband)
+            self._sideband = np.array(sideband)
             if len(fh.sample_shape) != self.sideband.shape:
                 err = "StreamReader sample shape != sideband shape"
                 raise ValueError(err)
@@ -142,6 +154,21 @@ class BasebandRawReader(BasebandReader):
             return self._fh.sample_rate.to(u.MHz)
         else:
             return self._fh.sample_rate.to(u.MHz) / 2
+
+    @property
+    def center_freq(self):
+        """Center observing frequency of the signal."""
+        return self._center_freq
+
+    @property
+    def bandwidth(self):
+        """Total bandwidth of signal."""
+        return self._bandwidth
+
+    @property
+    def sideband(self):
+        """True if upper sideband, False if lower sideband."""
+        return self._sideband
 
     def __len__(self):
         if self._fh.complex_data:
@@ -165,12 +192,21 @@ class BasebandRawReader(BasebandReader):
             ``offset`` is a time.
         """
         if self._fh.complex_data:
-            self._fh.seek(offset, whence)
-        elif isinstance(offset, int):
-            self._fh.seek(offset * 2, whence)
-        else:
-            self._fh.seek(offset, whence)
-            self._fh.seek(self.tell() * 2)
+            return self._fh.seek(offset, whence)
+
+        try:
+            offset = operator.index(offset)
+        except Exception:
+            try:
+                offset = offset - self.start_time
+            except Exception:
+                pass
+            else:
+                whence = 0
+
+            offset = int((offset * self.sample_rate).to(u.one).round())
+
+        return self._fh.seek(offset * 2, whence) // 2
 
     def tell(self, unit=None):
         """Current read position (relative to the start position).
@@ -204,7 +240,7 @@ class BasebandRawReader(BasebandReader):
             shape = (2*N, ) + self._fh.sample_shape
             z = np.empty(shape, dtype=np.float64, order='F')
             self._fh.read(out=z)
-            z = real_to_complex(z)
+            z = real_to_complex(z, axis=0)
 
         if self.sideband is False:
             z = z.conj()
@@ -223,7 +259,8 @@ class BasebandRawReader(BasebandReader):
                   'center_freq': self.center_freq,
                   'bandwidth': self.bandwidth}
 
-        self.seek(offset)
+        if offset is not None:
+            self.seek(offset)
         kwargs['start_time'] = self.time
 
         return BasebandSignal(self.read_data(N, offset), **kwargs)
@@ -256,7 +293,7 @@ class GUPPIRawReader(BasebandRawReader):
 
         self._fh = fh
 
-        if not times_are_close(fh.stop_time, self.stop_time):
+        if not _times_are_close(fh.stop_time, self.stop_time):
             err = 'StreamReader stop time does not match number of samples.'
             raise ValueError(err)
 
@@ -287,7 +324,8 @@ class GUPPIRawReader(BasebandRawReader):
                   'bandwidth': self.bandwidth,
                   'pol_type': self.pol_type}
 
-        self.seek(offset)
+        if offset is not None:
+            self.seek(offset)
         kwargs['start_time'] = self.time
 
         z = self.read_data(N, offset).transpose(0, 2, 1)
