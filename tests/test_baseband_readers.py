@@ -29,7 +29,7 @@ def guppi_fh(data_dir):
 @pytest.fixture
 def vdif_fh(data_dir):
     SAMPLE_VDIF = data_dir / 'sample.vdif'
-    fh = baseband.open(str(SAMPLE_VDIF), 'rs', format='vdif')
+    fh = baseband.open([SAMPLE_VDIF], 'rs', format='vdif')
     return fh
 
 
@@ -180,7 +180,7 @@ def test_reader_read(use_dask, bb_format, guppi_fh, vdif_fh):
         if bb_format == 'guppi':
             fh = pb.reader.DaskGUPPIRawReader(guppi_fh)
         elif bb_format == 'vdif':
-            fh = pb.reader.DaskBasebandRawReader(vdif_fh, **kw)
+            fh = pb.reader.DaskBasebandReader(vdif_fh)
     else:
         if bb_format == 'guppi':
             fh = pb.reader.GUPPIRawReader(guppi_fh)
@@ -195,3 +195,32 @@ def test_reader_read(use_dask, bb_format, guppi_fh, vdif_fh):
     assert np.allclose(np.array(x), np.array(y))
     y = fh.read(N, 1024)
     assert times_are_close(x.stop_time, y.start_time)
+
+
+@pytest.fixture
+def dada_stokes_fh(data_dir):
+    SAMPLE_STOKES_DADA = data_dir / 'stokes_ef.dada'
+    fh = baseband.open([SAMPLE_STOKES_DADA], 'rs', format='dada')
+    return fh
+
+
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_stokes_dada(use_dask, dada_stokes_fh):
+    if use_dask:
+        rdr = pb.reader.DaskDADAStokesReader(dada_stokes_fh)
+    else:
+        rdr = pb.reader.DADAStokesReader(dada_stokes_fh)
+
+    assert len(rdr) == 16
+    assert u.isclose(rdr.sample_rate, 1 / (131.072 * u.us))
+    assert u.isclose(rdr.center_freq, 7 * u.GHz)
+    assert u.isclose(rdr.bandwidth, 2 * u.GHz)
+    assert not rdr.sideband
+
+    rdr.seek(0)
+    x = rdr.read(8)
+    assert isinstance(x, pb.FullStokesSignal)
+    assert x.nchan == 2048
+    y = rdr.read(8, 0)
+    assert isinstance(y, pb.FullStokesSignal)
+    assert np.allclose(np.array(x), np.array(y))
