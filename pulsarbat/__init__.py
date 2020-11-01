@@ -12,3 +12,4 @@ from . import utils
 from . import reader
 
 from .signal_funcs import *
+from .dedispersion import *

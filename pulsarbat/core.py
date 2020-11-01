@@ -14,7 +14,6 @@ __all__ = [
     'FullStokesSignal',
     'DualPolarizationSignal',
     'InvalidSignalError',
-    'DispersionMeasure',
 ]
 
 
@@ -605,30 +604,3 @@ class DualPolarizationSignal(BasebandSignal):
 
         z = np.stack([i, Q, U, V], axis=2)
         return FullStokesSignal.like(self, z)
-
-
-class DispersionMeasure(u.SpecificTypeQuantity):
-    _equivalent_unit = _default_unit = u.pc / u.cm**3
-    dispersion_constant = u.s * u.MHz**2 * u.cm**3 / u.pc / 2.41E-4
-
-    def time_delay(self, f, ref_freq):
-        """Time delay of frequencies relative to reference frequency."""
-        coeff = self.dispersion_constant * self
-        delay = coeff * (1 / f**2 - 1 / ref_freq**2)
-        return delay.to(u.s)
-
-    def sample_delay(self, f, ref_freq, sample_rate):
-        """Sample delay of frequencies relative to reference frequency."""
-        samples = self.time_delay(f, ref_freq) * sample_rate
-        samples = samples.to_value(u.one)
-        return samples
-
-    def phase_delay(self, f, ref_freq):
-        coeff = self.dispersion_constant * self
-        phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
-        return phase.to_value(u.rad)
-
-    def transfer_function(self, f, ref_freq):
-        """Returns the transfer function for dedispersion."""
-        transfer = np.exp(1j * self.phase_delay(f, ref_freq))
-        return transfer.astype(np.complex64)

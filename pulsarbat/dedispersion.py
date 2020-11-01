@@ -1,29 +1,43 @@
 """Signal-to-signal transforms."""
 
-import functools
 import numpy as np
 import astropy.units as u
-from .core import Signal, BasebandSignal, DispersionMeasure
-from .utils import fftpack, verify_scalar_quantity
+from .core import RadioSignal, BasebandSignal
+from .utils import fftpack
+
+__all__ = [
+    'DispersionMeasure', 'coherent_dedispersion', 'incoherent_dedispersion'
+]
 
 
-__all__ = ['dedisperse', 'channelize', ]
+class DispersionMeasure(u.SpecificTypeQuantity):
+    _equivalent_unit = _default_unit = u.pc / u.cm**3
+    dispersion_constant = u.s * u.MHz**2 * u.cm**3 / u.pc / 2.41E-4
+
+    def time_delay(self, f, ref_freq):
+        """Time delay of frequencies relative to reference frequency."""
+        coeff = self.dispersion_constant * self
+        delay = coeff * (1 / f**2 - 1 / ref_freq**2)
+        return delay.to(u.s)
+
+    def sample_delay(self, f, ref_freq, sample_rate):
+        """Sample delay of frequencies relative to reference frequency."""
+        samples = self.time_delay(f, ref_freq) * sample_rate
+        samples = samples.to_value(u.one)
+        return samples
+
+    def phase_delay(self, f, ref_freq):
+        coeff = self.dispersion_constant * self
+        phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f)**2
+        return phase.to_value(u.rad)
+
+    def transfer_function(self, f, ref_freq):
+        """Returns the transfer function for dedispersion."""
+        transfer = np.exp(1j * self.phase_delay(f, ref_freq))
+        return transfer.astype(np.complex64)
 
 
-def transform(func):
-    """Decorator for all transforms."""
-    @functools.wraps(func)
-    def wrapper(z, *args, **kwargs):
-        if not isinstance(z, BasebandSignal):
-            raise TypeError('Input signal must be a BasebandSignal object.')
-        return func(z, *args, **kwargs)
-
-    return wrapper
-
-
-@transform
-def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity,
-               chirp: np.ndarray = None) -> BasebandSignal:
+def coherent_dedispersion(z, DM, /, *, ref_freq, chirp=None):
     """Coherently dedisperses a baseband signal by a given dispersion measure.
 
     The output signal will be cropped on both ends to avoid wrap-around
@@ -72,56 +86,5 @@ def dedisperse(z: BasebandSignal, DM: DispersionMeasure, ref_freq: u.Quantity,
     return BasebandSignal.like(z, x, start_time=z.start_time + time_cropped)
 
 
-@transform
-def channelize(z: BasebandSignal, factor: int) -> BasebandSignal:
-    """Channelizes a signal by a given factor.
-
-    For example, if `factor` is 8, and the input signal has 4 channels,
-    the output signal will have 32 channels. A factor less than 8 is not
-    recommended due to artifacts caused from extremely small Fourier
-    Transforms.
-
-    The output signal will also be cropped at the end if `len(z)` is not
-    divisible by `factor`.
-
-    Parameters
-    ----------
-    z : `~pulsarbat.BasebandSignal`
-        The signal to be transformed.
-    factor : int
-        Channelization factor.
-
-    Returns
-    -------
-    out : `~pulsarbat.BasebandSignal`
-        The channelized signal.
-    """
-    if not isinstance(factor, int):
-        raise TypeError("factor must be an integer.")
-
-    N = factor * (len(z) // factor)
-    x = np.array(z)[:N]
-
-    new_shape = (-1, factor) + x.shape[1:]
-    x = np.swapaxes(x.reshape(new_shape), 1, 2)
-
-    x = np.fft.fftshift(fftpack.fft(x, axis=2), axes=(2, ))
-
-    new_shape = (len(x), -1) + x.shape[3:]
-    x = x.reshape(new_shape)
-
-    return BasebandSignal.like(z, x, sample_rate=z.sample_rate / factor)
-
-
-@transform
-def convolve(z: BasebandSignal, h: Signal):
-    """Convolves a filter h with a signal z."""
-
-    if not isinstance(h, Signal):
-        raise TypeError('Filter must be a Signal object.')
-
-    if h.sample_rate != z.sample_rate:
-        err = 'Input signal and filter have different sample rates!'
-        raise ValueError(err)
-
-    raise NotImplementedError("I promise I'll do this later :)")
+def incoherent_dedispersion(z, DM, /, *, ref_freq):
+    raise NotImplementedError("Will do it soon, I promise!")
