@@ -28,7 +28,8 @@ def test_radiosignal(nchan, channel_centers):
     z = pb.RadioSignal(np.random.standard_normal((16, nchan, 2)),
                        sample_rate=1 * u.Hz,
                        center_freq=center_freq,
-                       bandwidth=bandwidth)
+                       bandwidth=bandwidth,
+                       freq_align='center')
 
     assert z.nchan == nchan
     assert z.center_freq == center_freq
@@ -37,7 +38,7 @@ def test_radiosignal(nchan, channel_centers):
     assert u.isclose(z.max_freq, max_freq)
     assert u.isclose(z.chan_bandwidth, chan_bandwidth)
 
-    for a, b in zip(z.channel_centers, channel_centers):
+    for a, b in zip(z.channel_freqs, channel_centers):
         assert u.isclose(a, b)
 
 
@@ -88,12 +89,13 @@ def stack_data(nchan, use_dask=False):
 @pytest.mark.parametrize("use_dask", [True, False])
 def test_stack_basic(use_dask):
     sigs = [pb.RadioSignal(stack_data(4, use_dask), sample_rate=1*u.Hz,
-                           center_freq=fcen, bandwidth=100*u.MHz)
+                           center_freq=fcen, bandwidth=100*u.MHz,
+                           freq_align='center')
             for fcen in [250 * u.MHz, 350 * u.MHz, 450 * u.MHz, 550 * u.MHz]]
 
-    fcens = np.concatenate([s.channel_centers for s in sigs])
+    fcens = np.concatenate([s.channel_freqs for s in sigs])
     z = pb.stack(sigs)
-    assert u.allclose(fcens, z.channel_centers)
+    assert u.allclose(fcens, z.channel_freqs)
     assert u.isclose(z.bandwidth, 400 * u.MHz)
 
 

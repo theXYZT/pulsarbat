@@ -140,8 +140,12 @@ class BasebandRawReader(BasebandReader):
         If channels have different sidebands, an array-like object of
         boolean elements can be passed (must have the same shape as the
         StreamReader's sample shape).
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of frequencies relative to channels. Default is
+        `'bottom'` (as with even-length FFTs).
     """
-    def __init__(self, fh, /, center_freq, bandwidth, sideband=True):
+    def __init__(self, fh, /, *, center_freq, bandwidth, sideband=True,
+                 freq_align='bottom'):
         super().__init__(fh)
 
         try:
@@ -164,18 +168,16 @@ class BasebandRawReader(BasebandReader):
                 err = "StreamReader sample shape != sideband shape"
                 raise ValueError(err)
 
+        if freq_align in ['bottom', 'center', 'top']:
+            self._freq_align = freq_align
+        else:
+            choices = "{'bottom', 'center', 'top'}"
+            raise ValueError(f'Invalid freq_align. Expected: {choices}')
+
     @property
     def sideband(self):
         """True if upper sideband, False if lower sideband."""
         return self._sideband
-
-    @property
-    def sample_rate(self):
-        """Sample rate of the complex baseband representation of the data."""
-        if self._fh.complex_data:
-            return self._fh.sample_rate.to(u.MHz)
-        else:
-            return self._fh.sample_rate.to(u.MHz) / 2
 
     @property
     def center_freq(self):
@@ -186,6 +188,19 @@ class BasebandRawReader(BasebandReader):
     def bandwidth(self):
         """Total bandwidth of signal."""
         return self._bandwidth
+
+    @property
+    def freq_align(self):
+        """Alignment of channel frequencies."""
+        return self._freq_align
+
+    @property
+    def sample_rate(self):
+        """Sample rate of the complex baseband representation of the data."""
+        if self._fh.complex_data:
+            return self._fh.sample_rate.to(u.MHz)
+        else:
+            return self._fh.sample_rate.to(u.MHz) / 2
 
     def __len__(self):
         if self._fh.complex_data:
@@ -270,7 +285,8 @@ class BasebandRawReader(BasebandReader):
         """Read N samples at given offset into a Signal object."""
         kwargs = {'sample_rate': self.sample_rate,
                   'center_freq': self.center_freq,
-                  'bandwidth': self.bandwidth}
+                  'bandwidth': self.bandwidth,
+                  'freq_align': self.freq_align}
 
         offset = self.tell() if offset is None else self.seek(offset)
         kwargs['start_time'] = self.time
@@ -332,12 +348,17 @@ class GUPPIRawReader(BasebandRawReader):
     def pol_type(self):
         return {'LIN': 'linear', 'CIRC': 'circular'}[self.header['FD_POLN']]
 
+    @property
+    def freq_align(self):
+        return 'center'
+
     def read(self, N, offset=None):
         """Read N samples at given offset into a Signal object."""
         kwargs = {'sample_rate': self.sample_rate,
                   'center_freq': self.center_freq,
                   'bandwidth': self.bandwidth,
-                  'pol_type': self.pol_type}
+                  'pol_type': self.pol_type,
+                  'freq_align': self.freq_align}
 
         offset = self.tell() if offset is None else self.seek(offset)
         kwargs['start_time'] = self.time
@@ -383,11 +404,16 @@ class DADAStokesReader(BasebandReader):
     def bandwidth(self):
         return abs(self.header['BW']) * u.MHz
 
+    @property
+    def freq_align(self):
+        return 'bottom' if self.sideband else 'top'
+
     def read(self, N, offset=None):
         """Read N samples at given offset into a Signal object."""
         kwargs = {'sample_rate': self.sample_rate,
                   'center_freq': self.center_freq,
-                  'bandwidth': self.bandwidth}
+                  'bandwidth': self.bandwidth,
+                  'freq_align': self.freq_align}
 
         offset = self.tell() if offset is None else self.seek(offset)
         kwargs['start_time'] = self.time

@@ -236,6 +236,9 @@ class RadioSignal(Signal):
         The total bandwidth of the signal. The channel bandwidth is this
         total bandwidth divided by the number of channels. Must be in
         units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of frequencies relative to channels. Default is
+        `'bottom'` (as with even-length FFTs).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
@@ -247,24 +250,22 @@ class RadioSignal(Signal):
     number of frequency channels.
 
     The channels must be adjacent in frequency and of equal channel
-    bandwidth, such that the center frequency of a channel `i` is given
-    by,::
+    bandwidth, such that the frequency of a channel `i` is given by,::
 
-        freq_i = center_freq + (bandwidth / nchan) * (i + 0.5 - nchan/2)
+        freq_i = center_freq + (bandwidth / nchan) * (i + a - nchan/2)
 
-    where `i` is in `[0, ..., nchan - 1]` and `nchan` is the number of
-    channels (`data.shape[1]`) and `bandwidth / nchan` is the bandwidth of
-    a single channel.
-
-    Input data that is unchannelized must still be treated as data with
-    1 channel where `data.shape[1] = 1`.
+    where `i` is in `[0, ..., nchan - 1]`, `nchan` is the number of
+    channels (`data.shape[1]`), `bandwidth / nchan` is the bandwidth of
+    a single channel, and `a` is in `{0, 0.5, 1}` depending on the value
+    of `freq_align`.
     """
     _shape = (None, None, )
 
     def __init__(self, z, /, *, sample_rate, center_freq, bandwidth,
-                 start_time=None):
+                 freq_align='bottom', start_time=None):
         self.center_freq = center_freq
         self.bandwidth = bandwidth
+        self.freq_align = freq_align
         super().__init__(z, sample_rate=sample_rate, start_time=start_time)
 
     def __str__(self):
@@ -320,9 +321,23 @@ class RadioSignal(Signal):
         return self.center_freq - self.bandwidth / 2
 
     @property
-    def channel_centers(self):
-        """Returns a list of center frequencies for all channels."""
-        chan_ids = [i + 0.5 - self.nchan / 2 for i in range(self.nchan)]
+    def freq_align(self):
+        """Alignment of channel frequencies."""
+        return self._freq_align
+
+    @freq_align.setter
+    def freq_align(self, freq_align):
+        if freq_align in ['bottom', 'center', 'top']:
+            self._freq_align = freq_align
+        else:
+            choices = "{'bottom', 'center', 'top'}"
+            raise ValueError(f'Invalid freq_align. Expected: {choices}')
+
+    @property
+    def channel_freqs(self):
+        """Returns a list of frequencies corresponding to all channels."""
+        _align = {'bottom': 0, 'center': 0.5, 'top': 1}[self.freq_align]
+        chan_ids = [i + _align - self.nchan / 2 for i in range(self.nchan)]
         return self.center_freq + self.chan_bandwidth * chan_ids
 
 
@@ -345,6 +360,9 @@ class IntensitySignal(RadioSignal):
         The total bandwidth of the signal. The channel bandwidth is this
         total bandwidth divided by the number of channels. Must be in
         units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of frequencies relative to channels. Default is
+        `'bottom'` (as with even-length FFTs).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
@@ -381,6 +399,9 @@ class BasebandSignal(RadioSignal):
     bandwidth : `~astropy.units.Quantity`
         The total bandwidth of the signal. Must be equal to
         `nchan * sample_rate`. Must be in units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of frequencies relative to channels. Default is
+        `'bottom'` (as with even-length FFTs).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
@@ -449,6 +470,9 @@ class FullStokesSignal(IntensitySignal):
         The total bandwidth of the signal. The channel bandwidth is this
         total bandwidth divided by the number of channels. Must be in
         units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of frequencies relative to channels. Default is
+        `'bottom'` (as with even-length FFTs).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
@@ -487,6 +511,9 @@ class DualPolarizationSignal(BasebandSignal):
         The total bandwidth of the signal. The channel bandwidth is this
         total bandwidth divided by the number of channels. Must be in
         units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of frequencies relative to channels. Default is
+        `'bottom'` (as with even-length FFTs).
     pol_type : {'linear', 'circular'}
         The polarization type of the signal. Accepted values are
         'linear' for linearly polarized signals (with basis `[X, Y]`)
@@ -511,11 +538,12 @@ class DualPolarizationSignal(BasebandSignal):
     """
     _shape = (None, None, 2)
 
-    def __init__(self, z, /, *, sample_rate, center_freq, bandwidth, pol_type,
-                 start_time=None):
+    def __init__(self, z, /, *, sample_rate, center_freq, bandwidth,
+                 freq_align='bottom', pol_type, start_time=None, ):
         self.pol_type = pol_type
         super().__init__(z, sample_rate=sample_rate, center_freq=center_freq,
-                         bandwidth=bandwidth, start_time=start_time)
+                         bandwidth=bandwidth, freq_align=freq_align,
+                         start_time=start_time)
 
     def __str__(self):
         s = super().__str__() + "\n"
