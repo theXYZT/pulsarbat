@@ -2,7 +2,6 @@
 pulsarbat
 =========
 
-
 .. image:: https://img.shields.io/pypi/v/pulsarbat.svg
         :target: https://pypi.python.org/pypi/pulsarbat
 
@@ -14,19 +13,28 @@ pulsarbat
         :alt: Documentation Status
 
 
+Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
+
+For installation instructions, see the `online documentation <https://pulsarbat.readthedocs.io/>`_ or  `docs/install.rst <docs/install.rst>`_ in this source distribution.
+
+| The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
+| For documentation, please go to: https://pulsarbat.readthedocs.io
 
 
-pulsarbat (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband observations of pulsars.
+Requirements
+------------
+
+- **Python 3.8** or later
+- `Astropy <https://www.astropy.org/>`_ v4.0 or later
+- `Numpy <https://www.numpy.org/>`_ v1.18 or later
+- `Scipy <https://scipy.org/>`_ v1.14 or later
 
 
-* Free software: GNU General Public License v3
-* Documentation: https://pulsarbat.readthedocs.io.
+License
+-------
 
+Pulsarbat is licensed under the GNU General Public License v3.
 
-Features
---------
-
-* TODO
 
 Credits
 -------

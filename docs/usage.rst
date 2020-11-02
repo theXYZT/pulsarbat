@@ -1,7 +1,5 @@
-=====
-Usage
-=====
+========
+Examples
+========
 
-To use pulsarbat in a project::
-
-    import pulsarbat
+Under construction :)

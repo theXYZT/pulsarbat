@@ -2,7 +2,8 @@
 History
 =======
 
-0.0.2 (2019-07-01)
+0.1.0 (2020-??-??)
 ------------------
 
-* First release on PyPI.
+* Minimum viable product released.
+

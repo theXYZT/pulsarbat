@@ -1,26 +1,83 @@
-"""Signal-to-signal transforms."""
+"""Collection of handy utilities."""
 
 import numpy as np
-import astropy.units as u
-from astropy.time import Time
-from .core import BasebandSignal
-
-__all__ = ['generate_fake_baseband']
+from scipy.fft import next_fast_len
+# import astropy.units as u
 
 
-def complex_noise(N, S):
-    """Generates complex gaussian noise of length N and power S."""
-    r = np.random.normal(0, 1 / np.sqrt(2), N)
-    i = np.random.normal(0, 1 / np.sqrt(2), N)
-    return (r + 1j * i) * np.sqrt(S)
+__all__ = [
+    'real_to_complex',
+    'next_fast_len',
+]
 
 
-def generate_fake_baseband(shape):
-    assert len(shape) > 1
-    z = complex_noise(shape, 1)
-    sample_rate = 1 * u.MHz
-    center_freq = 400 * u.MHz
-    start_time = Time('2020-01-01T06:00:00.000', precision=9)
-    bandwidth = shape[1] * sample_rate
+def real_to_complex(z, axis=0):
+    """Convert a real baseband signal to a complex baseband signal.
 
-    return BasebandSignal(z, sample_rate, start_time, center_freq, bandwidth)
+    This function computes the analytic representation of the input
+    signal via a Hilbert transform, throwing away negative frequency
+    components. Then, the signal is shifted in frequency domain by -B/2
+    where B is the bandwidth of the signal. Finally, the signal is
+    decimated by a factor of 2, which results in the complex baseband
+    representation of the input signal [1]_.
+
+    If the input signal is complex-valued, only the real component is
+    used.
+
+    Parameters
+    ----------
+    z : `~numpy.ndarray`
+        Input signal.
+    axis : int, optional
+        Axis over which to convert the signal. This will be the axis
+        that represents time. Default is 0.
+
+    Returns
+    -------
+    out : np.ndarray
+        The complex baseband representation of the input signal.
+
+    References
+    ----------
+    .. [1] https://dsp.stackexchange.com/q/43278/17721
+    """
+    if np.iscomplexobj(z):
+        z = z.real
+    z = z.astype(np.float32)
+
+    # Pick the correct axis to work on
+    if z.ndim > 1:
+        ind = [np.newaxis] * z.ndim
+        ind[axis] = slice(None)
+    N = z.shape[axis]
+
+    # Hilbert transform
+    z = np.fft.fft(z, axis=axis)
+    h = np.zeros(N)
+    if N % 2 == 0:
+        h[0] = h[N // 2] = 1
+        h[1:N // 2] = 2
+    else:
+        h[0] = 1
+        h[1:(N + 1) // 2] = 2
+    if z.ndim > 1:
+        h = h[tuple(ind)]
+    z = np.fft.ifft(z * h, axis=axis)
+
+    # Frequency shift signal by -B/2
+    h = np.exp(-1j * np.pi / 2 * np.arange(N))
+    if z.ndim > 1:
+        h = h[tuple(ind)]
+    z *= h
+
+    # Decimate signal by factor of 2
+    dec = [slice(None)] * z.ndim
+    dec[axis] = slice(None, None, 2)
+    z = z[tuple(dec)]
+    return z.astype(np.complex64)
+
+
+# def taper_function(freqs, bandwidth):
+#     x = (freqs / bandwidth).to_value(u.one)
+#     taper = 1 + (x / 0.48)**80
+#     return taper

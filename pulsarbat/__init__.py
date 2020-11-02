@@ -1,19 +1,15 @@
-"""Top-level package for pulsarbat."""
+"""Top-level module for pulsarbat."""
+
+# flake8: noqa
 
 __author__ = """Nikhil Mahajan"""
 __email__ = 'mahajan@astro.utoronto.ca'
 __version__ = '0.0.3'
 
-from . import core
-from . import transforms
-from . import reductions
-from . import pulsar
+
+from .core import *
 from . import utils
+from . import reader
 
-from .core import (Signal, RadioSignal, BasebandSignal, IntensitySignal)
-from .predictor import Polyco
-from .observation import (Observation, PUPPIObservation)
-
-__all__ = ['core', 'transforms', 'reductions', 'pulsar', 'utils', 'Polyco']
-__all__ += ['Signal', 'RadioSignal', 'BasebandSignal', 'IntensitySignal']
-__all__ += ['Observation', 'PUPPIObservation']
+from .signal_funcs import *
+from .dedispersion import *

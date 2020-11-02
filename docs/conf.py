@@ -39,15 +39,21 @@ import pulsarbat
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
+    'matplotlib.sphinxext.plot_directive',
+    'IPython.sphinxext.ipython_directive',
+    'IPython.sphinxext.ipython_console_highlighting',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
-    'numpydoc'
+    'sphinx.ext.inheritance_diagram',
+    'numpydoc',
 ]
 
+
 numpydoc_show_class_members = False
+numpydoc_show_inherited_class_members = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
@@ -55,6 +61,7 @@ intersphinx_mapping = {
     'astropy': ('http://docs.astropy.org/en/latest/', None),
     'baseband': ('https://baseband.readthedocs.io/en/latest/', None),
     'pyfftw': ('https://pyfftw.readthedocs.io/en/latest/', None),
+    'pulsarbat': ('https://pulsarbat.readthedocs.io/en/latest/', None),
 }
 
 default_role = 'py:obj'
@@ -73,7 +80,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pulsarbat'
-copyright = u"2019, Nikhil Mahajan"
+copyright = u"2020, Nikhil Mahajan"
 author = u"Nikhil Mahajan"
 
 # The version info for the project you're documenting, acts as replacement
@@ -117,8 +124,11 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    # 'page_width': '960px',
-    # 'font_size': '16px',
+    'github_user': 'theXYZT',
+    'github_repo': 'pulsarbat',
+    'description': 'Pulsar Baseband Analysis Tools',
+    'fixed_sidebar': True,
+    'page_width': '980px',
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -187,3 +197,16 @@ texinfo_documents = [
      'pulsarbat is for analysis of radio baseband observations of pulsars.',
      'Miscellaneous'),
 ]
+
+html_sidebars = {
+    '**': [
+        'about.html',
+        'navigation.html',
+        'relations.html',
+        'searchbox.html',
+        'donate.html',
+    ]
+}
+
+autodoc_member_order = 'groupwise'
+autodoc_typehints = 'none'
