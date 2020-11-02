@@ -39,7 +39,7 @@ def stack(sigs):
             raise ValueError(f"Signals don't have the same {a}")
 
     sigs = sorted(sigs, key=lambda s: s.center_freq)
-    channels = np.concatenate([s.channel_centers for s in sigs])
+    channels = np.concatenate([s.channel_freqs for s in sigs])
     df = np.diff(channels).to_value(u.Hz)
 
     if not np.allclose(df, df[0]):

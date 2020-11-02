@@ -70,7 +70,7 @@ def coherent_dedispersion(z, DM, /, *, ref_freq, chirp=None):
         raise TypeError("Signal must be a BasebandSignal object.")
 
     if chirp is None:
-        f = z.channel_centers[None] + np.fft.fftfreq(len(z), z.dt)[:, None]
+        f = z.channel_freqs[None] + np.fft.fftfreq(len(z), z.dt)[:, None]
         chirp = DM.transfer_function(f, ref_freq)
 
     x = np.fft.fft(z.data, axis=0)
