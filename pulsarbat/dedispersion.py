@@ -1,9 +1,9 @@
 """Signal-to-signal transforms."""
 
+import math
 import numpy as np
 import astropy.units as u
 from .core import RadioSignal, BasebandSignal
-from .utils import fftpack
 
 __all__ = [
     'DispersionMeasure', 'coherent_dedispersion', 'incoherent_dedispersion'
@@ -57,33 +57,43 @@ def coherent_dedispersion(z, DM, /, *, ref_freq, chirp=None):
     ref_freq : `~astropy.units.Quantity`
         Reference frequency to dedisperse to.
     chirp: `~numpy.ndarray`, optional
-        The dedispersion chirp function provided to avoid computing a new one.
+        The dedispersion chirp function can be provided to avoid
+        computing a new one. This is useful when the same dedispersion
+        operation is being done on many blocks of the same size
 
     Returns
     -------
     out : `~pulsarbat.BasebandSignal`
         The dedispersed signal.
     """
-    if not isinstance(DM, DispersionMeasure):
-        raise TypeError('DM must be a DispersionMeasure object.')
-    verify_scalar_quantity(ref_freq, u.Hz)
+    if not isinstance(z, BasebandSignal):
+        raise TypeError("Signal must be a BasebandSignal object.")
 
     if chirp is None:
         f = z.channel_centers[None] + np.fft.fftfreq(len(z), z.dt)[:, None]
         chirp = DM.transfer_function(f, ref_freq)
+
+    x = np.fft.fft(z.data, axis=0)
+    x = np.fft.ifft((x.T / chirp.T).T, axis=0)
+
+    sample_delay_top = DM.sample_delay(z.max_freq, ref_freq, z.sample_rate)
+    sample_delay_bot = DM.sample_delay(z.min_freq, ref_freq, z.sample_rate)
+
+    crop_before = math.ceil(-min(0, sample_delay_top, sample_delay_bot))
+    crop_after = math.ceil(+max(0, sample_delay_top, sample_delay_bot))
+
+    if crop_before:
+        x = x[crop_before:]
+
+    if crop_after:
+        x = x[:-crop_after]
+
+    if crop_before and z.start_time is not None:
+        new_start = z.start_time + crop_before * z.dt
     else:
-        assert chirp.shape != z.shape[:chirp.ndims]
+        new_start = z.start_time
 
-    x = fftpack.fft(np.asarray(z), axis=0)
-    x = fftpack.ifft((x.T / chirp.T).T, axis=0)
-
-    crop_before = -min(0, DM.sample_delay(z.max_freq, ref_freq, z.sample_rate))
-    crop_after = max(0, DM.sample_delay(z.min_freq, ref_freq, z.sample_rate))
-
-    x = x[crop_before:-crop_after]
-    time_cropped = crop_before * z.dt
-
-    return BasebandSignal.like(z, x, start_time=z.start_time + time_cropped)
+    return type(z).like(z, x, start_time=new_start)
 
 
 def incoherent_dedispersion(z, DM, /, *, ref_freq):

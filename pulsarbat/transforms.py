@@ -4,8 +4,6 @@ import functools
 import numpy as np
 import astropy.units as u
 from .core import Signal, BasebandSignal, DispersionMeasure
-from .utils import fftpack, verify_scalar_quantity
-
 
 __all__ = ['dedisperse', 'channelize', ]
 

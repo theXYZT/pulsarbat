@@ -1,3 +1,3 @@
-"""Top-level module for pulsarbat."""
+"""Pulsar processing module."""
 
 # flake8: noqa

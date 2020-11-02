@@ -1,21 +1,12 @@
 """Collection of handy utilities."""
 
-import os
 import numpy as np
 from scipy.fft import next_fast_len
 # import astropy.units as u
 
-try:
-    import pyfftw
-    pyfftw.config.NUM_THREADS = int(os.environ.get('OMP_NUM_THREADS', 1))
-    fftpack = pyfftw.interfaces.numpy_fft
-except ImportError:
-    fftpack = np.fft
-
 
 __all__ = [
     'real_to_complex',
-    'fftpack',
     'next_fast_len',
 ]
 
@@ -61,7 +52,7 @@ def real_to_complex(z, axis=0):
     N = z.shape[axis]
 
     # Hilbert transform
-    z = fftpack.fft(z, axis=axis)
+    z = np.fft.fft(z, axis=axis)
     h = np.zeros(N)
     if N % 2 == 0:
         h[0] = h[N // 2] = 1
@@ -71,7 +62,7 @@ def real_to_complex(z, axis=0):
         h[1:(N + 1) // 2] = 2
     if z.ndim > 1:
         h = h[tuple(ind)]
-    z = fftpack.ifft(z * h, axis=axis)
+    z = np.fft.ifft(z * h, axis=axis)
 
     # Frequency shift signal by -B/2
     h = np.exp(-1j * np.pi / 2 * np.arange(N))
