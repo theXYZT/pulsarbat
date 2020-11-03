@@ -5,9 +5,9 @@ Credits
 Development Lead
 ----------------
 
-* Nikhil Mahajan <mahajan@astro.utoronto.ca>
+* Nikhil Mahajan `@theXYZT <https://github.com/theXYZT>`_
 
 Contributors
 ------------
 
-None yet. Why not be the first?
+* Rebecca Lin `@00rebe <https://github.com/00rebe>`_
