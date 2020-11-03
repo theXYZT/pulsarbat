@@ -1,14 +1,23 @@
+# Config file for automatic testing at travis-ci.org
 language: python
 os: linux
+dist: focal
 
-python:
-  - 3.8
-  - 3.9
+jobs:
+    include:
+      - name: "Python 3.8 on Ubuntu 20.04"
+        python: 3.8
+      - name: "Python 3.9 on Ubuntu 20.04"
+        python: 3.9
 
 install:
   - pip install -U tox-travis
 
 script: tox
+
+after_success:
+    - pip install codecov
+    - codecov -e TOXENV
 
 deploy:
   provider: pypi
