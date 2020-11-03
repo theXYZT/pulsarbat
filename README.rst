@@ -5,8 +5,14 @@ pulsarbat
 .. image:: https://img.shields.io/pypi/v/pulsarbat.svg
         :target: https://pypi.python.org/pypi/pulsarbat
 
+.. image:: https://img.shields.io/pypi/pyversions/cookiecutter.svg
+        :target: https://pypi.python.org/pypi/pulsarbat
+
 .. image:: https://img.shields.io/travis/theXYZT/pulsarbat.svg
         :target: https://travis-ci.org/theXYZT/pulsarbat
+
+.. image:: https://codecov.io/gh/theXYZT/pulsarbat/branch/master/graph/badge.svg?token=Ia6qdZNhHE
+        :target: https://codecov.io/gh/theXYZT/pulsarbat
 
 .. image:: https://readthedocs.org/projects/pulsarbat/badge/?version=latest
         :target: https://pulsarbat.readthedocs.io/en/latest/?badge=latest
