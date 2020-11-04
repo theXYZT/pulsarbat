@@ -1,0 +1,5 @@
+astropy>=4.1
+numpy>=1.19.2
+scipy>=1.5.3
+baseband>=4.0.2
+dask[complete]>=2.30.0

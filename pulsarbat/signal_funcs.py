@@ -3,8 +3,6 @@
 import numpy as np
 import astropy.units as u
 
-from .core import RadioSignal
-
 
 __all__ = ['stack', ]
 
@@ -19,12 +17,12 @@ def stack(sigs):
 
     Parameters
     ----------
-    signals : sequence of `~pulsarbat.RadioSignal`-like
+    signals : sequence of `~RadioSignal`-like
         The signals being stacked.
 
     Returns
     -------
-    out : `~pulsarbat.RadioSignal`-like
+    out : `~RadioSignal`-like
         The stacked signal of same type as input signals.
     """
     _sig_type = type(sigs[0])
