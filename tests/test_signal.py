@@ -65,10 +65,10 @@ def test_shape_errors(shape):
         _ = pb.Signal(np.empty(shape), sample_rate=1 * u.Hz)
 
 
-@pytest.mark.parametrize("sample_rate", [99., 400 * u.m, [50., 60.] * u.Hz])
-def test_sample_rate_errors(sample_rate):
-    with pytest.raises(ValueError):
-        _ = pb.Signal(np.empty((8, 4)), sample_rate=sample_rate)
+def test_sample_rate_errors():
+    for x in [99., 4*u.m, [5, 6]*u.Hz, -1*u.Hz]:
+        with pytest.raises(ValueError):
+            _ = pb.Signal(np.empty((8, 4)), sample_rate=x)
 
 
 @pytest.mark.parametrize("ts", [Time([59843, 45678, 65678], format='mjd'),
@@ -79,8 +79,8 @@ def test_start_time_errors(ts):
 
 
 class ArbitrarySignal(pb.Signal):
-    _dtype = np.int8
-    _shape = (7, None, 4, None)
+    _req_dtype = (np.int8, np.int16)
+    _req_shape = (7, None, 4, None)
 
     def __init__(self, z, /, *, sample_rate, foo):
         self._foo = foo
@@ -91,11 +91,18 @@ class ArbitrarySignal(pb.Signal):
         return self._foo
 
 
-@pytest.mark.parametrize("dtype", [np.float32, np.int32])
+@pytest.mark.parametrize("dtype", [np.int8, np.int16])
 def test_dtype_constraints(dtype):
     x = np.random.uniform(-50, 50, (7, 2, 4, 1)).astype(dtype)
     z = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
-    assert z.dtype == z.data.dtype == np.int8
+    assert z.dtype == dtype
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.int32])
+def test_dtype_constraints_error(dtype):
+    x = np.random.uniform(-50, 50, (7, 2, 4, 1)).astype(dtype)
+    with pytest.raises(ValueError):
+        _ = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
 
 
 @pytest.mark.parametrize("shape", [(7,), (7, 2), (7, 1, 4), (7, 2, 3, 2)])

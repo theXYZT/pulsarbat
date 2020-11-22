@@ -4,7 +4,6 @@ import inspect
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from itertools import zip_longest
 
 __all__ = [
     'Signal',
@@ -25,9 +24,9 @@ class Signal:
     """Base class for all signals.
 
     A signal is sufficiently described by an array of samples (`z`),
-    and a constant sampling rate (`sample_rate`). Optionally, a
-    `start_time` can be provided to specify the timestamp at the first
-    sample of the signal.
+    and a sampling rate (`sample_rate`). Optionally, a `start_time` can
+    be provided to specify the time stamp at the first sample of the
+    signal.
 
     The signal data (`z`) must have at least 1 dimension where the
     zeroth axis (`axis=0`) refers to time. That is, `z[i]` is the `i`-th
@@ -45,15 +44,15 @@ class Signal:
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
     """
-    _dtype = None
-    _shape = (None, )
+    _req_dtype = None
+    _req_shape = (None, )
 
     def __init__(self, z, /, *, sample_rate, start_time=None):
         try:
             self._sample_rate = sample_rate.to(u.MHz)
-            assert self._sample_rate.isscalar
+            assert self._sample_rate.isscalar and self._sample_rate > 0
         except Exception:
-            err = ("Invalid sample_rate! Must be a scalar astropy "
+            err = ("Invalid sample_rate. Must be a positive scalar "
                    "Quantity with units of Hz or equivalent.")
             raise ValueError(err)
 
@@ -63,27 +62,31 @@ class Signal:
                 self._start_time = Time(start_time, format='isot', precision=9)
                 assert self._start_time.isscalar
             except Exception:
-                raise ValueError('Invalid start_time!')
+                err = ("Invalid start_time. Must be a scalar "
+                       "astropy.time.Time object.")
+                raise ValueError(err)
 
         if z.size == 0:
-            raise InvalidSignalError('Expected signal with non-zero size.')
+            raise InvalidSignalError("Signal has zero size.")
 
-        if z.ndim < len(self._shape):
-            err = (f'Expected at least {len(self._shape)} dimension(s), '
-                   f'got signal with {z.ndim} dimension(s) instead!')
+        min_ndim = len(self._req_shape)
+
+        if z.ndim < min_ndim:
+            err = (f"Expected signal with at least {min_ndim} dimension(s), "
+                   f"got signal with {z.ndim} dimension(s) instead.")
             raise InvalidSignalError(err)
 
-        zipped = zip_longest(z.shape[:len(self._shape)], self._shape)
+        zipped = zip(z.shape[:min_ndim], self._req_shape)
         if not all(x == (y or x) for x, y in zipped):
-            err = (f'Input signal has invalid shape. Expected {self._shape}, '
-                   f'got {z.shape} instead!')
+            err = (f"Signal has invalid shape. Expected {self._req_shape}, "
+                   f"got {z.shape} instead.")
             raise InvalidSignalError(err)
 
-        self._data = z.astype(self._dtype or z.dtype, copy=False)
-        self._verification_checks()
-
-    def _verification_checks(self):
-        pass
+        if self._req_dtype is not None and z.dtype not in self._req_dtype:
+            err = (f"Signal has invalid dtype. Expected {self._req_dtype}, "
+                   f"got {z.dtype} instead.")
+            raise InvalidSignalError(err)
+        self._data = z
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -229,10 +232,10 @@ class RadioSignal(Signal):
     """Class for heterodyned radio signals.
 
     A radio signal is often heterodyned, so a center frequency
-    (`center_freq`) and a bandwidth (`bandwidth`) must be provided to
-    indicate the "true frequency" at the center of the band. Optionally,
-    a `freq_align` is provided to indicate how the "channel frequencies"
-    are positioned. Usually, the signal data here would be the result of
+    (`center_freq`) and a channel bandwidth (`chan_bw`) must be provided
+    to determine the frequencies of each channel. Optionally,
+    `freq_align` is provided to indicate how the channel frequencies are
+    positioned. Usually, the signal data here would be the result of
     some sort of filterbank.
 
     The signal data (`z`) must have at least 2 dimensions where the
@@ -246,20 +249,19 @@ class RadioSignal(Signal):
         `(nsample, nchan, ...)`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
+    start_time : `~astropy.time.Time`, optional
+        The start time of the signal (that is, the time at the first
+        sample of the signal). Default is None.
     center_freq : `~astropy.units.Quantity`
-        The observing frequency at the center of the signal's band. Must
-        be in units of frequency.
-    bandwidth : `~astropy.units.Quantity`
-        The total bandwidth of the signal. The channel bandwidth is this
-        total bandwidth divided by the number of channels. Must be in
+        The frequency at the center of the signal's band. Must be in
         units of frequency.
+    chan_bw : `~astropy.units.Quantity`
+        The bandwidth of a channel. The total bandwidth is `chan_bw *
+        nchan`. Must be in units of frequency.
     freq_align : {'bottom', 'center', 'top'}, optional
         The alignment of channels relative to the `center_freq`. Default
         is `'center'` (as with odd-length complex DFTs). `'bottom'` and
         `'top'` only have an effect when `nchan` is even.
-    start_time : `~astropy.time.Time`, optional
-        The start time of the signal (that is, the time at the first
-        sample of the signal). Default is None.
 
     Notes
     -----
@@ -270,12 +272,12 @@ class RadioSignal(Signal):
     The channels must be adjacent in frequency and of equal channel
     bandwidth, such that the frequency of a channel `i` is given by,::
 
-        freq_i = center_freq + (bandwidth / nchan) * (i + a - nchan/2)
+        freq_i = center_freq + chan_bw * (i + a - nchan/2)
 
     where `i` is in `[0, ..., nchan - 1]`, `nchan` is the number of
-    channels (`z.shape[1]`), `bandwidth / nchan` is the bandwidth of a
-    single channel, and `a` is in `{0, 0.5, 1}` depending on the value
-    of `freq_align`.
+    channels (`z.shape[1]`), `chan_bw` is the bandwidth of a single
+    channel, and `a` is in `{0, 0.5, 1}` depending on the value of
+    `freq_align`.
 
     An even-length complex-valued DFT (as implemented in `~numpy.fft`)
     would have `freq_align = 'bottom'` with a center frequency of 0,
@@ -287,24 +289,24 @@ class RadioSignal(Signal):
     fixed to `'center'` since the channels must be necessarily centered
     on the `center_freq`.
     """
-    _shape = (None, None, )
+    _req_shape = (None, None, )
 
-    def __init__(self, z, /, *, sample_rate, center_freq, bandwidth,
-                 freq_align='bottom', start_time=None):
+    def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
+                 chan_bw, freq_align='center'):
 
         try:
             self._center_freq = center_freq.to(u.MHz)
-            assert self._center_freq.isscalar
+            assert self._center_freq.isscalar and self._center_freq > 0
         except Exception:
-            err = ("Invalid center_freq! Must be a scalar astropy "
+            err = ("Invalid center_freq. Must be a positive scalar "
                    "Quantity with units of Hz or equivalent.")
             raise ValueError(err)
 
         try:
-            self._bandwidth = bandwidth.to(u.MHz)
-            assert self._bandwidth.isscalar
+            self._chan_bw = chan_bw.to(u.MHz)
+            assert self._chan_bw.isscalar and self._chan_bw > 0
         except Exception:
-            err = ("Invalid bandwidth! Must be a scalar astropy "
+            err = ("Invalid chan_bw. Must be a positive scalar "
                    "Quantity with units of Hz or equivalent.")
             raise ValueError(err)
 
@@ -321,6 +323,7 @@ class RadioSignal(Signal):
 
     def __str__(self):
         s = super().__str__() + "\n"
+        s += f"Channel Bandwidth: {self.chan_bw}\n"
         s += f"Total Bandwidth: {self.bandwidth}\n"
         s += f"Center Frequency: {self.center_freq}"
         return s
@@ -332,7 +335,6 @@ class RadioSignal(Signal):
         kw = dict()
         if s.stop - s.start < self.nchan:
             f = self.channel_freqs[s]
-            kw['bandwidth'] = self.chan_bandwidth * (s.stop - s.start)
             kw['center_freq'] = (f[0] + f[-1]) / 2
             kw['freq_align'] = 'center'
         return kw
@@ -358,27 +360,27 @@ class RadioSignal(Signal):
 
     @property
     def center_freq(self):
-        """Center observing frequency of the signal."""
+        """Center frequency."""
         return self._center_freq
 
     @property
     def bandwidth(self):
-        """Total bandwidth of signal."""
-        return self._bandwidth
+        """Total bandwidth."""
+        return self.chan_bw * self.nchan
 
     @property
-    def chan_bandwidth(self):
-        """Bandwidth of a single channel."""
-        return self.bandwidth / self.nchan
+    def chan_bw(self):
+        """Channel bandwidth."""
+        return self._chan_bw
 
     @property
     def max_freq(self):
-        """Frequency at the top of the band."""
+        """Frequency at top of the band."""
         return self.center_freq + self.bandwidth / 2
 
     @property
     def min_freq(self):
-        """Frequency at the bottom of the band."""
+        """Frequency at bottom of the band."""
         return self.center_freq - self.bandwidth / 2
 
     @property
@@ -391,7 +393,7 @@ class RadioSignal(Signal):
         """Returns a list of frequencies corresponding to all channels."""
         _align = {'bottom': 0, 'center': 0.5, 'top': 1}[self.freq_align]
         chan_ids = np.arange(self.nchan) + _align - self.nchan / 2
-        return self.center_freq + self.chan_bandwidth * chan_ids
+        return self.center_freq + self.chan_bw * chan_ids
 
 
 class IntensitySignal(RadioSignal):
@@ -403,39 +405,84 @@ class IntensitySignal(RadioSignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`.
+        `(nsample, nchan, ...)`, and dtype of either `np.float32` or
+        `np.float64`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    center_freq : `~astropy.units.Quantity`
-        The observing frequency at the center of the signal's band. Must
-        be in units of frequency.
-    bandwidth : `~astropy.units.Quantity`
-        The total bandwidth of the signal. The channel bandwidth is this
-        total bandwidth divided by the number of channels. Must be in
-        units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of frequencies relative to channels. Default is
-        `'bottom'` (as with even-length FFTs).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
+    center_freq : `~astropy.units.Quantity`
+        The frequency at the center of the signal's band. Must be in
+        units of frequency.
+    chan_bw : `~astropy.units.Quantity`
+        The bandwidth of a channel. The total bandwidth is `chan_bw *
+        nchan`. Must be in units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of channels relative to the `center_freq`. Default
+        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
+        `'top'` only have an effect when `nchan` is even.
 
     See Also
     --------
     Signal
     RadioSignal
-
-    Notes
-    -----
-    Signal data is converted to and stored with `dtype=np.float32`, as
-    intensity signals are necessarily real-valued, and more
-    floating-point precision is rarely required.
     """
-    _dtype = np.float32
+    _req_dtype = (np.float32, np.float64)
+
+
+class FullStokesSignal(IntensitySignal):
+    """Class for full Stokes (I, Q, U, V) signals.
+
+    See the documentation for `~RadioSignal` and `~IntensitySignal` for
+    more details.
+
+    Parameters
+    ----------
+    z : `~numpy.ndarray`-like
+        The signal data. Must be at least 3-dimensional with shape
+        `(nsample, nchan, nstokes, ...)` where `nstokes = 4`, and dtype
+        of either `np.float32` or `np.float64`. The order of the Stokes
+        components is `[I, Q, U, V]`.
+    sample_rate : `~astropy.units.Quantity`
+        The number of samples per second. Must be in units of frequency.
+    start_time : `~astropy.time.Time`, optional
+        The start time of the signal (that is, the time at the first
+        sample of the signal). Default is None.
+    center_freq : `~astropy.units.Quantity`
+        The frequency at the center of the signal's band. Must be in
+        units of frequency.
+    chan_bw : `~astropy.units.Quantity`
+        The bandwidth of a channel. The total bandwidth is `chan_bw *
+        nchan`. Must be in units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of channels relative to the `center_freq`. Default
+        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
+        `'top'` only have an effect when `nchan` is even.
+
+    See Also
+    --------
+    Signal
+    RadioSignal
+    IntensitySignal
+
+    References
+    ----------
+    Wikipedia, "Stokes Parameters",
+    https://en.wikipedia.org/wiki/Stokes_parameters
+    """
+    _req_shape = (None, None, 4)
 
 
 class BasebandSignal(RadioSignal):
     """Class for complex baseband signals.
+
+    Baseband signals are Nyquist-sampled analytic signals. In the
+    complex baseband representation, the signal is shifted to be
+    centered around zero frequency and is a complex-valued signal. As a
+    consequence, `sample_rate == chan_bw`. All frequency channels are
+    assumed to be upper side-band (that is, the signal isn't spectrally
+    flipped).
 
     See the documentation for `~RadioSignal` for more details.
 
@@ -443,52 +490,34 @@ class BasebandSignal(RadioSignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`.
+        `(nsample, nchan, ...)`, and dtype of either `np.complex64` or
+        `np.complex128`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    center_freq : `~astropy.units.Quantity`
-        The observing frequency at the center of the signal's band. Must
-        be in units of frequency.
-    bandwidth : `~astropy.units.Quantity`
-        The total bandwidth of the signal. Must be equal to
-        `nchan * sample_rate`. Must be in units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of frequencies relative to channels. Default is
-        `'bottom'` (as with even-length FFTs).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
+    center_freq : `~astropy.units.Quantity`
+        The frequency at the center of the signal's band. Must be in
+        units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of channels relative to the `center_freq`. Default
+        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
+        `'top'` only have an effect when `nchan` is even.
 
     See Also
     --------
     Signal
     RadioSignal
-
-    Notes
-    -----
-    Baseband signals are Nyquist-sampled analytic signals (the bandwidth
-    of a channel is equal to the sampling rate). The signal data is
-    converted to and stored with `dtype=np.complex64` as baseband
-    signals are necessarily complex-valued and more floating-point
-    precision is rarely required.
-
-    Since, the signal is expected to be Nyquist-sampled and frequency
-    channels must be contiguous, the following must be true::
-
-        sample_rate = bandwidth / nchan
-
-    All frequency channels are assumed to be upper side-band (that is,
-    the signal isn't reversed in frequency space).
     """
-    _dtype = np.complex64
+    _req_dtype = (np.complex64, np.complex128)
 
-    def _verification_checks(self):
-        super()._verification_checks()
+    def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
+                 freq_align='center'):
 
-        if not u.isclose(self.chan_bandwidth, self.sample_rate):
-            err = (f"Sample rate ({self.sample_rate}) != "
-                   f"channel bandwidth ({self.chan_bandwidth})!")
-            raise InvalidSignalError(err)
+        super().__init__(z, sample_rate=sample_rate, start_time=start_time,
+                         center_freq=center_freq, chan_bw=sample_rate,
+                         freq_align=freq_align)
 
     def to_intensity(self):
         """Converts baseband signal to intensities.
@@ -502,48 +531,6 @@ class BasebandSignal(RadioSignal):
         return IntensitySignal.like(self, z)
 
 
-class FullStokesSignal(IntensitySignal):
-    """Class for full Stokes (I, Q, U, V) signals.
-
-    See the documentation for `~RadioSignal` and `~IntensitySignal` for
-    more details.
-
-    Parameters
-    ----------
-    z : `~numpy.ndarray`-like
-        The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, nstokes, ...)` where `nstokes = 4`, and the
-        order of components is `[I, Q, U, V]`
-    sample_rate : `~astropy.units.Quantity`
-        The number of samples per second. Must be in units of frequency.
-    center_freq : `~astropy.units.Quantity`
-        The observing frequency at the center of the signal's band. Must
-        be in units of frequency.
-    bandwidth : `~astropy.units.Quantity`
-        The total bandwidth of the signal. The channel bandwidth is this
-        total bandwidth divided by the number of channels. Must be in
-        units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of frequencies relative to channels. Default is
-        `'bottom'` (as with even-length FFTs).
-    start_time : `~astropy.time.Time`, optional
-        The start time of the signal (that is, the time at the first
-        sample of the signal). Default is None.
-
-    See Also
-    --------
-    Signal
-    RadioSignal
-    IntensitySignal
-
-    References
-    ----------
-    Wikipedia, "Stokes Parameters",
-    https://en.wikipedia.org/wiki/Stokes_parameters
-    """
-    _shape = (None, None, 4)
-
-
 class DualPolarizationSignal(BasebandSignal):
     """Class for dual-polarization complex baseband signals.
 
@@ -554,27 +541,24 @@ class DualPolarizationSignal(BasebandSignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, npol, ...)` where `npol = 2`.
+        `(nsample, nchan, npol, ...)` where `npol = 2`, and dtype of
+        either `np.complex64` or `np.complex128`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    center_freq : `~astropy.units.Quantity`
-        The observing frequency at the center of the signal's band. Must
-        be in units of frequency.
-    bandwidth : `~astropy.units.Quantity`
-        The total bandwidth of the signal. The channel bandwidth is this
-        total bandwidth divided by the number of channels. Must be in
-        units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of frequencies relative to channels. Default is
-        `'bottom'` (as with even-length FFTs).
-    pol_type : {'linear', 'circular'}
-        The polarization type of the signal. Accepted values are
-        'linear' for linearly polarized signals (with basis `[X, Y]`)
-        or 'circular' for circularly polarized signals (with basis
-        `[R, L]`).
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
+    center_freq : `~astropy.units.Quantity`
+        The frequency at the center of the signal's band. Must be in
+        units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, optional
+        The alignment of channels relative to the `center_freq`. Default
+        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
+        `'top'` only have an effect when `nchan` is even.
+    pol_type : {'linear', 'circular'}
+        The polarization type of the signal. `'linear'` for linearly
+        polarized signals (with basis `[X, Y]`) or `'circular'` for
+        circularly polarized signals (with basis `[R, L]`).
 
     See Also
     --------
@@ -589,14 +573,18 @@ class DualPolarizationSignal(BasebandSignal):
     `pol_type='circular'`, `z[:, :, 0]` refers to the right-handed
     circular polarization component.
     """
-    _shape = (None, None, 2)
+    _req_shape = (None, None, 2)
 
-    def __init__(self, z, /, *, sample_rate, center_freq, bandwidth,
-                 freq_align='bottom', pol_type, start_time=None, ):
-        self.pol_type = pol_type
-        super().__init__(z, sample_rate=sample_rate, center_freq=center_freq,
-                         bandwidth=bandwidth, freq_align=freq_align,
-                         start_time=start_time)
+    def __init__(self, z, /, *, sample_rate, start_time=None,
+                 center_freq, freq_align='center', pol_type):
+
+        if pol_type in ['linear', 'circular']:
+            self._pol_type = pol_type
+        else:
+            raise ValueError("pol_type must be in {'linear', 'circular'}")
+
+        super().__init__(z, sample_rate=sample_rate, start_time=start_time,
+                         center_freq=center_freq, freq_align=freq_align)
 
     def __str__(self):
         s = super().__str__() + "\n"
@@ -606,13 +594,6 @@ class DualPolarizationSignal(BasebandSignal):
     @property
     def pol_type(self):
         return self._pol_type
-
-    @pol_type.setter
-    def pol_type(self, pol_type):
-        if pol_type in ['linear', 'circular']:
-            self._pol_type = pol_type
-        else:
-            raise ValueError("pol_type must be in {'linear', 'circular'}")
 
     def to_linear(self):
         """Converts the dual-polarization signal to linear basis.
