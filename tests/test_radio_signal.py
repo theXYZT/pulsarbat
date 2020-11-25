@@ -231,3 +231,18 @@ def test_dualpol_shape():
         x = np.empty(shape, dtype=np.complex128)
         _ = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
                                       center_freq=1*u.GHz)
+
+
+def test_dualpol_pol_type():
+    for pol in ['invalid', 3, ()]:
+        x = np.empty((16, 4, 2), dtype=np.complex128)
+        with pytest.raises(ValueError):
+            _ = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
+                                          center_freq=1*u.GHz)
+
+    for pol in ['linear', 'circular']:
+        x = np.empty((16, 4, 2), dtype=np.complex128)
+        z = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
+                                      center_freq=1*u.GHz)
+        print(z)
+        assert z.pol_type == pol
