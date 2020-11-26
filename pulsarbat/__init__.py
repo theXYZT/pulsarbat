@@ -1,4 +1,4 @@
-"""Top-level module for pulsarbat."""
+"""PULSAR Baseband Analysis Tools."""
 
 # flake8: noqa
 

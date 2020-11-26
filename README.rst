@@ -5,7 +5,7 @@ pulsarbat
 .. image:: https://img.shields.io/pypi/v/pulsarbat.svg
         :target: https://pypi.python.org/pypi/pulsarbat
 
-.. image:: https://img.shields.io/pypi/pyversions/cookiecutter.svg
+.. image:: https://img.shields.io/pypi/pyversions/pulsarbat.svg
         :target: https://pypi.python.org/pypi/pulsarbat
 
 .. image:: https://img.shields.io/travis/theXYZT/pulsarbat.svg
