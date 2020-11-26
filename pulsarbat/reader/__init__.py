@@ -4,14 +4,9 @@
 
 
 from .base import AbstractReader
+from .baseband_readers import *
 
 try:
-    from .baseband_readers import *
-
-    try:
-        from .dask_baseband_readers import *
-    except:
-        pass
-
+    from .dask_baseband_readers import *
 except:
     pass

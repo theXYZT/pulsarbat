@@ -296,9 +296,9 @@ class RadioSignal(Signal):
 
         try:
             self._center_freq = center_freq.to(u.MHz)
-            assert self._center_freq.isscalar and self._center_freq > 0
+            assert self._center_freq.isscalar
         except Exception:
-            err = ("Invalid center_freq. Must be a positive scalar "
+            err = ("Invalid center_freq. Must be a scalar "
                    "Quantity with units of Hz or equivalent.")
             raise ValueError(err)
 

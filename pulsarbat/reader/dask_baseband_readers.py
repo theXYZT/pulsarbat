@@ -7,7 +7,8 @@ from .baseband_readers import (BasebandReader, BasebandRawReader,
                                GUPPIRawReader, DADAStokesReader)
 
 __all__ = [
-    'DaskBasebandReader', 'DaskGUPPIRawReader', 'DaskDADAStokesReader'
+    'DaskBasebandReader', 'DaskBasebandRawReader', 'DaskGUPPIRawReader',
+    'DaskDADAStokesReader'
 ]
 
 
@@ -23,7 +24,7 @@ class DaskBasebandReader(BasebandReader):
     @dask.delayed(pure=False)
     def _read_delayed(self, n, offset, /, lock=contextlib.nullcontext()):
         with lock:
-            return self._read_array(n, offset)
+            return self._read_array(n, offset).astype(self.dtype, copy=False)
 
     def _read_stream(self, n, /, **kwargs):
         """Read N samples from current stream position into array-like."""

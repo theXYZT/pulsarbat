@@ -55,7 +55,7 @@ def test_shape_errors():
 
 
 def test_center_freq_errors():
-    for x in [99., 4*u.m, [5, 6]*u.Hz, -1*u.Hz]:
+    for x in [99., 4*u.m, [5, 6]*u.Hz]:
         with pytest.raises(ValueError):
             _ = pb.RadioSignal(np.empty((8, 4)), sample_rate=1*u.Hz,
                                center_freq=x, chan_bw=10*u.MHz)
@@ -178,6 +178,12 @@ def test_radiosignal_slice():
     assert all(u.isclose(y.channel_freqs, z.channel_freqs))
     assert u.isclose(y.center_freq, z.center_freq)
 
+    y = z[2:8]
+    assert y.nchan == z.nchan
+    assert y.freq_align == z.freq_align
+    assert all(u.isclose(y.channel_freqs, z.channel_freqs))
+    assert u.isclose(y.center_freq, z.center_freq)
+
 
 def test_radiosignal_slice_errors():
     x = np.ones((16, 16, 4, 2), dtype=np.float32)
@@ -194,6 +200,9 @@ def test_radiosignal_slice_errors():
     with pytest.raises(IndexError):
         b = np.random.random(z.nchan) > 0.5
         _ = z[:, b]
+
+    with pytest.raises(AssertionError):
+        _ = z[:, 5:5]
 
     with pytest.raises(AssertionError):
         _ = z[:, 5:5]

@@ -9,7 +9,7 @@ from ..core import Signal
 __all__ = ['AbstractReader', 'OutOfBoundsError']
 
 
-class OutOfBoundsError(Exception):
+class OutOfBoundsError(EOFError):
     """Raised when stream position is out of bounds."""
     pass
 

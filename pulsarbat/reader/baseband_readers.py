@@ -1,9 +1,6 @@
 """Baseband reader classes."""
 
 import baseband
-if tuple(map(int, baseband.version.version.split('.'))) < (4,):
-    raise ImportError('Require baseband >= 4.0')
-
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
@@ -15,10 +12,6 @@ from ..utils import real_to_complex
 
 __all__ = ['BasebandReader', 'BasebandRawReader', 'GUPPIRawReader',
            'DADAStokesReader']
-
-
-def _times_are_close(t1, t2):
-    return np.abs(t1 - t2) < 0.1 * u.ns
 
 
 class BasebandReader(AbstractReader):
@@ -97,27 +90,23 @@ class BasebandRawReader(BasebandReader):
         boolean elements can be passed (must have the same shape as the
         StreamReader's `sample_shape`).
     """
-    def __init__(self, name, /, *, center_freq, chan_bw, sideband=True,
-                 freq_align='center', **kwargs):
+    def __init__(self, name, /, *, center_freq, freq_align='center',
+                 sideband=True, **kwargs):
         super().__init__(name, **kwargs)
 
         try:
             self._center_freq = center_freq.to(u.MHz)
             assert self._center_freq.isscalar
         except Exception:
-            raise ValueError("Invalid value for center_freq!")
-
-        try:
-            self._chan_bw = chan_bw.to(u.MHz)
-            assert self._chan_bw.isscalar
-        except Exception:
-            raise ValueError("Invalid value for bandwidth!")
+            err = ("Invalid center_freq. Must be a scalar "
+                   "Quantity with units of Hz or equivalent.")
+            raise ValueError(err)
 
         if type(sideband) is bool:
             self._sideband = sideband
         else:
             self._sideband = np.array(sideband).astype(bool)
-            if self._info.sample_shape != self.sideband.shape:
+            if self.sample_shape != self.sideband.shape:
                 err = "StreamReader sample shape != sideband shape"
                 raise ValueError(err)
 
@@ -128,6 +117,12 @@ class BasebandRawReader(BasebandReader):
             raise ValueError(f'Invalid freq_align. Expected: {choices}')
 
     @property
+    def dtype(self):
+        if self._dtype == np.float32 or self._dtype == np.complex64:
+            return np.complex64
+        return np.complex128
+
+    @property
     def sideband(self):
         """True if upper sideband, False if lower sideband."""
         return self._sideband
@@ -136,11 +131,6 @@ class BasebandRawReader(BasebandReader):
     def center_freq(self):
         """Center frequency."""
         return self._center_freq
-
-    @property
-    def chan_bw(self):
-        """Channel bandwidth."""
-        return self._chan_bw
 
     @property
     def freq_align(self):
@@ -183,11 +173,8 @@ class BasebandRawReader(BasebandReader):
         """Return Signal containing given data."""
         kwargs = {'sample_rate': self.sample_rate,
                   'center_freq': self.center_freq,
-                  'chan_bw': self.chan_bw,
-                  'freq_align': self.freq_align,
-                  'start_time': start_time}
-
-        return BasebandSignal(z, **kwargs)
+                  'freq_align': self.freq_align}
+        return BasebandSignal(z, start_time=start_time, **kwargs)
 
 
 class GUPPIRawReader(BasebandRawReader):
@@ -195,28 +182,26 @@ class GUPPIRawReader(BasebandRawReader):
 
     Parameters
     ----------
-    name, **kwargs
-        Arguments to pass on to `~baseband.open` to create a StreamReader
-        object via `baseband.open(name, 'rs', **kwargs)`.
+    name
+        File name, filehandle, or sequence of file names to pass on to
+        `~baseband.open` to create a GUPPIStreamReader object via
+        `baseband.open(name, 'rs', format='guppi')`.
     """
 
-    def __init__(self, name, /, **kwargs):
-        kwargs['format'] = 'guppi'
-        kwargs['squeeze'] = False
+    def __init__(self, name, /):
+        kwargs = {'format': 'guppi'}
 
-        with baseband.open(name, **kwargs) as fh:
+        with baseband.open(name, 'rs', **kwargs) as fh:
             if fh.header0['OBS_MODE'] != 'RAW':
                 err = 'Data is not raw voltage data according to header.'
                 raise ValueError(err)
             header = fh.header0
 
-        super().__init__(name, center_freq=header['OBSFREQ'] * u.MHz,
-                         chan_bw=abs(header['CHAN_BW']) * u.MHz,
-                         sideband=header.sideband, freq_align='center',
-                         **kwargs)
-
         pol_dict = {'LIN': 'linear', 'CIRC': 'circular'}
         self._pol_type = pol_dict[header['FD_POLN']]
+
+        super().__init__(name, sideband=header.sideband, freq_align='center',
+                         center_freq=header['OBSFREQ'] * u.MHz, **kwargs)
 
     @property
     def pol_type(self):
@@ -226,11 +211,9 @@ class GUPPIRawReader(BasebandRawReader):
         """Return Signal containing given data."""
         kwargs = {'sample_rate': self.sample_rate,
                   'center_freq': self.center_freq,
-                  'chan_bw': self.chan_bw,
                   'freq_align': self.freq_align,
                   'pol_type': self.pol_type,
                   'start_time': start_time}
-
         return DualPolarizationSignal(z.transpose(0, 2, 1), **kwargs)
 
 
@@ -239,12 +222,13 @@ class DADAStokesReader(BasebandReader):
 
     Parameters
     ----------
-    name, **kwargs
-        Arguments to pass on to `~baseband.open` to create a StreamReader
-        object via `baseband.open(name, 'rs', **kwargs)`.
+    name
+        File name, filehandle, or sequence of file names to pass on to
+        `~baseband.open` to create a DADAStreamReader object via
+        `baseband.open(name, 'rs', format='dada')`.
     """
-    def __init__(self, name, /, **kwargs):
-        kwargs['format'] = 'dada'
+    def __init__(self, name, /):
+        kwargs = {'format': 'dada'}
         super().__init__(name, **kwargs)
 
         with self._get_fh() as fh:
