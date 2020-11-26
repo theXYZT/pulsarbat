@@ -30,10 +30,18 @@ For installation instructions, see the `online documentation <https://pulsarbat.
 Requirements
 ------------
 
+`pulsarbat` has the following strict requirements:
+
 - **Python 3.8** or later
-- `Astropy <https://www.astropy.org/>`_ v4.0 or later
-- `Numpy <https://www.numpy.org/>`_ v1.18 or later
-- `Scipy <https://scipy.org/>`_ v1.14 or later
+- `Astropy <https://www.astropy.org/>`_ 4.2 or later
+- `Numpy <https://www.numpy.org/>`_ 1.19 or later
+- `Scipy <https://scipy.org/>`_ 1.15 or later
+- `Baseband <https://baseband.readthedocs.io/>`_ 4.0.3 or later
+
+For optional features, `pulsarbat` also depends on:
+
+- `Dask <https://dask.org/>`_ 2.30 or later: For "embarassingly parallel"
+  workflows.
 
 
 License
