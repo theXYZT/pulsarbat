@@ -37,6 +37,6 @@ setup(
     name='pulsarbat',
     packages=find_packages(include=['pulsarbat', 'pulsarbat.*']),
     url='https://github.com/theXYZT/pulsarbat',
-    version='0.0.3',
+    version='0.0.4',
     zip_safe=False,
 )
