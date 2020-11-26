@@ -1,4 +1,4 @@
-"""Core module consisting of basic building blocks of pulsarbat."""
+"""Core module defining Signal classes."""
 
 import inspect
 import numpy as np

@@ -59,7 +59,8 @@ class BasebandReader(AbstractReader):
         """Read n samples from current stream position into numpy array."""
         with self._get_fh() as fh:
             fh.seek(offset)
-            return fh.read(n)
+            z = fh.read(n)
+        return z.astype(self.dtype, copy=False)
 
     def _read_stream(self, n, /, **kwargs):
         """Read N samples from current stream position into array-like."""
@@ -118,9 +119,7 @@ class BasebandRawReader(BasebandReader):
 
     @property
     def dtype(self):
-        if self._dtype == np.float32 or self._dtype == np.complex64:
-            return np.complex64
-        return np.complex128
+        return np.complex64
 
     @property
     def sideband(self):
@@ -167,7 +166,7 @@ class BasebandRawReader(BasebandReader):
             slc = ~self.sideband
             z[:, slc] = z[:, slc].conj()
 
-        return z
+        return z.astype(self.dtype, copy=False)
 
     def _to_signal(self, z, /, start_time):
         """Return Signal containing given data."""
@@ -192,9 +191,6 @@ class GUPPIRawReader(BasebandRawReader):
         kwargs = {'format': 'guppi'}
 
         with baseband.open(name, 'rs', **kwargs) as fh:
-            if fh.header0['OBS_MODE'] != 'RAW':
-                err = 'Data is not raw voltage data according to header.'
-                raise ValueError(err)
             header = fh.header0
 
         pol_dict = {'LIN': 'linear', 'CIRC': 'circular'}

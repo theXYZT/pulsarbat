@@ -8,8 +8,6 @@ __version__ = '0.0.3'
 
 
 from .core import *
-from . import utils
-from . import reader
-
 from .signal_funcs import *
-from .dedispersion import *
+from . import reader
+from . import utils

@@ -1,9 +1,9 @@
-"""Signal-to-signal transforms."""
+"""Dedispersion routines."""
 
 import math
 import numpy as np
 import astropy.units as u
-from .core import RadioSignal, BasebandSignal
+from ..core import RadioSignal, BasebandSignal
 
 __all__ = [
     'DispersionMeasure', 'coherent_dedispersion', 'incoherent_dedispersion'

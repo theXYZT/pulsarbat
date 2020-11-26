@@ -1,15 +1,10 @@
 """Tests for `pulsarbat.RadioSignal` and subclasses."""
 
-# flake8: noqa
-
 import pytest
 import numpy as np
-import dask.array as da
 import astropy.units as u
 import pulsarbat as pb
 from astropy.time import Time
-from scipy.signal import sosfilt, butter
-
 
 
 @pytest.mark.parametrize("ref_freq", [3.95, 4, 4.05] * u.GHz)

@@ -24,7 +24,7 @@ class DaskBasebandReader(BasebandReader):
     @dask.delayed(pure=False)
     def _read_delayed(self, n, offset, /, lock=contextlib.nullcontext()):
         with lock:
-            return self._read_array(n, offset).astype(self.dtype, copy=False)
+            return self._read_array(n, offset)
 
     def _read_stream(self, n, /, **kwargs):
         """Read N samples from current stream position into array-like."""

@@ -40,7 +40,7 @@ def real_to_complex(z, axis=0):
     if np.iscomplexobj(z):
         z = z.real
 
-    out_dtype = np.complex128 if z.dtype is np.float64 else np.complex64
+    out_dtype = np.complex128 if z.dtype == np.float64 else np.complex64
 
     # Pick the correct axis to work on
     if z.ndim > 1:

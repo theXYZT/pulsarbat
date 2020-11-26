@@ -163,7 +163,7 @@ def test_guppirawreader(reader):
     assert abs(z.start_time - st) < 0.1 * u.ns
     assert u.isclose(z.bandwidth, 12.5*u.MHz)
     fs = [339.5, 342.625, 345.75, 348.875] * u.MHz
-    assert all(u.isclose(fs, z.channel_freqs))
+    assert u.allclose(fs, z.channel_freqs)
     y = np.array([[5-5j, -31-14j], [-17+6j, -21+0j], [12-22j, 2-12j],
                   [15+17j, -5+21j]], dtype=np.complex64)
     assert np.allclose(np.array(z), y)

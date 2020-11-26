@@ -30,19 +30,19 @@ class AbstractReader(metaclass=ABCMeta):
     @abstractmethod
     def __len__(self):
         """Length of stream in number of samples."""
-        pass
+        pass  # pragma: no cover
 
     @property
     @abstractmethod
     def sample_rate(self):
         """Sample rate (number of samples per unit time)."""
-        pass
+        pass  # pragma: no cover
 
     @property
     @abstractmethod
     def start_time(self):
         """Timestamp at first sample."""
-        pass
+        pass  # pragma: no cover
 
     @property
     def stop_time(self):
@@ -131,7 +131,7 @@ class AbstractReader(metaclass=ABCMeta):
     @abstractmethod
     def _read_stream(self, n, /, **kwargs):
         """Read N samples from current stream position into array-like."""
-        pass
+        pass  # pragma: no cover
 
     def _to_signal(self, z, /, start_time):
         """Return Signal containing given data."""
