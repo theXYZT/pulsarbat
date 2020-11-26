@@ -1,6 +1,12 @@
-======================
-pulsarbat.dedispersion
-======================
+============
+Dedispersion
+============
 
-.. automodule:: pulsarbat.dedispersion
-    :members:
+.. currentmodule:: pulsarbat
+
+.. autosummary::
+    :toctree: dedispersion
+
+    DispersionMeasure
+    coherent_dedispersion
+    incoherent_dedispersion

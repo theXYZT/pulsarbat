@@ -35,12 +35,12 @@ class Signal:
 
     Parameters
     ----------
-    z : `~numpy.ndarray`-like
+    z : array
         The signal data. Must be at least 1-dimensional with shape
         `(nsample, ...)`, and must have non-zero size.
-    sample_rate : `~astropy.units.Quantity`
+    sample_rate : :py:class:`astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    start_time : `~astropy.time.Time`, optional
+    start_time : :py:class:`astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
     """
@@ -207,7 +207,7 @@ class Signal:
 
         Parameters
         ----------
-        obj : `~pulsarbat.Signal`
+        obj : `Signal`
             The reference signal object.
         z : `~numpy.ndarray`-like
             The signal data.

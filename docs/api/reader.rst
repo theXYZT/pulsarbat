@@ -1,6 +1,13 @@
-================
-pulsarbat.reader
-================
+=======
+Readers
+=======
 
-.. automodule:: pulsarbat.reader
-    :members:
+.. currentmodule:: pulsarbat.reader
+
+.. autosummary::
+    :toctree: readers
+
+    BasebandReader
+    BasebandRawReader
+    DaskBasebandReader
+    DaskBasebandRawReader
