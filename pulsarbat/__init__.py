@@ -7,9 +7,14 @@ __email__ = 'mahajan@astro.utoronto.ca'
 __version__ = '0.0.3'
 
 
-from .core import *
-from . import utils
+from . import core
+from . import signal_funcs
 from . import reader
+from . import utils
 
+from .core import *
 from .signal_funcs import *
-from .dedispersion import *
+
+__all__ = []
+__all__.extend(core.__all__)
+__all__.extend(signal_funcs.__all__)

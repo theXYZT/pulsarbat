@@ -19,7 +19,7 @@ def real_to_complex(z, axis=0):
     components. Then, the signal is shifted in frequency domain by -B/2
     where B is the bandwidth of the signal. Finally, the signal is
     decimated by a factor of 2, which results in the complex baseband
-    representation of the input signal [1]_.
+    representation of the input signal.
 
     If the input signal is complex-valued, only the real component is
     used.
@@ -36,14 +36,11 @@ def real_to_complex(z, axis=0):
     -------
     out : np.ndarray
         The complex baseband representation of the input signal.
-
-    References
-    ----------
-    .. [1] https://dsp.stackexchange.com/q/43278/17721
     """
     if np.iscomplexobj(z):
         z = z.real
-    z = z.astype(np.float32)
+
+    out_dtype = np.complex128 if z.dtype == np.float64 else np.complex64
 
     # Pick the correct axis to work on
     if z.ndim > 1:
@@ -74,7 +71,7 @@ def real_to_complex(z, axis=0):
     dec = [slice(None)] * z.ndim
     dec[axis] = slice(None, None, 2)
     z = z[tuple(dec)]
-    return z.astype(np.complex64)
+    return z.astype(out_dtype)
 
 
 # def taper_function(freqs, bandwidth):

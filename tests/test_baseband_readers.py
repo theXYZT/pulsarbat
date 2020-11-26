@@ -1,226 +1,195 @@
 """Tests for `pulsarbat.RadioSignal` and subclasses."""
 
 import pytest
+from pathlib import Path
+from collections import namedtuple
+import baseband
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
-import baseband
-from pathlib import Path
 
 
-def times_are_close(t1, t2):
-    return np.all(np.abs(t1 - t2) < 0.1 * u.ns)
+Sample = namedtuple("Sample", ("name", "kwargs"))
+
+DATA_DIR = Path(__file__).parent.absolute() / 'data'
+
+SAMPLE_GUPPI = Sample(name=[DATA_DIR / f'fake.{i}.raw' for i in range(4)],
+                      kwargs={'format': 'guppi'})
+SAMPLE_DADA = Sample(name=str(DATA_DIR / 'sample.dada'),
+                     kwargs={'format': 'dada'})
+SAMPLE_STOKES_DADA = Sample(name=str(DATA_DIR / 'stokes_ef.dada'),
+                            kwargs={'format': 'dada'})
+SAMPLE_VDIF = Sample(name=str(DATA_DIR / 'sample.vdif'),
+                     kwargs={'format': 'vdif'})
 
 
-@pytest.fixture
-def data_dir(request):
-    tests_dir = Path(request.module.__file__).parent
-    return tests_dir / 'data'
+@pytest.mark.parametrize("reader", [pb.reader.DaskBasebandReader,
+                                    pb.reader.BasebandReader])
+@pytest.mark.parametrize("sample", [SAMPLE_GUPPI, SAMPLE_DADA, SAMPLE_VDIF,
+                                    SAMPLE_STOKES_DADA])
+def test_basebandreader(reader, sample):
+    fh = baseband.open(sample.name, 'rs', **sample.kwargs)
+    rdr = reader(sample.name, **sample.kwargs)
+
+    assert u.isclose(fh.sample_rate, rdr.sample_rate)
+    assert abs(fh.start_time - rdr.start_time) < 0.1 * u.ns
+    assert abs(fh.stop_time - rdr.stop_time) < 0.1 * u.ns
+    assert fh.sample_shape == rdr.sample_shape
+    assert fh.dtype == rdr.dtype
+    assert fh.shape[0] == len(rdr)
+
+    x = fh.read(fh.shape[0])
+    y = rdr.read(len(rdr))
+    assert isinstance(y, pb.Signal)
+    assert np.allclose(np.asarray(x), np.asarray(y))
 
 
-@pytest.fixture
-def guppi_fh(data_dir):
-    SAMPLE_GUPPI = [data_dir / f'fake.{i}.raw' for i in range(4)]
-    fh = baseband.open(SAMPLE_GUPPI, 'rs', format='guppi')
-    return fh
+def test_seek_and_tell():
+    r = pb.reader.GUPPIRawReader(SAMPLE_GUPPI.name)
+    N, dt = len(r), 320*u.ns
+
+    for i in [0, N, N//2, N//3]:
+        M = r.seek(i)
+        assert r.tell() == M == i
+        assert u.isclose(r.tell(unit=u.s), i*dt)
+        assert abs(r.time - (r.start_time + i*dt)) < 0.1 * u.ns
+        M = r.seek(i, whence=0)
+        assert r.tell() == M == i
+        M = r.seek(i*dt, whence='start')
+        assert r.tell() == M == i
+
+    for i in [-1, -10, -100, -1234]:
+        M = r.seek(i, whence=2)
+        assert r.tell() == N + i == M
+        M = r.seek(i*dt, whence='end')
+        assert r.tell() == N + i == M
+
+    for i, j in [(100, -1), (200, 50), (4333, 0)]:
+        r.seek(i)
+        M = r.seek(j, whence=1)
+        assert r.tell() == M == i + j
+        r.seek(i*dt)
+        M = r.seek(j*dt, whence='current')
+        assert r.tell() == M == i + j
+
+    t = r.start_time + 1000 * dt
+    for whence in [0, 1, 2, 'start', 'current', 'end']:
+        M = r.seek(t, whence=whence)
+        assert r.tell() == M == 1000
 
 
-@pytest.fixture
-def vdif_fh(data_dir):
-    SAMPLE_VDIF = data_dir / 'sample.vdif'
-    fh = baseband.open([SAMPLE_VDIF], 'rs', format='vdif')
-    return fh
+def test_seek_errors():
+    r = pb.reader.GUPPIRawReader(SAMPLE_GUPPI.name)
+    bad_seeks = [-1, 40000, -1*u.s, -320*u.ns, 1*u.s,
+                 Time('1997-07-11T12:34:55.99', format='isot'),
+                 Time('1997-07-11T12:34:56.02', format='isot')]
+
+    for i in bad_seeks:
+        with pytest.raises(EOFError):
+            r.seek(i)
+
+    for whence in [3, 'curr', 'side']:
+        with pytest.raises(ValueError):
+            r.seek(10, whence=whence)
 
 
-def test_basebandreader_vdif(vdif_fh):
-    rdr = pb.reader.BasebandReader(vdif_fh)
-    assert u.isclose(rdr.sample_rate, 32 * u.MHz)
-    st = Time('2014-06-16T05:56:07.000', format='isot')
-    assert times_are_close(rdr.start_time, st)
-    assert len(rdr) == 40000
-    assert times_are_close(rdr.stop_time, st + len(rdr) / rdr.sample_rate)
-
-    for i in [0, 101, 1024, 12345]:
-        rdr.seek(i)
-        assert rdr.tell() == i
-        assert times_are_close(rdr.time, rdr.start_time + i / rdr.sample_rate)
-
-    rdr.seek(0)
-    x = rdr.read(16)
-    assert isinstance(x, pb.Signal)
-    assert len(x) == 16
-    assert u.isclose(x.sample_rate, 32 * u.MHz)
-    assert times_are_close(x.start_time, st)
-    y = rdr.read(16, 0)
-    assert np.allclose(np.array(x), np.array(y))
+@pytest.mark.parametrize("reader", [pb.reader.BasebandRawReader,
+                                    pb.reader.DaskBasebandRawReader])
+@pytest.mark.parametrize("sideband", [True, False, np.arange(8) % 3 == 0])
+def test_basebandrawreader(reader, sideband):
+    r = reader(SAMPLE_VDIF.name, center_freq=0*u.Hz, sideband=sideband,
+               **SAMPLE_VDIF.kwargs)
+    assert len(r) == 20000
+    _ = np.asarray(r.read(10000))
+    assert r.tell() == 10000
+    _ = np.asarray(r.read(9999))
+    assert r.tell() == 19999
+    _ = np.asarray(r.read(1))
+    assert r.tell() == 20000
+    with pytest.raises(EOFError):
+        _ = r.read(1)
 
 
-def test_basebandreader_guppi(guppi_fh):
-    rdr = pb.reader.BasebandReader(guppi_fh)
-    assert u.isclose(rdr.sample_rate, 3.125 * u.MHz)
-    st = Time('1997-07-11T12:34:56.000', format='isot')
-    assert times_are_close(rdr.start_time, st)
-    assert len(rdr) == 32768
-    assert times_are_close(rdr.stop_time, st + len(rdr) / rdr.sample_rate)
+def test_basebandraw_errors():
+    reader = pb.reader.BasebandRawReader
 
-    for i in [0, 101, 1024, 12345]:
-        rdr.seek(i)
-        assert rdr.tell() == i
-        assert times_are_close(rdr.time, rdr.start_time + i / rdr.sample_rate)
+    for sideband in [1, (), np.arange(5) % 3 == 0]:
+        with pytest.raises(ValueError):
+            _ = reader(SAMPLE_VDIF.name, sideband=sideband,
+                       center_freq=0*u.Hz, **SAMPLE_VDIF.kwargs)
 
-    rdr.seek(0)
-    x = rdr.read(16)
-    assert isinstance(x, pb.Signal)
-    assert len(x) == 16
-    assert u.isclose(x.sample_rate, 3.125 * u.MHz)
-    assert times_are_close(x.start_time, st)
-    y = rdr.read(16, 0)
-    assert np.allclose(np.array(x), np.array(y))
+    for fcen in [0, [12, 13]*u.Hz, 65*u.m]:
+        with pytest.raises(ValueError):
+            _ = reader(SAMPLE_VDIF.name, sideband=True,
+                       center_freq=fcen, **SAMPLE_VDIF.kwargs)
+
+    for falign in ['middle', 'sideways', 0]:
+        with pytest.raises(ValueError):
+            _ = reader(SAMPLE_VDIF.name, sideband=True, freq_align=falign,
+                       center_freq=0*u.Hz, **SAMPLE_VDIF.kwargs)
 
 
-@pytest.mark.parametrize("sideband", [True, False])
-def test_rawbaseband_vdif(vdif_fh, sideband):
-    rdr = pb.reader.BasebandRawReader(vdif_fh, center_freq=400*u.MHz,
-                                      bandwidth=128*u.MHz, sideband=sideband)
-    assert u.isclose(rdr.sample_rate, 16 * u.MHz)
-    st = Time('2014-06-16T05:56:07.000', format='isot')
-    assert times_are_close(rdr.start_time, st)
-    assert len(rdr) == 20000
-    assert times_are_close(rdr.stop_time, st + len(rdr) / rdr.sample_rate)
+@pytest.mark.parametrize("sb", [True, False, np.arange(8) % 3 == 0])
+def test_basebandrawreader_consistency(sb):
+    r1 = pb.reader.BasebandRawReader(SAMPLE_VDIF.name, center_freq=0*u.Hz,
+                                     sideband=sb, **SAMPLE_VDIF.kwargs)
 
-    for i in [0, 101, 1024, 12345]:
-        rdr.seek(i)
-        assert rdr.tell() == i
-        assert times_are_close(rdr.time, rdr.start_time + i / rdr.sample_rate)
+    r2 = pb.reader.DaskBasebandRawReader(SAMPLE_VDIF.name, center_freq=0*u.Hz,
+                                         sideband=sb, **SAMPLE_VDIF.kwargs)
 
-    rdr.seek(0)
-    x = rdr.read(16)
-    assert isinstance(x, pb.BasebandSignal)
-    assert len(x) == 16
-    assert u.isclose(x.sample_rate, 16 * u.MHz)
-    assert times_are_close(x.start_time, st)
-    assert u.isclose(x.center_freq, 400 * u.MHz)
-    assert u.isclose(x.bandwidth, 128 * u.MHz)
-    assert x.nchan == 8
-    y = rdr.read(16, 0)
-    assert np.allclose(np.array(x), np.array(y))
+    x = r1.read(123)
+    y = r2.read(123)
+    assert np.allclose(np.asarray(x), np.asarray(y))
+
+    x = r1.read(8192)
+    y = r2.read(8192)
+    assert np.allclose(np.asarray(x), np.asarray(y))
 
 
-def test_guppireader(guppi_fh):
-    rdr = pb.reader.GUPPIRawReader(guppi_fh)
-    assert u.isclose(rdr.sample_rate, 3.125 * u.MHz)
-    st = Time('1997-07-11T12:34:56.000', format='isot')
-    assert times_are_close(rdr.start_time, st)
-    assert len(rdr) == 32768
-    assert times_are_close(rdr.stop_time, st + len(rdr) / rdr.sample_rate)
+@pytest.mark.parametrize("reader", [pb.reader.GUPPIRawReader,
+                                    pb.reader.DaskGUPPIRawReader])
+def test_guppirawreader(reader):
+    r = reader(SAMPLE_GUPPI.name)
+    assert u.isclose(r.sample_rate, 3.125*u.MHz)
+    assert u.isclose(r.center_freq, 344.1875*u.MHz)
+    assert r.pol_type == 'linear'
+    assert r.dtype == np.complex64
+    assert r.freq_align == 'center'
+    assert r.sideband is True
 
-    for i in [0, 101, 1024, 12345]:
-        rdr.seek(i)
-        assert rdr.tell() == i
-        assert times_are_close(rdr.time, rdr.start_time + i / rdr.sample_rate)
-
-    rdr.seek(0)
-    x = rdr.read(16)
-    print(x)
-    assert isinstance(x, pb.BasebandSignal)
-    assert len(x) == 16
-    assert u.isclose(x.sample_rate, 3.125 * u.MHz)
-    assert times_are_close(x.start_time, st)
-    assert u.isclose(x.center_freq, 344.1875 * u.MHz)
-    assert u.isclose(x.bandwidth, 12.5 * u.MHz)
-    assert x.nchan == 4
-    y = rdr.read(16, 0)
-    assert np.allclose(np.array(x), np.array(y))
+    st = Time('1997-07-11T12:34:56', format='isot', precision=9)
+    z = r.read(1)
+    assert abs(z.start_time - st) < 0.1 * u.ns
+    assert u.isclose(z.bandwidth, 12.5*u.MHz)
+    fs = [339.5, 342.625, 345.75, 348.875] * u.MHz
+    assert u.allclose(fs, z.channel_freqs)
+    y = np.array([[5-5j, -31-14j], [-17+6j, -21+0j], [12-22j, 2-12j],
+                  [15+17j, -5+21j]], dtype=np.complex64)
+    assert np.allclose(np.array(z), y)
 
 
-@pytest.mark.parametrize("offset", [(1000 + i)/10 for i in range(-4, 5)])
-def test_baseband_offsets(vdif_fh, offset):
-    rdr = pb.reader.BasebandReader(vdif_fh)
-    off = rdr.seek(rdr.start_time + offset / rdr.sample_rate)
-    assert off == 100
-    t1 = rdr.time
-    offset = rdr.tell()
-    rdr.seek(offset)
-    t2 = rdr.time
-    assert times_are_close(t1, t2)
+@pytest.mark.parametrize("reader", [pb.reader.DADAStokesReader,
+                                    pb.reader.DaskDADAStokesReader])
+def test_dadastokesreader(reader):
+    r = reader(SAMPLE_STOKES_DADA.name)
+    assert u.isclose(r.sample_rate, 1 / (131.072 * u.us))
+    assert u.isclose(r.center_freq, 7*u.GHz)
+    assert r.dtype == np.float32
+    assert r.freq_align == 'top'
+    assert u.isclose(r.chan_bw, (2 * u.GHz) / 2048)
+
+    st = Time('2019-01-13T15:57:41', format='isot', precision=9)
+    z = r.read(1)
+    assert abs(z.start_time - st) < 0.1 * u.ns
+    assert u.isclose(z.bandwidth, 2*u.GHz)
+    assert u.isclose(z.channel_freqs[-1], 8*u.GHz)
+    assert u.isclose(z.channel_freqs[1023], z.center_freq)
+    y = np.array([[[21, 1, -3, -1], [22, 2, -2, -1], [24, 4, -3, 0],
+                   [22, 3, 3, 0]]], dtype=np.float32)
+    assert np.allclose(np.array(z[:, 500:504]), y)
 
 
-@pytest.mark.parametrize("offset", [(1000 + i)/10 for i in range(-4, 5)])
-def test_rawbaseband_offsets(vdif_fh, offset):
-    kw = {'center_freq': 400*u.MHz, 'bandwidth': 128*u.MHz, 'sideband': True}
-    rdr = pb.reader.BasebandRawReader(vdif_fh, **kw)
-    off = rdr.seek(rdr.start_time + offset / rdr.sample_rate)
-    assert off == 100
-    t1 = rdr.time
-    offset = rdr.tell()
-    rdr.seek(offset)
-    t2 = rdr.time
-    assert times_are_close(t1, t2)
-
-
-@pytest.mark.parametrize("offset", [(1000 + i)/10 for i in range(-4, 5)])
-def test_guppi_offsets(guppi_fh, offset):
-    rdr = pb.reader.GUPPIRawReader(guppi_fh)
-    off = rdr.seek(rdr.start_time + offset / rdr.sample_rate)
-    assert off == 100
-    t1 = rdr.time
-    offset = rdr.tell()
-    rdr.seek(offset)
-    t2 = rdr.time
-    assert times_are_close(t1, t2)
-
-
-@pytest.mark.parametrize("use_dask", [True, False])
-@pytest.mark.parametrize("bb_format", ['guppi', 'vdif'])
-def test_reader_read(use_dask, bb_format, guppi_fh, vdif_fh):
-    kw = {'center_freq': 400*u.MHz, 'bandwidth': 128*u.MHz, 'sideband': True}
-
-    if use_dask:
-        if bb_format == 'guppi':
-            fh = pb.reader.DaskGUPPIRawReader(guppi_fh)
-        elif bb_format == 'vdif':
-            fh = pb.reader.DaskBasebandReader(vdif_fh)
-    else:
-        if bb_format == 'guppi':
-            fh = pb.reader.GUPPIRawReader(guppi_fh)
-        elif bb_format == 'vdif':
-            fh = pb.reader.BasebandRawReader(vdif_fh, **kw)
-
-    N = 1024
-    x = fh.read(N, 0)
-    assert isinstance(x, pb.Signal)
-    assert len(x) == 1024
-    y = fh.read(N, 0)
-    assert np.allclose(np.array(x), np.array(y))
-    y = fh.read(N, 1024)
-    assert times_are_close(x.stop_time, y.start_time)
-
-
-@pytest.fixture
-def dada_stokes_fh(data_dir):
-    SAMPLE_STOKES_DADA = data_dir / 'stokes_ef.dada'
-    fh = baseband.open([SAMPLE_STOKES_DADA], 'rs', format='dada')
-    return fh
-
-
-@pytest.mark.parametrize("use_dask", [True, False])
-def test_stokes_dada(use_dask, dada_stokes_fh):
-    if use_dask:
-        rdr = pb.reader.DaskDADAStokesReader(dada_stokes_fh)
-    else:
-        rdr = pb.reader.DADAStokesReader(dada_stokes_fh)
-
-    assert len(rdr) == 16
-    assert u.isclose(rdr.sample_rate, 1 / (131.072 * u.us))
-    assert u.isclose(rdr.center_freq, 7 * u.GHz)
-    assert u.isclose(rdr.bandwidth, 2 * u.GHz)
-    assert not rdr.sideband
-
-    rdr.seek(0)
-    x = rdr.read(8)
-    assert isinstance(x, pb.FullStokesSignal)
-    assert x.nchan == 2048
-    y = rdr.read(8, 0)
-    assert isinstance(y, pb.FullStokesSignal)
-    assert np.allclose(np.array(x), np.array(y))
+def test_dadastokesreader_error():
+    with pytest.raises(ValueError):
+        _ = pb.reader.DADAStokesReader(SAMPLE_DADA.name)

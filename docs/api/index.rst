@@ -1,12 +1,13 @@
-=================
-API Documentation
-=================
+=============
+API Reference
+=============
 
-This API documentation covers all the interfaces available to users. You
-can use the list of submodules below to browse the API:
+This API reference covers all the interfaces available to users.
 
 .. toctree::
     :glob:
 
-    *
-
+    signals
+    reader
+    signal_funcs
+    dedispersion

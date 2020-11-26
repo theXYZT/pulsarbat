@@ -9,9 +9,10 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'astropy>=4.0',
+    'astropy>=4.1',
     'numpy>=1.19',
     'scipy>=1.5',
+    'baseband>=4.0.2'
 ]
 
 setup(

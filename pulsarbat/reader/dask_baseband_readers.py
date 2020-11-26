@@ -1,26 +1,43 @@
 """Dask-enabled Baseband reader classes."""
 
+import contextlib
 import dask
 import dask.array as da
-from .baseband_readers import BasebandReader, GUPPIRawReader, DADAStokesReader
+from .baseband_readers import (BasebandReader, BasebandRawReader,
+                               GUPPIRawReader, DADAStokesReader)
 
 __all__ = [
-    'DaskBasebandReader', 'DaskGUPPIRawReader', 'DaskDADAStokesReader'
+    'DaskBasebandReader', 'DaskBasebandRawReader', 'DaskGUPPIRawReader',
+    'DaskDADAStokesReader'
 ]
 
 
 class DaskBasebandReader(BasebandReader):
-    """Dask-enabled baseband reader for raw voltage data."""
-    def read_data(self, N, offset):
-        _shape = (N, ) + self._fh.sample_shape
-        _dtype = self._fh.dtype
-        _chunk = (-1, ) + ('auto', ) * len(self._fh.sample_shape)
+    """Dask-enabled wrapper around StreamReader from the `~baseband` package.
 
-        _delayed_func = dask.delayed(self._read_array, pure=True)
-        z = da.from_delayed(_delayed_func(N, offset),
-                            shape=_shape,
-                            dtype=_dtype)
+    Parameters
+    ----------
+    name, **kwargs
+        Arguments to pass on to `~baseband.open` to create a StreamReader
+        object via `baseband.open(name, 'rs', **kwargs)`.
+    """
+    @dask.delayed(pure=False)
+    def _read_delayed(self, n, offset, /, lock=contextlib.nullcontext()):
+        with lock:
+            return self._read_array(n, offset)
+
+    def _read_stream(self, n, /, **kwargs):
+        """Read N samples from current stream position into array-like."""
+        z = da.from_delayed(self._read_delayed(n, self.offset, **kwargs),
+                            dtype=self.dtype, shape=(n,) + self.sample_shape)
+
+        _chunk = (-1, ) + ('auto', ) * len(self.sample_shape)
         return da.rechunk(z, chunks=_chunk)
+
+
+class DaskBasebandRawReader(DaskBasebandReader, BasebandRawReader):
+    """Dask-enabled baseband reader for raw voltage data."""
+    pass
 
 
 class DaskGUPPIRawReader(DaskBasebandReader, GUPPIRawReader):

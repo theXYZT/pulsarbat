@@ -1,37 +1,16 @@
 pulsarbat
 =========
 
-.. image:: https://img.shields.io/pypi/v/pulsarbat.svg
-        :target: https://pypi.python.org/pypi/pulsarbat
+Pulsarbat (PULSAR Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars. The ultimate goal of this package is
+to allow users to process radio pulsar data in an interactive and
+"embarassingly parallel" manner (via Dask_).
 
-.. image:: https://img.shields.io/travis/theXYZT/pulsarbat.svg
-        :target: https://travis-ci.org/theXYZT/pulsarbat
-
-.. image:: https://readthedocs.org/projects/pulsarbat/badge/?version=latest
-        :target: https://pulsarbat.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
-
-
-Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
-
-| The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
-| For documentation, please go to: https://pulsarbat.readthedocs.io
+The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
 
 Pulsarbat is licensed under the GNU General Public License v3.
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+.. _Dask: https://dask.org/
 
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
-
-.. toctree::
-    :hidden:
-
-    install
-    usage
-    api/index.rst
-    contributing
-    history
 
 Quickstart
 ----------
@@ -46,4 +25,22 @@ To use pulsarbat in a project::
 
     import pulsarbat as pb
 
-Enjoy :)
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Getting Started
+
+   install.rst
+   usage.rst
+   contributing.rst
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: API Reference
+
+   api/index.rst
+   history.rst

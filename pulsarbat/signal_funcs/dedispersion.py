@@ -1,9 +1,9 @@
-"""Signal-to-signal transforms."""
+"""Dedispersion routines."""
 
 import math
 import numpy as np
 import astropy.units as u
-from .core import RadioSignal, BasebandSignal
+from ..core import RadioSignal, BasebandSignal
 
 __all__ = [
     'DispersionMeasure', 'coherent_dedispersion', 'incoherent_dedispersion'
@@ -76,24 +76,15 @@ def coherent_dedispersion(z, DM, /, *, ref_freq, chirp=None):
     x = np.fft.fft(z.data, axis=0)
     x = np.fft.ifft((x.T / chirp.T).T, axis=0)
 
-    sample_delay_top = DM.sample_delay(z.max_freq, ref_freq, z.sample_rate)
-    sample_delay_bot = DM.sample_delay(z.min_freq, ref_freq, z.sample_rate)
+    y = type(z).like(z, x)
 
-    crop_before = math.ceil(-min(0, sample_delay_top, sample_delay_bot))
-    crop_after = math.ceil(+max(0, sample_delay_top, sample_delay_bot))
+    delay_top = DM.sample_delay(z.max_freq, ref_freq, z.sample_rate)
+    delay_bot = DM.sample_delay(z.min_freq, ref_freq, z.sample_rate)
 
-    if crop_before:
-        x = x[crop_before:]
+    start = math.ceil(-min(0, delay_top, delay_bot))
+    stop = len(y) - math.ceil(+max(0, delay_top, delay_bot))
 
-    if crop_after:
-        x = x[:-crop_after]
-
-    if crop_before and z.start_time is not None:
-        new_start = z.start_time + crop_before * z.dt
-    else:
-        new_start = z.start_time
-
-    return type(z).like(z, x, start_time=new_start)
+    return type(z).like(z, x)[start:stop]
 
 
 def incoherent_dedispersion(z, DM, /, *, ref_freq):
