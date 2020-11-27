@@ -3,9 +3,9 @@
 # flake8: noqa
 
 from . import core
-from . import dedispersion
-
 from .core import *
+
+from . import dedispersion
 from .dedispersion import *
 
 __all__ = []

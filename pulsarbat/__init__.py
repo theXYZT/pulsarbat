@@ -8,13 +8,14 @@ __version__ = '0.0.4'
 
 
 from . import core
-from . import signal_funcs
-from . import reader
-from . import utils
-
 from .core import *
+
+from . import signal_funcs
 from .signal_funcs import *
 
-__all__ = []
+from . import reader
+from . import utils
+__all__ = ['reader', 'utils']
+
 __all__.extend(core.__all__)
 __all__.extend(signal_funcs.__all__)

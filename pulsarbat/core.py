@@ -593,6 +593,7 @@ class DualPolarizationSignal(BasebandSignal):
 
     @property
     def pol_type(self):
+        """Polarization type (linear or circular)."""
         return self._pol_type
 
     def to_linear(self):
