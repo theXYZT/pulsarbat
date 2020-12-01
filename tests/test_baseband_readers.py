@@ -1,4 +1,4 @@
-"""Tests for `pulsarbat.RadioSignal` and subclasses."""
+"""Tests for readers in `pulsarbat.reader`."""
 
 import pytest
 from pathlib import Path

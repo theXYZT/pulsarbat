@@ -26,8 +26,13 @@ def test_signal_basic(fn, ts, shape, sample_rate, dtype):
     assert len(z) == shape[0]
     assert z.sample_shape == shape[1:]
     assert z.dtype == x.dtype
-    assert type(z.data) is type(x)
     assert np.all(np.array(z) == np.array(x))
+
+    assert type(z.data) is type(x)
+    y = z.compute()
+    assert type(y) is np.ndarray
+    assert type(z.data) is np.ndarray
+    assert np.all(y == z.data)
 
     assert z.sample_rate == sample_rate
     assert z.sample_rate is not sample_rate
@@ -44,6 +49,8 @@ def test_signal_basic(fn, ts, shape, sample_rate, dtype):
         assert z.start_time in z
         assert z.stop_time not in z
         assert ts + 1 * u.ns in z
+
+
 
 
 @pytest.mark.parametrize("dt", [0 * u.s, np.sqrt(2) * u.day, 1/(4/7 * u.Hz)])

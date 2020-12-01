@@ -13,9 +13,10 @@ from .core import *
 from . import signal_funcs
 from .signal_funcs import *
 
+from . import pulsar
 from . import reader
 from . import utils
-__all__ = ['reader', 'utils']
+__all__ = ['reader', 'utils', 'pulsar']
 
 __all__.extend(core.__all__)
 __all__.extend(signal_funcs.__all__)

@@ -6,12 +6,16 @@ import astropy.units as u
 from astropy.time import Time
 
 from .base import AbstractReader
+from ..utils import real_to_complex
 from ..core import (BasebandSignal, DualPolarizationSignal,
                     FullStokesSignal)
-from ..utils import real_to_complex
 
-__all__ = ['BasebandReader', 'BasebandRawReader', 'GUPPIRawReader',
-           'DADAStokesReader']
+__all__ = [
+    'BasebandReader',
+    'BasebandRawReader',
+    'GUPPIRawReader',
+    'DADAStokesReader',
+]
 
 
 class BasebandReader(AbstractReader):
@@ -29,7 +33,6 @@ class BasebandReader(AbstractReader):
         self._kwargs = kwargs
         with self._get_fh() as fh:
             self._info = fh.info
-            self._dtype = fh.dtype
 
     def _get_fh(self):
         return baseband.open(self._name, 'rs', **self._kwargs)
@@ -42,8 +45,12 @@ class BasebandReader(AbstractReader):
         return self._info.shape[1:]
 
     @property
+    def complex_data(self):
+        return self._info.complex_data
+
+    @property
     def dtype(self):
-        return self._dtype
+        return np.dtype(np.complex64 if self.complex_data else np.float32)
 
     @property
     def sample_rate(self):
@@ -119,7 +126,7 @@ class BasebandRawReader(BasebandReader):
 
     @property
     def dtype(self):
-        return np.complex64
+        return np.dtype(np.complex64)
 
     @property
     def sideband(self):
@@ -139,13 +146,13 @@ class BasebandRawReader(BasebandReader):
     @property
     def sample_rate(self):
         """Sample rate (number of samples per unit time)."""
-        if self._info.complex_data:
+        if self.complex_data:
             return self._info.sample_rate
         else:
             return self._info.sample_rate / 2
 
     def __len__(self):
-        if self._info.complex_data:
+        if self.complex_data:
             return self._info.shape[0]
         else:
             return self._info.shape[0] // 2
@@ -153,7 +160,7 @@ class BasebandRawReader(BasebandReader):
     def _read_array(self, n, offset):
         """Read n samples from current stream position into numpy array."""
         with self._get_fh() as fh:
-            if self._info.complex_data:
+            if self.complex_data:
                 fh.seek(offset)
                 z = fh.read(n)
             else:

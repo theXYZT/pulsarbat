@@ -193,6 +193,15 @@ class Signal:
             return False
         return self.start_time <= time + 0.1 * u.ns < self.stop_time
 
+    def compute(self):
+        """Sets data as a numpy.ndarray (or subclass) and returns it.
+
+        If the data is contained in a dask array, then this will compute
+        it as a consequence.
+        """
+        self._data = np.asanyarray(self)
+        return self.data
+
     @classmethod
     def like(cls, obj, z=None, /, **kwargs):
         """Creates a signal object "like" another signal object.

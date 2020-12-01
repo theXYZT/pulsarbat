@@ -1,4 +1,4 @@
-"""Tests for `pulsarbat.RadioSignal` and subclasses."""
+"""Tests for core signal functions."""
 
 import pytest
 import numpy as np
@@ -67,6 +67,30 @@ def test_concatenate_freq(freq_align):
         assert u.isclose(getattr(z, a), getattr(y, a))
     assert u.allclose(z.channel_freqs, y.channel_freqs)
     assert u.isclose(y.center_freq, cen[freq_align])
+
+
+@pytest.mark.parametrize("i", [4, 7, 13])
+@pytest.mark.parametrize("j", [3, 9, 12])
+def test_concatenate_combined(i, j):
+    r = np.random.default_rng().standard_normal((16, 16, 4))
+    x = pb.FullStokesSignal(r, sample_rate=1*u.Hz, chan_bw=10*u.MHz,
+                            center_freq=1*u.GHz, freq_align='center',
+                            start_time=Time.now())
+
+    y1 = pb.concatenate([pb.concatenate([x[:i, :j], x[:i, j:]], axis=1),
+                         pb.concatenate([x[i:, :j], x[i:, j:]], axis=1)],
+                        axis=0)
+
+    y2 = pb.concatenate([pb.concatenate([x[:i, :j], x[i:, :j]], axis=0),
+                         pb.concatenate([x[:i, j:], x[i:, j:]], axis=0)],
+                        axis=1)
+
+    for y in [y1, y2]:
+        for a in ('chan_bw', 'sample_rate', 'bandwidth', 'center_freq'):
+            assert u.isclose(getattr(x, a), getattr(y, a))
+        assert u.allclose(x.channel_freqs, y.channel_freqs)
+        assert abs(y.start_time - x.start_time) < 0.1 * u.ns
+        assert np.allclose(np.array(x), np.array(y))
 
 
 def test_concatenate_errors():

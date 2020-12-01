@@ -1,4 +1,4 @@
-"""Tests for `pulsarbat.RadioSignal` and subclasses."""
+"""Tests for `pulsarbat.utils`"""
 
 import pytest
 import numpy as np
