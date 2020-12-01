@@ -23,7 +23,7 @@ def test_concatenate_time(start_time):
     if start_time is None:
         assert y.start_time is None
     else:
-        assert abs(y.start_time - z.start_time) < 0.1 * u.ns
+        assert Time.isclose(y.start_time, z.start_time)
 
     idx = [0, 16, 128, 512, 2000, 3000, 4096]
     s = [z[i:j] for i, j in zip(idx, idx[1:])]
@@ -35,7 +35,7 @@ def test_concatenate_time(start_time):
     if start_time is None:
         assert y.start_time is None
     else:
-        assert abs(y.start_time - z.start_time) < 0.1 * u.ns
+        assert Time.isclose(y.start_time, z.start_time)
 
 
 @pytest.mark.parametrize("freq_align", ['bottom', 'center', 'top'])
@@ -89,7 +89,7 @@ def test_concatenate_combined(i, j):
         for a in ('chan_bw', 'sample_rate', 'bandwidth', 'center_freq'):
             assert u.isclose(getattr(x, a), getattr(y, a))
         assert u.allclose(x.channel_freqs, y.channel_freqs)
-        assert abs(y.start_time - x.start_time) < 0.1 * u.ns
+        assert Time.isclose(y.start_time, x.start_time)
         assert np.allclose(np.array(x), np.array(y))
 
 

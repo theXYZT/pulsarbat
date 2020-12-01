@@ -2,6 +2,7 @@
 
 import numpy as np
 import astropy.units as u
+from astropy.time import Time
 from ..core import Signal, RadioSignal
 
 __all__ = ['concatenate', ]
@@ -37,7 +38,7 @@ def concatenate(signals, axis=0):
         if t0 is None:
             return t1 is None
         else:
-            return abs(t1 - t0) < 0.1 * u.ns
+            return Time.isclose(t0, t1)
 
     if axis not in (0, 1):
         raise ValueError("Invalid axis. Must be either 0 or 1.")

@@ -51,8 +51,6 @@ def test_signal_basic(fn, ts, shape, sample_rate, dtype):
         assert ts + 1 * u.ns in z
 
 
-
-
 @pytest.mark.parametrize("dt", [0 * u.s, np.sqrt(2) * u.day, 1/(4/7 * u.Hz)])
 def test_time_contains(dt):
     st = Time.now()
@@ -152,26 +150,26 @@ def test_signal_slice():
 
     y = z[2:8]
     assert len(y) == 6
-    assert np.abs(z.start_time - (y.start_time - 2*u.s)) < 0.1 * u.ns
+    Time.isclose(y.start_time - 2*u.s, z.start_time)
     assert u.isclose(z.sample_rate, y.sample_rate)
     assert u.isclose(y.time_length, 6 * u.s)
 
     y = z[::4]
     assert len(y) == 8
-    assert np.abs(z.start_time - y.start_time) < 0.1 * u.ns
+    Time.isclose(y.start_time, z.start_time)
     assert u.isclose(y.sample_rate, 0.25 * u.Hz)
     assert u.isclose(z.time_length, y.time_length)
 
     y = z[:, [0, 2]]
     assert len(y) == len(z)
-    assert np.abs(z.start_time - y.start_time) < 0.1 * u.ns
+    Time.isclose(y.start_time, z.start_time)
     assert u.isclose(z.sample_rate, y.sample_rate)
     assert u.isclose(z.time_length, y.time_length)
 
     b = np.random.random((4, 2)) > 0.5
     y = z[:, b]
     assert len(y) == len(z)
-    assert np.abs(z.start_time - y.start_time) < 0.1 * u.ns
+    Time.isclose(y.start_time, z.start_time)
     assert u.isclose(z.sample_rate, y.sample_rate)
     assert u.isclose(z.time_length, y.time_length)
 

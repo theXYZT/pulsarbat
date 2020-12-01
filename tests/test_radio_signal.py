@@ -143,7 +143,7 @@ def test_baseband_to_intensity(A, use_dask, in_dtype, out_dtype):
     zi = z.to_intensity()
     assert isinstance(zi.data, type(x))
     assert np.allclose(A**2, np.array(zi))
-    assert abs(st - zi.start_time) < 0.1 * u.ns
+    Time.isclose(zi.start_time, st)
     assert u.isclose(z.time_length, zi.time_length)
     assert u.isclose(z.sample_rate, zi.sample_rate)
     assert u.isclose(z.chan_bw, zi.chan_bw)
@@ -161,7 +161,7 @@ def test_radiosignal_slice():
     y = z[2:8, 2:8, 0]
     assert len(y) == 6
     assert u.isclose(y.time_length, 6 * u.s)
-    assert np.abs(z.start_time - (y.start_time - 2*u.s)) < 0.1 * u.ns
+    assert Time.isclose(y.start_time - 2*u.s, z.start_time)
     assert y.nchan == 6
     assert all(u.isclose(y.channel_freqs, z.channel_freqs[2:8]))
     assert y.freq_align == 'center'
