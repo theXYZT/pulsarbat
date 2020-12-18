@@ -7,7 +7,6 @@ from astropy import units as u
 from astropy.coordinates import Angle, Longitude
 from astropy.time.utils import day_frac
 
-
 __all__ = ['Phase', 'FractionalPhase']
 
 
@@ -59,7 +58,6 @@ def _parse_string(s):
     count = float('0' + s_count) * factor
 
     assert count + frac == test
-
     return count, frac
 
 
