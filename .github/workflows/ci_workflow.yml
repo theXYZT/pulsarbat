@@ -9,7 +9,6 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: True
       matrix:
         include:
           - name: Python 3.9
