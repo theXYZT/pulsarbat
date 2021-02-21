@@ -72,7 +72,7 @@ from astropy.table import QTable
 from astropy.coordinates import Angle
 from astropy.time import Time
 
-from ..signal_funcs.dedispersion import DispersionMeasure
+from ..transform.dedispersion import DispersionMeasure
 from .phase import Phase
 
 __all__ = ['Polyco']

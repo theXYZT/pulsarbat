@@ -5,6 +5,7 @@ import pprint
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
+from numpy.core.overrides import set_module
 
 __all__ = [
     'Signal',
@@ -21,6 +22,7 @@ class InvalidSignalError(ValueError):
     pass
 
 
+@set_module('pulsarbat')
 class Signal:
     """Base class for all signals.
 
@@ -51,9 +53,6 @@ class Signal:
     _req_shape = (None, )
 
     def __init__(self, z, /, *, sample_rate, start_time=None, meta=None):
-        if z.size == 0:
-            raise InvalidSignalError("Signal has zero size.")
-
         min_ndim = len(self._req_shape)
         if z.ndim < min_ndim:
             err = (f"Expected signal with at least {min_ndim} dimension(s), "
@@ -65,6 +64,9 @@ class Signal:
             err = (f"Signal has invalid shape. Expected {self._req_shape}, "
                    f"got {z.shape} instead.")
             raise InvalidSignalError(err)
+
+        if np.prod(z.shape[1:]) == 0:
+            raise InvalidSignalError("Sample shape must have non-zero size!")
 
         if self._req_dtype is not None and z.dtype not in self._req_dtype:
             err = (f"Signal has invalid dtype. Expected {self._req_dtype}, "
@@ -99,9 +101,6 @@ class Signal:
         s = f"pulsarbat.{self.__class__.__name__}<{info}> @ {hex(id(self))}"
         return s
 
-    def _repr_pretty_(self, p, cycle):
-        p.text(str(self) if not cycle else '...')
-
     def __len__(self):
         return len(self.data)
 
@@ -111,7 +110,6 @@ class Signal:
     def _time_slice(self, index):
         s = slice(*index.indices(self.shape[0]))
         assert s.step > 0, "Time axis slicing does not support negative step"
-        assert s.stop > s.start, "Empty time slice!"
 
         kw = dict()
         if s.step > 1:
@@ -177,13 +175,13 @@ class Signal:
     @sample_rate.setter
     def sample_rate(self, sample_rate):
         try:
-            temp = sample_rate.to(u.MHz)
+            temp = sample_rate.to(u.Hz)
             assert temp.isscalar and temp > 0
         except Exception:
             raise ValueError("Invalid sample_rate. Must be a positive scalar "
                              "Quantity with units of Hz or equivalent.")
         else:
-            self._sample_rate = temp
+            self._sample_rate = sample_rate
 
     @property
     def dt(self):
@@ -220,20 +218,26 @@ class Signal:
             return None
         return self.start_time + self.time_length
 
-    def __contains__(self, time):
-        """Tell if `time` is within the bounds of the signal."""
+    def contains(self, t):
+        """Whether time(s) are within the bounds of the signal."""
         if self.start_time is None:
-            return False
-        return self.start_time <= time + 0.1 * u.ns < self.stop_time
+            return np.zeros(t.shape, bool) if t.shape else False
+
+        t0, t1 = self.start_time, self.stop_time
+        edge = ~Time.isclose(t, t1) | Time.isclose(t, t0)
+        return edge & (t0 <= t) & (t < t1)
+
+    def __contains__(self, t):
+        """Whether time is within the bounds of the signal."""
+        return self.contains(t)
 
     def compute(self):
-        """Sets data as a numpy.ndarray (or subclass) and returns it.
+        """Returns a signal with data as a numpy.ndarray (or subclass).
 
         If the data is contained in a dask array, then this will compute
         it as a consequence.
         """
-        self._data = np.asanyarray(self)
-        return self.data
+        return type(self).like(self, np.asanyarray(self))
 
     @classmethod
     def like(cls, obj, z=None, /, **kwargs):
@@ -270,6 +274,7 @@ class Signal:
         return cls(z, **kwargs)
 
 
+@set_module('pulsarbat')
 class RadioSignal(Signal):
     """Class for heterodyned radio signals.
 
@@ -390,13 +395,13 @@ class RadioSignal(Signal):
     @center_freq.setter
     def center_freq(self, center_freq):
         try:
-            temp = center_freq.to(u.MHz)
+            temp = center_freq.to(u.Hz)
             assert temp.isscalar
         except Exception:
             raise ValueError("Invalid center_freq. Must be a scalar "
                              "Quantity with units of Hz or equivalent.")
         else:
-            self._center_freq = temp
+            self._center_freq = center_freq
 
     @property
     def bandwidth(self):
@@ -411,13 +416,13 @@ class RadioSignal(Signal):
     @chan_bw.setter
     def chan_bw(self, chan_bw):
         try:
-            temp = chan_bw.to(u.MHz)
+            temp = chan_bw.to(u.Hz)
             assert temp.isscalar and temp > 0
         except Exception:
             raise ValueError("Invalid chan_bw. Must be a positive scalar "
                              "Quantity with units of Hz or equivalent.")
         else:
-            self._chan_bw = temp
+            self._chan_bw = chan_bw
 
     @property
     def max_freq(self):
@@ -450,6 +455,7 @@ class RadioSignal(Signal):
         return self.center_freq + self.chan_bw * chan_ids
 
 
+@set_module('pulsarbat')
 class IntensitySignal(RadioSignal):
     """Class for intensity signals such as Stokes I, Q, U, V, etc.
 
@@ -487,6 +493,7 @@ class IntensitySignal(RadioSignal):
     _req_dtype = (np.float32, np.float64)
 
 
+@set_module('pulsarbat')
 class FullStokesSignal(IntensitySignal):
     """Class for full Stokes (I, Q, U, V) signals.
 
@@ -532,6 +539,7 @@ class FullStokesSignal(IntensitySignal):
     _req_shape = (None, None, 4)
 
 
+@set_module('pulsarbat')
 class BasebandSignal(RadioSignal):
     """Class for complex baseband signals.
 
@@ -591,6 +599,7 @@ class BasebandSignal(RadioSignal):
         return IntensitySignal.like(self, z)
 
 
+@set_module('pulsarbat')
 class DualPolarizationSignal(BasebandSignal):
     """Class for dual-polarization complex baseband signals.
 

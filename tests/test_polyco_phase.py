@@ -34,6 +34,10 @@ def test_polyco_simple():
 
 
 def test_phase_simple():
+    a = Phase(1.2)
+    _ = repr(a)
+    _ = str(a)
+
     assert 4 * Phase(1.5) == Phase(6.0) == 6
     assert Phase(4.5) + 1.5 == Phase(6.0) == 6
     assert u.isclose(Phase(100/3) + Phase(10/3), Phase(110/3))

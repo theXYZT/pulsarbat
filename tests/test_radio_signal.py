@@ -48,7 +48,7 @@ def test_radiosignal(fn, fcen, chan_bw, nchan, align):
 
 
 def test_shape_errors():
-    for shape in [(10,), (24, 0), (4, 4, 0), (0, 5, 10)]:
+    for shape in [(10,), (24, 0), (4, 4, 0)]:
         with pytest.raises(ValueError):
             _ = pb.RadioSignal(np.empty(shape), sample_rate=1*u.Hz,
                                center_freq=1*u.GHz, chan_bw=1*u.MHz)

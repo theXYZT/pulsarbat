@@ -2,10 +2,12 @@
 
 # flake8: noqa
 
-from .base import AbstractReader
+from . import base
+from .base import *
+
+from . import baseband_readers
 from .baseband_readers import *
 
-try:
-    from .dask_baseband_readers import *
-except:  # pragma: no cover
-    pass
+__all__ = []
+__all__.extend(base.__all__)
+__all__.extend(baseband_readers.__all__)

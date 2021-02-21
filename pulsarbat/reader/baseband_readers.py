@@ -1,18 +1,15 @@
 """Baseband reader classes."""
 
-import baseband
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-
-from .base import AbstractReader
-from ..utils import real_to_complex
-from ..core import (BasebandSignal, DualPolarizationSignal,
-                    FullStokesSignal)
+from contextlib import nullcontext
+import baseband
+import pulsarbat as pb
+from pulsarbat.reader import AbstractReader
 
 __all__ = [
     'BasebandReader',
-    'BasebandRawReader',
     'GUPPIRawReader',
     'DADAStokesReader',
 ]
@@ -26,164 +23,139 @@ class BasebandReader(AbstractReader):
     name, **kwargs
         Arguments to pass on to `~baseband.open` to create a StreamReader
         object via `baseband.open(name, 'rs', **kwargs)`.
+    signal_type : class, optional
+        Type of signal that will be returned by `read()`. Default is
+        `Signal`. Accepted values are subclasses of `Signal`.
+    signal_kwargs : dict, optional
+        Additional `kwargs` to pass on to `signal_type` when creating a
+        Signal object. Must not include `sample_rate` or `start_time` as
+        dictionary fields.
+    intensity : bool, optional
+        Whether the data is intensity data. Default is False. This allows
+        for proper handling of real-value baseband data.
+    lower_sideband : bool or array-like, optional
+        Whether the data is lower-sideband (LSB) data. Default is False.
+        If not a boolean, must be an array-like of booleans with the
+        same shape as `sample_shape` of original data as read by
+        `StreamReader` in the `baseband` package.
     """
-    def __init__(self, name, /, **kwargs):
-        super().__init__()
+    def __init__(self, name, /, *, signal_type=pb.Signal, signal_kwargs=dict(),
+                 intensity=False, lower_sideband=False, **kwargs):
+
         self._name = name
         self._kwargs = kwargs
+        self._intensity = bool(intensity)
+
         with self._get_fh() as fh:
-            self._info = fh.info
+            self._complex_data = bool(fh.complex_data)
+
+            if self.intensity and self.complex_data:
+                raise ValueError("Intensity data cannot be complex-valued!")
+
+            if self.real_baseband:
+                _sr = (fh.sample_rate / 2).to(u.MHz)
+                _length = fh.shape[0] // 2
+                _dtype = np.complex64
+            else:
+                _sr = fh.sample_rate.to(u.MHz)
+                _length = fh.shape[0]
+                _dtype = np.complex64 if self.complex_data else np.float32
+
+            _t0 = Time(fh.start_time, format='isot', precision=9)
+
+        self.lower_sideband = lower_sideband
+
+        # Determine sample shape by reading a dummy array
+        _shape = (_length,) + self._read_array(0, 0).shape[1:]
+
+        super().__init__(shape=_shape, dtype=_dtype, signal_type=signal_type,
+                         sample_rate=_sr, start_time=_t0, **signal_kwargs)
 
     def _get_fh(self):
         return baseband.open(self._name, 'rs', **self._kwargs)
 
-    def __len__(self):
-        return self._info.shape[0]
-
-    @property
-    def sample_shape(self):
-        return self._info.shape[1:]
-
     @property
     def complex_data(self):
-        return self._info.complex_data
+        """Whether the data is complex-valued."""
+        return self._complex_data
 
     @property
-    def dtype(self):
-        return np.dtype(np.complex64 if self.complex_data else np.float32)
+    def intensity(self):
+        """Where the data is intensity data (as opposed to raw baseband)."""
+        return self._intensity
 
     @property
-    def sample_rate(self):
-        """Sample rate of the data."""
-        return self._info.sample_rate
+    def real_baseband(self):
+        """Whether the data is real-valued baseband data."""
+        return not (self.intensity or self.complex_data)
 
     @property
-    def start_time(self):
-        """Time at first sample of data."""
-        return Time(self._info.start_time, format='isot', precision=9)
+    def lower_sideband(self):
+        """Whether data is lower sideband (LSB) data."""
+        return self._lower_sideband
 
-    def _read_array(self, n, offset):
-        """Read n samples from current stream position into numpy array."""
+    @lower_sideband.setter
+    def lower_sideband(self, s):
         with self._get_fh() as fh:
-            fh.seek(offset)
-            z = fh.read(n)
-        return z.astype(self.dtype, copy=False)
+            _sample_shape = fh.shape[1:]
 
-    def _read_stream(self, n, /, **kwargs):
-        """Read N samples from current stream position into array-like."""
-        return self._read_array(n, self.offset)
+        if type(s) != bool:
+            s = np.array(s).astype(bool)
+            if s.shape != _sample_shape:
+                err = f"Got {s.shape}, expected {_sample_shape}"
+                raise ValueError(f"Invalid lower_sideband shape. {err}")
 
+        self._lower_sideband = s
 
-class BasebandRawReader(BasebandReader):
-    """Base class for raw voltage data readable by the `~baseband` package.
+    def _read_baseband(self, n, offset, /, lock=nullcontext()):
+        """Read n samples from given offset using baseband."""
+        with lock:
+            with self._get_fh() as fh:
+                if self.real_baseband:
+                    fh.seek(2*offset)
+                    z = pb.utils.real_to_complex(fh.read(2*n), axis=0)
+                else:
+                    fh.seek(offset)
+                    z = fh.read(n)
 
-    Parameters
-    ----------
-    name, **kwargs
-        Arguments to pass on to `~baseband.open` to create a StreamReader
-        object via `baseband.open(name, 'rs', **kwargs)`.
-    center_freq : `~astropy.units.Quantity`
-        The frequency at the center of the signal's band. Must be in
-        units of frequency.
-    chan_bw : `~astropy.units.Quantity`
-        The bandwidth of a channel. The total bandwidth is `chan_bw *
-        nchan`. Must be in units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of channels relative to the `center_freq`. Default
-        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
-        `'top'` only have an effect when `nchan` is even.
-    sideband : bool or array-like
-        Can be True (no spectral flip) or False (spectrally flipped). If
-        channels have different sidebands, an array-like object of
-        boolean elements can be passed (must have the same shape as the
-        StreamReader's `sample_shape`).
-    """
-    def __init__(self, name, /, *, center_freq, freq_align='center',
-                 sideband=True, **kwargs):
-        super().__init__(name, **kwargs)
-
-        try:
-            self._center_freq = center_freq.to(u.MHz)
-            assert self._center_freq.isscalar
-        except Exception:
-            err = ("Invalid center_freq. Must be a scalar "
-                   "Quantity with units of Hz or equivalent.")
-            raise ValueError(err)
-
-        if type(sideband) is bool:
-            self._sideband = sideband
-        else:
-            self._sideband = np.array(sideband).astype(bool)
-            if self.sample_shape != self.sideband.shape:
-                err = "StreamReader sample shape != sideband shape"
-                raise ValueError(err)
-
-        if freq_align in ['bottom', 'center', 'top']:
-            self._freq_align = freq_align
-        else:
-            choices = "{'bottom', 'center', 'top'}"
-            raise ValueError(f'Invalid freq_align. Expected: {choices}')
-
-    @property
-    def dtype(self):
-        return np.dtype(np.complex64)
-
-    @property
-    def sideband(self):
-        """True if upper sideband, False if lower sideband."""
-        return self._sideband
-
-    @property
-    def center_freq(self):
-        """Center frequency."""
-        return self._center_freq
-
-    @property
-    def freq_align(self):
-        """Alignment of channel frequencies."""
-        return self._freq_align
-
-    @property
-    def sample_rate(self):
-        """Sample rate (number of samples per unit time)."""
-        if self.complex_data:
-            return self._info.sample_rate
-        else:
-            return self._info.sample_rate / 2
-
-    def __len__(self):
-        if self.complex_data:
-            return self._info.shape[0]
-        else:
-            return self._info.shape[0] // 2
-
-    def _read_array(self, n, offset):
-        """Read n samples from current stream position into numpy array."""
-        with self._get_fh() as fh:
-            if self.complex_data:
-                fh.seek(offset)
-                z = fh.read(n)
-            else:
-                fh.seek(offset * 2)
-                z = real_to_complex(fh.read(2*n), axis=0)
-
-        if self.sideband is False:
-            z = z.conj()
-        elif self.sideband is not True:
-            slc = ~self.sideband
-            z[:, slc] = z[:, slc].conj()
+        if not self.intensity:
+            if self.lower_sideband is True:
+                z = z.conj()
+            elif self.lower_sideband is not False:
+                z[:, self.lower_sideband] = z[:, self.lower_sideband].conj()
 
         return z.astype(self.dtype, copy=False)
 
-    def _to_signal(self, z, /, start_time):
-        """Return Signal containing given data."""
-        kwargs = {'sample_rate': self.sample_rate,
-                  'center_freq': self.center_freq,
-                  'freq_align': self.freq_align}
-        return BasebandSignal(z, start_time=start_time, **kwargs)
+    def _read_array(self, n, offset, /, **kwargs):
+        """Read n samples from given offset into numpy array.
+
+        Post-processing for specific formats (such as correcting the
+        order of data dimensions) should be done in this method by
+        subclasses.
+        """
+        return self._read_baseband(n, offset, **kwargs)
+
+    def read(self, n, /, **kwargs):
+        """Read `n` samples from current read position.
+
+        Parameters
+        ----------
+        n : int
+            Number of samples to read.
+        **kwargs
+            Additional keyword arguments. Currently supported are:
+              * `use_dask` -- Whether to use dask arrays.
+              * `lock` -- A lock object to prevent concurrent reads.
+
+        Returns
+        -------
+        out : `~Signal` object or subclass
+            Signal containing data that was read.
+        """
+        return super().read(n, **kwargs)
 
 
-class GUPPIRawReader(BasebandRawReader):
+class GUPPIRawReader(BasebandReader):
     """Baseband reader for GUPPI raw voltage data format.
 
     Parameters
@@ -191,33 +163,28 @@ class GUPPIRawReader(BasebandRawReader):
     name
         File name, filehandle, or sequence of file names to pass on to
         `~baseband.open` to create a GUPPIStreamReader object via
-        `baseband.open(name, 'rs', format='guppi')`.
+        `baseband.open(name, 'rs', format='guppi', squeeze=False)`.
     """
-
     def __init__(self, name, /):
-        kwargs = {'format': 'guppi'}
+        kwargs = {'format': 'guppi', 'squeeze': False}
 
         with baseband.open(name, 'rs', **kwargs) as fh:
             header = fh.header0
+            obsfreq = header['OBSFREQ'] * u.MHz
+            pol = {'LIN': 'linear', 'CIRC': 'circular'}[header['FD_POLN']]
 
-        pol_dict = {'LIN': 'linear', 'CIRC': 'circular'}
-        self._pol_type = pol_dict[header['FD_POLN']]
+        signal_kwargs = {'center_freq': obsfreq,
+                         'freq_align': 'center',
+                         'pol_type': pol}
 
-        super().__init__(name, sideband=header.sideband, freq_align='center',
-                         center_freq=header['OBSFREQ'] * u.MHz, **kwargs)
+        super().__init__(name, signal_type=pb.DualPolarizationSignal,
+                         signal_kwargs=signal_kwargs, intensity=False,
+                         lower_sideband=not header.sideband, **kwargs)
 
-    @property
-    def pol_type(self):
-        return self._pol_type
-
-    def _to_signal(self, z, /, start_time):
-        """Return Signal containing given data."""
-        kwargs = {'sample_rate': self.sample_rate,
-                  'center_freq': self.center_freq,
-                  'freq_align': self.freq_align,
-                  'pol_type': self.pol_type,
-                  'start_time': start_time}
-        return DualPolarizationSignal(z.transpose(0, 2, 1), **kwargs)
+    def _read_array(self, n, offset, /, **kwargs):
+        """Read n samples from current read position into numpy array."""
+        z = self._read_baseband(n, offset, **kwargs)
+        return z.transpose(0, 2, 1)
 
 
 class DADAStokesReader(BasebandReader):
@@ -231,40 +198,32 @@ class DADAStokesReader(BasebandReader):
         `baseband.open(name, 'rs', format='dada')`.
     """
     def __init__(self, name, /):
-        kwargs = {'format': 'dada'}
-        super().__init__(name, **kwargs)
+        kwargs = {'format': 'dada', 'squeeze': False}
 
-        with self._get_fh() as fh:
-            if not (fh.header0['NPOL'] == 4 and fh.header0['NDIM'] == 1):
-                raise ValueError('Does not look like Stokes data')
-            self._header = fh.header0
+        with baseband.open(name, 'rs', **kwargs) as fh:
+            header = fh.header0
 
-    @property
-    def sideband(self):
-        return self._header.sideband
+            if not (header['NPOL'] == 4 and header['NDIM'] == 1):
+                raise ValueError("Does not look like Full Stokes data")
 
-    @property
-    def center_freq(self):
-        return self._header['FREQ'] * u.MHz
+            lsb = header['BW'] < 0
+            freq = header['FREQ'] * u.MHz
+            chan_bw = abs(header['BW'] / header['NCHAN']) * u.MHz
+            freq_align = 'top' if lsb else 'bottom'
 
-    @property
-    def chan_bw(self):
-        return abs(self._header['BW'] / self._header['NCHAN']) * u.MHz
+        signal_kwargs = {'center_freq': freq,
+                         'chan_bw': chan_bw,
+                         'freq_align': freq_align}
 
-    @property
-    def freq_align(self):
-        return 'bottom' if self.sideband else 'top'
+        super().__init__(name, signal_type=pb.FullStokesSignal,
+                         signal_kwargs=signal_kwargs, intensity=True,
+                         lower_sideband=lsb, **kwargs)
 
-    def _to_signal(self, z, /, start_time):
-        """Return Signal containing given data."""
-        kwargs = {'sample_rate': self.sample_rate,
-                  'center_freq': self.center_freq,
-                  'chan_bw': self.chan_bw,
-                  'freq_align': self.freq_align,
-                  'start_time': start_time}
+    def _read_array(self, n, offset, /, **kwargs):
+        """Read n samples from current read position into numpy array."""
+        z = self._read_baseband(n, offset, **kwargs)
 
-        z = z.transpose(0, 2, 1)
-        if not self.sideband:
-            z = np.flip(z, axis=1)
+        if self.lower_sideband:
+            z = np.flip(z, axis=-1)
 
-        return FullStokesSignal(z, **kwargs)
+        return z.transpose(0, 2, 1)

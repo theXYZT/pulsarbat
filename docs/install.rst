@@ -9,7 +9,7 @@ Requirements
 
 `pulsarbat` has the following strict requirements:
 
-- `Python <https://www.python.org/>`_ 3.8 or later
+- **`Python <https://www.python.org/>`_ 3.8 or later**
 - `Astropy <https://www.astropy.org/>`_ 4.2 or later
 - `Numpy <https://www.numpy.org/>`_ 1.19 or later
 - `Scipy <https://scipy.org/>`_ 1.15 or later

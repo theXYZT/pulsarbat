@@ -16,16 +16,31 @@ DATA_DIR = Path(__file__).parent.absolute() / 'data'
 
 SAMPLE_GUPPI = Sample(name=[DATA_DIR / f'fake.{i}.raw' for i in range(4)],
                       kwargs={'format': 'guppi'})
-SAMPLE_DADA = Sample(name=str(DATA_DIR / 'sample.dada'),
+SAMPLE_DADA = Sample(name=DATA_DIR / 'sample.dada',
                      kwargs={'format': 'dada'})
-SAMPLE_STOKES_DADA = Sample(name=str(DATA_DIR / 'stokes_ef.dada'),
+SAMPLE_STOKES_DADA = Sample(name=DATA_DIR / 'stokes_ef.dada',
                             kwargs={'format': 'dada'})
-SAMPLE_VDIF = Sample(name=str(DATA_DIR / 'sample.vdif'),
+SAMPLE_VDIF = Sample(name=DATA_DIR / 'sample.vdif',
                      kwargs={'format': 'vdif'})
 
 
-@pytest.mark.parametrize("reader", [pb.reader.DaskBasebandReader,
-                                    pb.reader.BasebandReader])
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_basebandreader_real(use_dask):
+    def reader(intensity=False, spectral_flip=False):
+        return pb.reader.BasebandReader(SAMPLE_VDIF.name, intensity=intensity,
+                                        spectral_flip=spectral_flip,
+                                        **SAMPLE_VDIF.kwargs)
+
+    ref = reader()
+    x = ref.read(1000, use_dask=use_dask)
+
+    flipped = reader(spectral_flip=True)
+    y = flipped.read(1000, use_dask=use_dask)
+
+    assert np.allclose(np.array(x), np.array(y).conj())
+
+
+@pytest.mark.parametrize("reader", [pb.reader.BasebandReader])
 @pytest.mark.parametrize("sample", [SAMPLE_GUPPI, SAMPLE_DADA, SAMPLE_VDIF,
                                     SAMPLE_STOKES_DADA])
 def test_basebandreader(reader, sample):
