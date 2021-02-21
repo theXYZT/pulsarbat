@@ -21,10 +21,9 @@ pulsarbat
 
 Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
 
-For installation instructions, see the `online documentation <https://pulsarbat.readthedocs.io/>`_ or  `docs/install.rst <docs/install.rst>`_ in this source distribution.
+Install via: ``pip install pulsarbat``
 
-| The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
-| For documentation, please go to: https://pulsarbat.readthedocs.io
+Documentation: https://pulsarbat.readthedocs.io
 
 
 Requirements
@@ -32,17 +31,22 @@ Requirements
 
 `pulsarbat` has the following strict requirements:
 
-- **`Python <https://www.python.org/>`_ 3.8 or later**
-- `Astropy <https://www.astropy.org/>`_ 4.2 or later
-- `Numpy <https://www.numpy.org/>`_ 1.19 or later
-- `Scipy <https://scipy.org/>`_ 1.15 or later
-- `Baseband <https://baseband.readthedocs.io/>`_ 4.0.3 or later
+- Python_ 3.8 or later
+- Numpy_ 1.19 or later
+- Scipy_ 1.15 or later
+- Astropy_ 4.2 or later
+- Baseband_ 4.0.3 or later
 
 For optional features, `pulsarbat` also depends on:
 
-- `Dask <https://dask.org/>`_ 2020.12.0 or later: Lazy execution and
-  "embarassingly parallel" workflows.
+- Dask_ 2020.12.0 or later: Lazy execution and "embarassingly parallel" workflows.
 
+.. _Python: http://www.python.org/
+.. _Numpy: https://www.numpy.org/
+.. _Scipy: https://scipy.org/
+.. _Astropy: https://www.astropy.org/
+.. _Baseband: https://baseband.readthedocs.io/
+.. _Dask: https://dask.org/
 
 License
 -------
