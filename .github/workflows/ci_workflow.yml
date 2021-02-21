@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: True
+      matrix:
+        include:
+          - name: Python 3.9
+            python: 3.9
+            toxenv: py39
+
+          - name: Python 3.8
+            python: 3.8
+            toxenv: py38
+
+          - name: Code style checks
+            python: 3.x
+            toxenv: codestyle
+
+          - name: Documentation build
+            python: 3.x
+            toxenv: build_docs
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install tox
+
+    - name: Run tests
+      run: tox ${{ matrix.toxargs }} -e ${{ matrix.toxenv }} -- ${{ matrix.toxposargs }}
