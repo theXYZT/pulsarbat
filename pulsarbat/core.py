@@ -1,9 +1,11 @@
 """Core module defining Signal classes."""
 
 import inspect
+import pprint
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
+from numpy.core.overrides import set_module
 
 __all__ = [
     'Signal',
@@ -20,6 +22,7 @@ class InvalidSignalError(ValueError):
     pass
 
 
+@set_module('pulsarbat')
 class Signal:
     """Base class for all signals.
 
@@ -43,34 +46,14 @@ class Signal:
     start_time : :py:class:`astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
+    meta : dict, optional
+        Any metadata that the user might want to attach to the signal.
     """
     _req_dtype = None
     _req_shape = (None, )
 
-    def __init__(self, z, /, *, sample_rate, start_time=None):
-        try:
-            self._sample_rate = sample_rate.to(u.MHz)
-            assert self._sample_rate.isscalar and self._sample_rate > 0
-        except Exception:
-            err = ("Invalid sample_rate. Must be a positive scalar "
-                   "Quantity with units of Hz or equivalent.")
-            raise ValueError(err)
-
-        self._start_time = None
-        if start_time is not None:
-            try:
-                self._start_time = Time(start_time, format='isot', precision=9)
-                assert self._start_time.isscalar
-            except Exception:
-                err = ("Invalid start_time. Must be a scalar "
-                       "astropy.time.Time object.")
-                raise ValueError(err)
-
-        if z.size == 0:
-            raise InvalidSignalError("Signal has zero size.")
-
+    def __init__(self, z, /, *, sample_rate, start_time=None, meta=None):
         min_ndim = len(self._req_shape)
-
         if z.ndim < min_ndim:
             err = (f"Expected signal with at least {min_ndim} dimension(s), "
                    f"got signal with {z.ndim} dimension(s) instead.")
@@ -82,11 +65,24 @@ class Signal:
                    f"got {z.shape} instead.")
             raise InvalidSignalError(err)
 
+        if np.prod(z.shape[1:]) == 0:
+            raise InvalidSignalError("Sample shape must have non-zero size!")
+
         if self._req_dtype is not None and z.dtype not in self._req_dtype:
             err = (f"Signal has invalid dtype. Expected {self._req_dtype}, "
                    f"got {z.dtype} instead.")
             raise InvalidSignalError(err)
         self._data = z
+
+        self.sample_rate = sample_rate
+        self.start_time = start_time
+        self.meta = meta
+
+    def _attr_repr(self):
+        st = 'N/A' if self.start_time is None else self.start_time.isot
+        return (f"Sample rate: {self.sample_rate}\n"
+                f"Time length: {self.time_length}\n"
+                f"Start time: {st}\n")
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -94,11 +90,11 @@ class Signal:
         s = f"{signature}\n{'-' * len(signature)}\n"
         s += f"Data Container: {c.__module__}.{c.__name__}"
         s += f"<shape={self.shape}, dtype={self.dtype}>\n"
-        s += f"Sample rate: {self.sample_rate}\n"
-        s += f"Time length: {self.time_length}\n"
-        st = 'N/A' if self.start_time is None else self.start_time.isot
-        s += f"Start time: {st}"
-        return s
+        s += self._attr_repr()
+        if self.meta is not None:
+            s += "\nMeta\n----\n"
+            s += pprint.pformat(self.meta, sort_dicts=False, depth=2)
+        return s.strip()
 
     def __repr__(self):
         info = f"shape={self.shape}, dtype={self.dtype}"
@@ -114,7 +110,6 @@ class Signal:
     def _time_slice(self, index):
         s = slice(*index.indices(self.shape[0]))
         assert s.step > 0, "Time axis slicing does not support negative step"
-        assert s.stop > s.start, "Empty time slice!"
 
         kw = dict()
         if s.step > 1:
@@ -134,6 +129,18 @@ class Signal:
         kw = dict()
         kw.update(self._time_slice(index[0]))
         return type(self).like(self, self.data[index], **kw)
+
+    @property
+    def meta(self):
+        """Signal metadata."""
+        return self._meta
+
+    @meta.setter
+    def meta(self, meta):
+        try:
+            self._meta = None if meta is None else dict(meta)
+        except Exception:
+            raise ValueError("meta must be a dict.")
 
     @property
     def data(self):
@@ -165,6 +172,17 @@ class Signal:
         """Sample rate of the signal."""
         return self._sample_rate
 
+    @sample_rate.setter
+    def sample_rate(self, sample_rate):
+        try:
+            temp = sample_rate.to(u.Hz)
+            assert temp.isscalar and temp > 0
+        except Exception:
+            raise ValueError("Invalid sample_rate. Must be a positive scalar "
+                             "Quantity with units of Hz or equivalent.")
+        else:
+            self._sample_rate = sample_rate
+
     @property
     def dt(self):
         """Sample spacing of the signal (1 / sample_rate)."""
@@ -180,6 +198,19 @@ class Signal:
         """Start time of the signal (Time at first sample)."""
         return self._start_time
 
+    @start_time.setter
+    def start_time(self, start_time):
+        try:
+            temp = None
+            if start_time is not None:
+                temp = Time(start_time, format='isot', precision=9)
+                assert temp.isscalar
+        except Exception:
+            raise ValueError("Invalid start_time. Must be a scalar astropy "
+                             "Time object.")
+        else:
+            self._start_time = temp
+
     @property
     def stop_time(self):
         """Stop time of the signal (Time at sample after the last sample)."""
@@ -187,11 +218,26 @@ class Signal:
             return None
         return self.start_time + self.time_length
 
-    def __contains__(self, time):
-        """Tell if `time` is within the bounds of the signal."""
+    def contains(self, t):
+        """Whether time(s) are within the bounds of the signal."""
         if self.start_time is None:
-            return False
-        return self.start_time <= time + 0.1 * u.ns < self.stop_time
+            return np.zeros(t.shape, bool) if t.shape else False
+
+        t0, t1 = self.start_time, self.stop_time
+        edge = ~Time.isclose(t, t1) | Time.isclose(t, t0)
+        return edge & (t0 <= t) & (t < t1)
+
+    def __contains__(self, t):
+        """Whether time is within the bounds of the signal."""
+        return self.contains(t)
+
+    def compute(self):
+        """Returns a signal with data as a numpy.ndarray (or subclass).
+
+        If the data is contained in a dask array, then this will compute
+        it as a consequence.
+        """
+        return type(self).like(self, np.asanyarray(self))
 
     @classmethod
     def like(cls, obj, z=None, /, **kwargs):
@@ -228,6 +274,7 @@ class Signal:
         return cls(z, **kwargs)
 
 
+@set_module('pulsarbat')
 class RadioSignal(Signal):
     """Class for heterodyned radio signals.
 
@@ -262,6 +309,8 @@ class RadioSignal(Signal):
         The alignment of channels relative to the `center_freq`. Default
         is `'center'` (as with odd-length complex DFTs). `'bottom'` and
         `'top'` only have an effect when `nchan` is even.
+    meta : dict, optional
+        Any metadata that the user might want to attach to the signal.
 
     Notes
     -----
@@ -292,40 +341,20 @@ class RadioSignal(Signal):
     _req_shape = (None, None, )
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 chan_bw, freq_align='center'):
+                 chan_bw, freq_align='center', meta=None):
 
-        try:
-            self._center_freq = center_freq.to(u.MHz)
-            assert self._center_freq.isscalar
-        except Exception:
-            err = ("Invalid center_freq. Must be a scalar "
-                   "Quantity with units of Hz or equivalent.")
-            raise ValueError(err)
+        super().__init__(z, sample_rate=sample_rate, start_time=start_time,
+                         meta=meta)
 
-        try:
-            self._chan_bw = chan_bw.to(u.MHz)
-            assert self._chan_bw.isscalar and self._chan_bw > 0
-        except Exception:
-            err = ("Invalid chan_bw. Must be a positive scalar "
-                   "Quantity with units of Hz or equivalent.")
-            raise ValueError(err)
+        self.center_freq = center_freq
+        self.chan_bw = chan_bw
+        self.freq_align = freq_align
 
-        super().__init__(z, sample_rate=sample_rate, start_time=start_time)
-
-        if freq_align in ['bottom', 'center', 'top']:
-            if self.nchan % 2:
-                self._freq_align = 'center'
-            else:
-                self._freq_align = freq_align
-        else:
-            choices = "{'bottom', 'center', 'top'}"
-            raise ValueError(f'Invalid freq_align. Expected: {choices}')
-
-    def __str__(self):
-        s = super().__str__() + "\n"
+    def _attr_repr(self):
+        s = super()._attr_repr()
         s += f"Channel Bandwidth: {self.chan_bw}\n"
         s += f"Total Bandwidth: {self.bandwidth}\n"
-        s += f"Center Frequency: {self.center_freq}"
+        s += f"Center Frequency: {self.center_freq}\n"
         return s
 
     def _freq_slice(self, index):
@@ -363,6 +392,17 @@ class RadioSignal(Signal):
         """Center frequency."""
         return self._center_freq
 
+    @center_freq.setter
+    def center_freq(self, center_freq):
+        try:
+            temp = center_freq.to(u.Hz)
+            assert temp.isscalar
+        except Exception:
+            raise ValueError("Invalid center_freq. Must be a scalar "
+                             "Quantity with units of Hz or equivalent.")
+        else:
+            self._center_freq = center_freq
+
     @property
     def bandwidth(self):
         """Total bandwidth."""
@@ -372,6 +412,17 @@ class RadioSignal(Signal):
     def chan_bw(self):
         """Channel bandwidth."""
         return self._chan_bw
+
+    @chan_bw.setter
+    def chan_bw(self, chan_bw):
+        try:
+            temp = chan_bw.to(u.Hz)
+            assert temp.isscalar and temp > 0
+        except Exception:
+            raise ValueError("Invalid chan_bw. Must be a positive scalar "
+                             "Quantity with units of Hz or equivalent.")
+        else:
+            self._chan_bw = chan_bw
 
     @property
     def max_freq(self):
@@ -388,6 +439,14 @@ class RadioSignal(Signal):
         """Alignment of channel frequencies."""
         return self._freq_align
 
+    @freq_align.setter
+    def freq_align(self, freq_align):
+        if freq_align in {'bottom', 'center', 'top'}:
+            self._freq_align = 'center' if self.nchan % 2 else freq_align
+        else:
+            choices = "{'bottom', 'center', 'top'}"
+            raise ValueError(f"Invalid freq_align. Expected: {choices}")
+
     @property
     def channel_freqs(self):
         """Returns a list of frequencies corresponding to all channels."""
@@ -396,6 +455,7 @@ class RadioSignal(Signal):
         return self.center_freq + self.chan_bw * chan_ids
 
 
+@set_module('pulsarbat')
 class IntensitySignal(RadioSignal):
     """Class for intensity signals such as Stokes I, Q, U, V, etc.
 
@@ -422,6 +482,8 @@ class IntensitySignal(RadioSignal):
         The alignment of channels relative to the `center_freq`. Default
         is `'center'` (as with odd-length complex DFTs). `'bottom'` and
         `'top'` only have an effect when `nchan` is even.
+    meta : dict, optional
+        Any metadata that the user might want to attach to the signal.
 
     See Also
     --------
@@ -431,6 +493,7 @@ class IntensitySignal(RadioSignal):
     _req_dtype = (np.float32, np.float64)
 
 
+@set_module('pulsarbat')
 class FullStokesSignal(IntensitySignal):
     """Class for full Stokes (I, Q, U, V) signals.
 
@@ -459,6 +522,8 @@ class FullStokesSignal(IntensitySignal):
         The alignment of channels relative to the `center_freq`. Default
         is `'center'` (as with odd-length complex DFTs). `'bottom'` and
         `'top'` only have an effect when `nchan` is even.
+    meta : dict, optional
+        Any metadata that the user might want to attach to the signal.
 
     See Also
     --------
@@ -474,6 +539,7 @@ class FullStokesSignal(IntensitySignal):
     _req_shape = (None, None, 4)
 
 
+@set_module('pulsarbat')
 class BasebandSignal(RadioSignal):
     """Class for complex baseband signals.
 
@@ -504,6 +570,8 @@ class BasebandSignal(RadioSignal):
         The alignment of channels relative to the `center_freq`. Default
         is `'center'` (as with odd-length complex DFTs). `'bottom'` and
         `'top'` only have an effect when `nchan` is even.
+    meta : dict, optional
+        Any metadata that the user might want to attach to the signal.
 
     See Also
     --------
@@ -513,11 +581,11 @@ class BasebandSignal(RadioSignal):
     _req_dtype = (np.complex64, np.complex128)
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 freq_align='center'):
+                 freq_align='center', meta=None):
 
         super().__init__(z, sample_rate=sample_rate, start_time=start_time,
                          center_freq=center_freq, chan_bw=sample_rate,
-                         freq_align=freq_align)
+                         freq_align=freq_align, meta=None)
 
     def to_intensity(self):
         """Converts baseband signal to intensities.
@@ -531,6 +599,7 @@ class BasebandSignal(RadioSignal):
         return IntensitySignal.like(self, z)
 
 
+@set_module('pulsarbat')
 class DualPolarizationSignal(BasebandSignal):
     """Class for dual-polarization complex baseband signals.
 
@@ -559,6 +628,8 @@ class DualPolarizationSignal(BasebandSignal):
         The polarization type of the signal. `'linear'` for linearly
         polarized signals (with basis `[X, Y]`) or `'circular'` for
         circularly polarized signals (with basis `[R, L]`).
+    meta : dict, optional
+        Any metadata that the user might want to attach to the signal.
 
     See Also
     --------
@@ -575,25 +646,31 @@ class DualPolarizationSignal(BasebandSignal):
     """
     _req_shape = (None, None, 2)
 
-    def __init__(self, z, /, *, sample_rate, start_time=None,
-                 center_freq, freq_align='center', pol_type):
-
-        if pol_type in ['linear', 'circular']:
-            self._pol_type = pol_type
-        else:
-            raise ValueError("pol_type must be in {'linear', 'circular'}")
+    def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
+                 freq_align='center', pol_type, meta=None):
 
         super().__init__(z, sample_rate=sample_rate, start_time=start_time,
-                         center_freq=center_freq, freq_align=freq_align)
+                         center_freq=center_freq, freq_align=freq_align,
+                         meta=meta)
 
-    def __str__(self):
-        s = super().__str__() + "\n"
-        s += f"Polarization Type: {self.pol_type}"
+        self.pol_type = pol_type
+
+    def _attr_repr(self):
+        s = super()._attr_repr()
+        s += f"Polarization Type: {self.pol_type}\n"
         return s
 
     @property
     def pol_type(self):
+        """Polarization type (linear or circular)."""
         return self._pol_type
+
+    @pol_type.setter
+    def pol_type(self, pol_type):
+        if pol_type in {'linear', 'circular'}:
+            self._pol_type = pol_type
+        else:
+            raise ValueError("pol_type must be in {'linear', 'circular'}")
 
     def to_linear(self):
         """Converts the dual-polarization signal to linear basis.

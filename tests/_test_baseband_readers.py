@@ -1,4 +1,4 @@
-"""Tests for `pulsarbat.RadioSignal` and subclasses."""
+"""Tests for readers in `pulsarbat.reader`."""
 
 import pytest
 from pathlib import Path
@@ -16,16 +16,31 @@ DATA_DIR = Path(__file__).parent.absolute() / 'data'
 
 SAMPLE_GUPPI = Sample(name=[DATA_DIR / f'fake.{i}.raw' for i in range(4)],
                       kwargs={'format': 'guppi'})
-SAMPLE_DADA = Sample(name=str(DATA_DIR / 'sample.dada'),
+SAMPLE_DADA = Sample(name=DATA_DIR / 'sample.dada',
                      kwargs={'format': 'dada'})
-SAMPLE_STOKES_DADA = Sample(name=str(DATA_DIR / 'stokes_ef.dada'),
+SAMPLE_STOKES_DADA = Sample(name=DATA_DIR / 'stokes_ef.dada',
                             kwargs={'format': 'dada'})
-SAMPLE_VDIF = Sample(name=str(DATA_DIR / 'sample.vdif'),
+SAMPLE_VDIF = Sample(name=DATA_DIR / 'sample.vdif',
                      kwargs={'format': 'vdif'})
 
 
-@pytest.mark.parametrize("reader", [pb.reader.DaskBasebandReader,
-                                    pb.reader.BasebandReader])
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_basebandreader_real(use_dask):
+    def reader(intensity=False, spectral_flip=False):
+        return pb.reader.BasebandReader(SAMPLE_VDIF.name, intensity=intensity,
+                                        spectral_flip=spectral_flip,
+                                        **SAMPLE_VDIF.kwargs)
+
+    ref = reader()
+    x = ref.read(1000, use_dask=use_dask)
+
+    flipped = reader(spectral_flip=True)
+    y = flipped.read(1000, use_dask=use_dask)
+
+    assert np.allclose(np.array(x), np.array(y).conj())
+
+
+@pytest.mark.parametrize("reader", [pb.reader.BasebandReader])
 @pytest.mark.parametrize("sample", [SAMPLE_GUPPI, SAMPLE_DADA, SAMPLE_VDIF,
                                     SAMPLE_STOKES_DADA])
 def test_basebandreader(reader, sample):
@@ -33,8 +48,8 @@ def test_basebandreader(reader, sample):
     rdr = reader(sample.name, **sample.kwargs)
 
     assert u.isclose(fh.sample_rate, rdr.sample_rate)
-    assert abs(fh.start_time - rdr.start_time) < 0.1 * u.ns
-    assert abs(fh.stop_time - rdr.stop_time) < 0.1 * u.ns
+    assert Time.isclose(fh.start_time, rdr.start_time)
+    assert Time.isclose(fh.stop_time, rdr.stop_time)
     assert fh.sample_shape == rdr.sample_shape
     assert fh.dtype == rdr.dtype
     assert fh.shape[0] == len(rdr)
@@ -53,7 +68,7 @@ def test_seek_and_tell():
         M = r.seek(i)
         assert r.tell() == M == i
         assert u.isclose(r.tell(unit=u.s), i*dt)
-        assert abs(r.time - (r.start_time + i*dt)) < 0.1 * u.ns
+        assert Time.isclose(r.time, r.start_time + i*dt)
         M = r.seek(i, whence=0)
         assert r.tell() == M == i
         M = r.seek(i*dt, whence='start')
@@ -160,7 +175,7 @@ def test_guppirawreader(reader):
 
     st = Time('1997-07-11T12:34:56', format='isot', precision=9)
     z = r.read(1)
-    assert abs(z.start_time - st) < 0.1 * u.ns
+    assert Time.isclose(z.start_time, st)
     assert u.isclose(z.bandwidth, 12.5*u.MHz)
     fs = [339.5, 342.625, 345.75, 348.875] * u.MHz
     assert u.allclose(fs, z.channel_freqs)
@@ -181,7 +196,7 @@ def test_dadastokesreader(reader):
 
     st = Time('2019-01-13T15:57:41', format='isot', precision=9)
     z = r.read(1)
-    assert abs(z.start_time - st) < 0.1 * u.ns
+    assert Time.isclose(z.start_time, st)
     assert u.isclose(z.bandwidth, 2*u.GHz)
     assert u.isclose(z.channel_freqs[-1], 8*u.GHz)
     assert u.isclose(z.channel_freqs[1023], z.center_freq)

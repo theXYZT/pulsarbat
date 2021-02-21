@@ -9,7 +9,7 @@ Requirements
 
 `pulsarbat` has the following strict requirements:
 
-- **Python 3.8** or later
+- **`Python <https://www.python.org/>`_ 3.8 or later**
 - `Astropy <https://www.astropy.org/>`_ 4.2 or later
 - `Numpy <https://www.numpy.org/>`_ 1.19 or later
 - `Scipy <https://scipy.org/>`_ 1.15 or later
@@ -17,23 +17,23 @@ Requirements
 
 For optional features, `pulsarbat` also depends on:
 
-- `Dask <https://dask.org/>`_ 2.30 or later: For "embarassingly parallel"
-  workflows.
+- `Dask <https://dask.org/>`_ 2020.12.0 or later: Lazy execution and
+  "embarassingly parallel" workflows.
 
 
 Stable release
 --------------
 
-To install pulsarbat, run this command in your terminal:
+To install pulsarbat with `pip`_, run:
 
 .. code-block:: console
 
     $ pip install pulsarbat
 
-This is the preferred method to install pulsarbat, as it will always install the most recent stable release.
-
-If you don't have `pip`_ installed, this `Python installation guide`_ can guide
-you through the process.
+This is the preferred method to install pulsarbat, as it will always
+install the most recent stable release. If you don't have `pip`_
+installed, this `Python installation guide`_ can guide you through the
+process.
 
 .. _pip: https://pip.pypa.io
 .. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
@@ -42,7 +42,7 @@ you through the process.
 From sources
 ------------
 
-The sources for pulsarbat can be downloaded from the `Github repo`_.
+The source code for pulsarbat can be downloaded from the `Github repo`_.
 
 You can either clone the public repository:
 

@@ -7,30 +7,43 @@ import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
 
+RAND = np.random.default_rng(seed=42)
 
-@pytest.mark.parametrize("fn", [np.ones, da.ones])
-@pytest.mark.parametrize("ts", [None, Time.now()])
+
+@pytest.mark.parametrize("fn", [np.random.standard_normal,
+                                da.random.standard_normal])
 @pytest.mark.parametrize("shape", [(16,), (8, 4)])
-@pytest.mark.parametrize("sample_rate", [1 * u.Hz, 33 * u.kHz])
-@pytest.mark.parametrize("dtype", [np.float32, np.complex64])
-def test_signal_basic(fn, ts, shape, sample_rate, dtype):
-    x = fn(shape, dtype=dtype)
-    z = pb.Signal(x, sample_rate=sample_rate, start_time=ts)
+def test_signal_basic(fn, shape):
+    for x in [fn(shape), fn(shape) + 1j*fn(shape)]:
+        z = pb.Signal(x, sample_rate=1*u.Hz)
 
-    assert isinstance(z, pb.Signal)
+        assert isinstance(z, pb.Signal)
+        assert z.shape == shape
+        assert z.ndim == len(shape)
+        assert len(z) == shape[0]
+        assert z.sample_shape == shape[1:]
+
+        assert z.dtype == x.dtype
+        assert type(z.data) is type(x)
+        assert np.all(np.array(z) == np.array(x))
+
+        y = z.compute()
+        assert type(y.data) is np.ndarray
+        assert np.all(y.data == z.data)
+
+
+@pytest.mark.parametrize("ts", [None, Time.now()])
+@pytest.mark.parametrize("sample_rate", [1 * u.Hz, 33 * u.kHz])
+@pytest.mark.parametrize("meta", [None, {'name': "Hello!"}])
+def test_signal_attrs(ts, sample_rate, meta):
+    shape = (8, 2)
+    z = pb.Signal(np.ones(shape), sample_rate=sample_rate, start_time=ts,
+                  meta=meta)
+
     print(z)
     repr(z)
 
-    assert z.shape == shape
-    assert z.ndim == len(shape)
-    assert len(z) == shape[0]
-    assert z.sample_shape == shape[1:]
-    assert z.dtype == x.dtype
-    assert type(z.data) is type(x)
-    assert np.all(np.array(z) == np.array(x))
-
     assert z.sample_rate == sample_rate
-    assert z.sample_rate is not sample_rate
     assert u.isclose(z.dt, 1 / sample_rate)
     assert u.isclose(z.time_length, shape[0] / sample_rate)
 
@@ -43,26 +56,40 @@ def test_signal_basic(fn, ts, shape, sample_rate, dtype):
         assert z.stop_time == ts + (shape[0] / sample_rate)
         assert z.start_time in z
         assert z.stop_time not in z
-        assert ts + 1 * u.ns in z
+        assert ts + 0.1 * u.us in z
 
 
-@pytest.mark.parametrize("dt", [0 * u.s, np.sqrt(2) * u.day, 1/(4/7 * u.Hz)])
-def test_time_contains(dt):
-    st = Time.now()
-    x = np.ones((16, 2), dtype=np.float32)
-    z = pb.Signal(x, sample_rate=1*u.Hz, start_time=st)
-    N = 10
-    ts = ((st + np.arange(-N, len(z)+N) * u.s) + dt) - dt
-    check = np.array([t in z for t in ts])
-    assert np.all(check[N:-N])
-    assert not np.all(check[:N])
-    assert not np.all(check[-N:])
+def test_time_contains():
+    def check(n, a, b):
+        x = np.ones(n, dtype=bool)
+        x[:a] = False
+        x[-b:] = False
+        return x
+
+    t0 = Time("2018-08-01T13:56:23", format='isot', precision=9)
+    z = pb.Signal(np.zeros(10), sample_rate=1*u.Hz, start_time=t0)
+
+    ts = t0 + np.arange(-2, 12) * z.dt
+    k = check(len(ts), 2, 2)
+    assert np.allclose(k, z.contains(ts))
+    assert np.allclose(k, [t in z for t in ts])
+
+    ts -= 1 * u.ns
+    k = check(len(ts), 3, 1)
+    assert np.allclose(k, z.contains(ts))
+    assert np.allclose(k, [t in z for t in ts])
 
 
-@pytest.mark.parametrize("shape", [(), (0, ), (0, 4, 2)])
-def test_shape_errors(shape):
-    with pytest.raises(ValueError):
-        _ = pb.Signal(np.empty(shape), sample_rate=1 * u.Hz)
+def test_meta_errors():
+    for meta in ["Hello", (0, ), {0, 4}]:
+        with pytest.raises(ValueError):
+            _ = pb.Signal(np.empty((16, 4)), sample_rate=1*u.Hz, meta=meta)
+
+
+def test_shape_errors():
+    for shape in [(), (15, 0, 4), (4, 0)]:
+        with pytest.raises(ValueError):
+            _ = pb.Signal(np.empty(shape), sample_rate=1 * u.Hz)
 
 
 def test_sample_rate_errors():
@@ -80,7 +107,7 @@ def test_start_time_errors(ts):
 
 class ArbitrarySignal(pb.Signal):
     _req_dtype = (np.int8, np.int16)
-    _req_shape = (7, None, 4, None)
+    _req_shape = (None, 7, 4, None)
 
     def __init__(self, z, /, *, sample_rate, foo):
         self._foo = foo
@@ -91,30 +118,31 @@ class ArbitrarySignal(pb.Signal):
         return self._foo
 
 
-@pytest.mark.parametrize("dtype", [np.int8, np.int16])
-def test_dtype_constraints(dtype):
-    x = np.random.uniform(-50, 50, (7, 2, 4, 1)).astype(dtype)
-    z = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
-    assert z.dtype == dtype
+def test_dtype_constraints():
+    sr = 1 * u.Hz
+    shape = (10, 7, 4, 2)
+    x = np.empty(shape)
+
+    for dtype in [np.int8, np.int16]:
+        z = ArbitrarySignal(x.astype(dtype), sample_rate=sr, foo='bar')
+        assert z.dtype == dtype
+
+    for dtype in [np.float32, np.int32]:
+        x = np.empty((10, 7, 4, 1)).astype(dtype)
+        with pytest.raises(ValueError):
+            _ = ArbitrarySignal(x.astype(dtype), sample_rate=sr, foo='bar')
 
 
-@pytest.mark.parametrize("dtype", [np.float32, np.int32])
-def test_dtype_constraints_error(dtype):
-    x = np.random.uniform(-50, 50, (7, 2, 4, 1)).astype(dtype)
-    with pytest.raises(ValueError):
-        _ = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
-
-
-@pytest.mark.parametrize("shape", [(7,), (7, 2), (7, 1, 4), (7, 2, 3, 2)])
-def test_shape_constraints(shape):
-    x = np.random.uniform(-50, 50, shape).astype(np.int8)
-    with pytest.raises(ValueError):
-        _ = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
+def test_shape_constraints():
+    for shape in [(), (0, 7, 4), (11, 7, 4, 0), (3, 6, 5, 1)]:
+        x = np.empty(shape).astype(np.int8)
+        with pytest.raises(ValueError):
+            _ = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
 
 
 def test_signal_like():
-    x1 = np.random.uniform(-50, 50, (7, 1, 4, 1)).astype(np.int8)
-    x2 = np.random.uniform(-50, 50, (7, 1, 4, 1)).astype(np.int8)
+    x1 = RAND.integers(-50, 50, (10, 7, 4, 1)).astype(np.int8)
+    x2 = RAND.integers(-50, 50, (10, 7, 4, 1)).astype(np.int8)
 
     z1 = ArbitrarySignal(x1, sample_rate=1*u.Hz, foo='bar')
     z2 = pb.Signal.like(z1)
@@ -145,28 +173,34 @@ def test_signal_slice():
 
     y = z[2:8]
     assert len(y) == 6
-    assert np.abs(z.start_time - (y.start_time - 2*u.s)) < 0.1 * u.ns
+    Time.isclose(y.start_time - 2*u.s, z.start_time)
     assert u.isclose(z.sample_rate, y.sample_rate)
     assert u.isclose(y.time_length, 6 * u.s)
 
     y = z[::4]
     assert len(y) == 8
-    assert np.abs(z.start_time - y.start_time) < 0.1 * u.ns
+    Time.isclose(y.start_time, z.start_time)
     assert u.isclose(y.sample_rate, 0.25 * u.Hz)
     assert u.isclose(z.time_length, y.time_length)
 
     y = z[:, [0, 2]]
     assert len(y) == len(z)
-    assert np.abs(z.start_time - y.start_time) < 0.1 * u.ns
+    Time.isclose(y.start_time, z.start_time)
     assert u.isclose(z.sample_rate, y.sample_rate)
     assert u.isclose(z.time_length, y.time_length)
 
-    b = np.random.random((4, 2)) > 0.5
+    b = RAND.random((4, 2)) > 0.5
     y = z[:, b]
     assert len(y) == len(z)
-    assert np.abs(z.start_time - y.start_time) < 0.1 * u.ns
+    Time.isclose(y.start_time, z.start_time)
     assert u.isclose(z.sample_rate, y.sample_rate)
     assert u.isclose(z.time_length, y.time_length)
+
+    y = z[5:3]
+    assert len(y) == 0
+    assert Time.isclose(y.start_time - 5*u.s, z.start_time)
+    assert Time.isclose(y.stop_time - 5*u.s, z.start_time)
+    assert u.isclose(y.time_length, 0*u.s)
 
     z = pb.Signal(x, sample_rate=1*u.Hz)
     assert z[2:].start_time is None
@@ -191,9 +225,3 @@ def test_signal_slice_errors():
 
     with pytest.raises(AssertionError):
         _ = z[::-2]
-
-    with pytest.raises(AssertionError):
-        _ = z[5:5]
-
-    with pytest.raises(AssertionError):
-        _ = z[10:5]

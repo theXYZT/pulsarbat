@@ -32,7 +32,7 @@ Requirements
 
 `pulsarbat` has the following strict requirements:
 
-- **Python 3.8** or later
+- **`Python <https://www.python.org/>`_ 3.8 or later**
 - `Astropy <https://www.astropy.org/>`_ 4.2 or later
 - `Numpy <https://www.numpy.org/>`_ 1.19 or later
 - `Scipy <https://scipy.org/>`_ 1.15 or later
@@ -40,8 +40,8 @@ Requirements
 
 For optional features, `pulsarbat` also depends on:
 
-- `Dask <https://dask.org/>`_ 2.30 or later: For "embarassingly parallel"
-  workflows.
+- `Dask <https://dask.org/>`_ 2020.12.0 or later: Lazy execution and
+  "embarassingly parallel" workflows.
 
 
 License
