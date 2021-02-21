@@ -21,10 +21,7 @@ pulsarbat
 
 Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
 
-Install via: ``pip install pulsarbat``
-
-Documentation: https://pulsarbat.readthedocs.io
-
+Documentation can be found at: https://pulsarbat.readthedocs.io
 
 Requirements
 ------------
@@ -47,6 +44,14 @@ For optional features, `pulsarbat` also depends on:
 .. _Astropy: https://www.astropy.org/
 .. _Baseband: https://baseband.readthedocs.io/
 .. _Dask: https://dask.org/
+
+Installation
+------------
+
+pulsarbat can be installed via::
+
+    pip install pulsarbat
+
 
 License
 -------
