@@ -1,4 +1,4 @@
-"""Base module for reader classes.
+"""Base module for readers.
 
 Readers are used to read data into `~Signal` objects. All readers
 should expose the following properties:
@@ -26,13 +26,15 @@ by the `read()` for all readers:
 """
 
 import operator
-from abc import ABCMeta, abstractmethod
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
 
-__all__ = ['AbstractReader', 'ConcatenatedReader']
+__all__ = [
+    'BaseReader',
+    'ConcatenatedReader',
+]
 
 
 class OutOfBoundsError(EOFError):
@@ -40,12 +42,11 @@ class OutOfBoundsError(EOFError):
     pass
 
 
-class AbstractReader(metaclass=ABCMeta):
-    """Abstract base class for readers.
+class BaseReader:
+    """Base class for readers.
 
-    Subclasses must define a `read()` method. If a subclass chooses to
-    use the same implementation as this class via `super().read()`, then
-    it is important to implement a `_read_data()` method as well.
+    Subclasses must either implement the `_read_array()` method if using
+    the default `read()` implementation and structure.
 
     Parameters
     ----------
@@ -94,10 +95,10 @@ class AbstractReader(metaclass=ABCMeta):
 
     def _attr_repr(self):
         st = 'N/A' if self.start_time is None else self.start_time.isot
-        return (f"Offset: {self.offset}\n"
+        return (f"Start time: {st}\n"
                 f"Sample rate: {self.sample_rate}\n"
                 f"Time length: {self.time_length}\n"
-                f"Start time: {st}\n")
+                f"Offset: {self.offset}\n")
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -303,7 +304,6 @@ class AbstractReader(metaclass=ABCMeta):
 
         return n
 
-    @abstractmethod
     def read(self, n, /, **kwargs):
         """Read `n` samples from current read position.
 
@@ -350,9 +350,9 @@ class AbstractReader(metaclass=ABCMeta):
         return self.read(n, use_dask=True, **kwargs)
 
 
-class ConcatenatedReader(AbstractReader):
+class ConcatenatedReader(BaseReader):
     def __init__(self, readers, axis):
-        if not all(isinstance(r, AbstractReader) for r in readers):
+        if not all(isinstance(r, BaseReader) for r in readers):
             raise TypeError("Not all objects in readers are readers!")
 
         if axis in {0, 'time'}:

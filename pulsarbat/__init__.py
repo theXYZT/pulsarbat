@@ -6,7 +6,6 @@ __author__ = """Nikhil Mahajan"""
 __email__ = 'mahajan@astro.utoronto.ca'
 __version__ = '0.0.4'
 
-
 from . import core
 from .core import *
 
@@ -16,7 +15,14 @@ from .transform import *
 from . import utils
 from . import reader
 from . import pulsar
-__all__ = ['utils', 'reader', 'pulsar']
+from . import generator
+
+__all__ = [
+    'utils',
+    'reader',
+    'generator',
+    'pulsar',
+]
 
 __all__.extend(core.__all__)
 __all__.extend(transform.__all__)

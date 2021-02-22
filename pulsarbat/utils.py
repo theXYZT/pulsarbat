@@ -40,8 +40,8 @@ def real_to_complex(z, axis=0):
     out_dtype = np.complex128 if z.dtype == np.float64 else np.complex64
     N = z.shape[axis]
 
-    if N < 1:
-        raise ValueError(f"Invalid number of data points ({N}).")
+    if N == 0:
+        return z.astype(out_dtype)
 
     # Pick the correct axis to work on
     ind = [np.newaxis] * z.ndim
@@ -51,7 +51,8 @@ def real_to_complex(z, axis=0):
     h = np.zeros(N)
     h[0] = 1
     h[1:N//2] = 2
-    h[N//2] = 2 if N % 2 else 1
+    if N > 1:
+        h[N//2] = 2 if N % 2 else 1
 
     z = np.fft.ifft(np.fft.fft(z, axis=axis) * h[tuple(ind)], axis=axis)
     z *= np.exp(-1j * np.pi / 2 * np.arange(N))[tuple(ind)]

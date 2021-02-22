@@ -29,14 +29,14 @@ Requirements
 `pulsarbat` has the following strict requirements:
 
 - Python_ 3.8 or later
-- Numpy_ 1.19 or later
-- Scipy_ 1.15 or later
+- Numpy_ 1.20 or later
+- Scipy_ 1.6 or later
 - Astropy_ 4.2 or later
 - Baseband_ 4.0.3 or later
 
 For optional features, `pulsarbat` also depends on:
 
-- Dask_ 2020.12.0 or later: Lazy execution and "embarassingly parallel" workflows.
+- Dask_ 2021.2 or later: Lazy execution and "embarassingly parallel" workflows.
 
 .. _Python: http://www.python.org/
 .. _Numpy: https://www.numpy.org/
@@ -48,9 +48,9 @@ For optional features, `pulsarbat` also depends on:
 Installation
 ------------
 
-pulsarbat can be installed via::
+You can install pulsarbat along with all optional dependencies via::
 
-    pip install pulsarbat
+    pip install pulsarbat[all]
 
 
 License

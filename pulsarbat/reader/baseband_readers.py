@@ -6,7 +6,7 @@ from astropy.time import Time
 from contextlib import nullcontext
 import baseband
 import pulsarbat as pb
-from pulsarbat.reader import AbstractReader
+from pulsarbat.reader import BaseReader
 
 __all__ = [
     'BasebandReader',
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-class BasebandReader(AbstractReader):
+class BasebandReader(BaseReader):
     """Wrapper around StreamReader from the `~baseband` package.
 
     Parameters
@@ -64,6 +64,7 @@ class BasebandReader(AbstractReader):
             _t0 = Time(fh.start_time, format='isot', precision=9)
 
         self.lower_sideband = lower_sideband
+        self._dtype = np.dtype(_dtype)
 
         # Determine sample shape by reading a dummy array
         _shape = (_length,) + self._read_array(0, 0).shape[1:]

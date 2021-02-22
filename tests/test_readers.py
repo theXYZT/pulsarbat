@@ -7,7 +7,7 @@ from astropy.time import Time
 import pulsarbat as pb
 
 
-class IndexReader(pb.reader.AbstractReader):
+class IndexReader(pb.reader.BaseReader):
     """A reader that returns indices of samples."""
     def __init__(self, /, *, shape, dtype=np.int32, sample_rate=1*u.Hz,
                  start_time=None, signal_type=pb.Signal, **signal_kwargs):
@@ -21,11 +21,8 @@ class IndexReader(pb.reader.AbstractReader):
         x = x * np.ones(self.sample_shape)
         return x.astype(self.dtype)
 
-    def read(self, n, /, **kwargs):
-        return super().read(n, **kwargs)
 
-
-class TestAbstractReader:
+class TestBaseReader:
     def test_basic_functionality(self):
         shape = (100, 4)
         dtype = np.uint16
@@ -134,7 +131,7 @@ class TestAbstractReader:
             r.seek(10, whence=3)
 
     def test_broken_reader(self):
-        class BrokenReader(pb.reader.AbstractReader):
+        class BrokenReader(pb.reader.BaseReader):
             """A reader that returns indices of samples."""
             def __init__(self, /, *, shape=(100,), dtype=np.int32, N=0):
                 self._N = N

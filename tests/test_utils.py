@@ -22,6 +22,12 @@ class TestRealToComplex:
                     z = real_to_complex(x)
                     assert np.allclose(y, z)
 
+    def test_empty(self):
+        for sample_shape in [(), (2,), (4, 4)]:
+            x = np.zeros((0,) + sample_shape)
+            y = real_to_complex(x, axis=0)
+            assert np.array_equal(x, y)
+
     def test_axis(self):
         N = 128
         t = np.linspace(0, 2*np.pi, N, endpoint=False)
@@ -38,10 +44,6 @@ class TestRealToComplex:
         assert np.allclose(y, z)
 
     def test_bad_args(self):
-        x = np.ones((0, 4, 4))
-        with pytest.raises(ValueError):
-            _ = real_to_complex(x, axis=0)
-
         x = np.ones((128, 4), dtype=complex)
         with pytest.raises(ValueError):
             _ = real_to_complex(x, axis=0)
