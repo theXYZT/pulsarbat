@@ -1,6 +1,7 @@
-# Written by Marten H. van Kerkwijk for baseband_tasks
-# Licensed under the GPLv3 - see LICENSE
-"""Provide a Phase class with integer and fractional part."""
+"""Provide a Phase class with integer and fractional part.
+
+Written by Marten H. van Kerkwijk (@mhvk) for gh:mhvk/baseband_tasks.
+"""
 
 import numpy as np
 from astropy import units as u

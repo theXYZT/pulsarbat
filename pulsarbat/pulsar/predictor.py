@@ -1,6 +1,6 @@
 # Written by Marten H. van Kerkwijk for baseband_tasks
 # Licensed under the GPLv3 - see LICENSE
-r"""Read in and use tempo1 polyco files (tempo2 predict to come).
+"""Read in and use tempo1 polyco files.
 
 Examples
 --------
@@ -15,32 +15,32 @@ For use with folding codes with times since some start time t0 in seconds:
 
 Notes
 -----
-The format of the polyco files is (from
-http://tempo.sourceforge.net/ref_man_sections/tz-polyco.txt)
+The format of the polyco files is
 
 .. code-block:: text
 
     Line  Columns Item
     ----  ------- -----------------------------------
     1      1-10   Pulsar Name
-          11-19   Date (dd-mmm-yy)
-          20-31   UTC (hhmmss.ss)
+          12-20   Date (dd-mmm-yy)
+          21-31   UTC (hhmmss.ss)
           32-51   TMID (MJD)
-          52-72   DM
+          52-72   Dispersion Measure (pc / cm^3)
           74-79   Doppler shift due to earth motion (10^-4)
           80-86   Log_10 of fit rms residual in periods
     2      1-20   Reference Phase (RPHASE)
-          21-38   Reference rotation frequency (F0)
+          22-38   Reference rotation frequency (F0)
           39-43   Observatory number
           44-49   Data span (minutes)
           50-54   Number of coefficients
-          55-75   Observing frequency (MHz)
-          76-80   Binary phase
+          55-64   Observing frequency (MHz)
+          65-71   (Optional) Binary orbit phase
+          72-80   (Optional) Orbital frequency (1/day)
     3-     1-25   Coefficient 1 (COEFF(1))
           26-50   Coefficient 2 (COEFF(2))
           51-75   Coefficient 3 (COEFF(3))
 
-The pulse phase and frequency at time T are then calculated as::
+The pulse phase and frequency at time T (in MJD) are then calculated as::
 
     DT = (T-TMID)*1440
     PHASE = RPHASE + DT*60*F0 + COEFF(1) + DT*COEFF(2) + DT^2*COEFF(3) + ....
@@ -50,15 +50,20 @@ Example tempo2 call to produce one:
 
 .. code-block:: text
 
-    tempo2 -tempo1 -f psrb1957+20.par \
+    tempo2 -tempo1 -f pulsar.par
         -polyco "56499 56500 300 12 12 aro 150.0"
                  |-- MJD start
                        |-- MJD end
-                             |-- number of minutes for which polynomial is fit
-                                 |-- degree of the polynomial
-                                    |-- maxium Hour Angle (12 is continuous)
-                                       |-- Observatory
+                             |-- length of span (in minutes)
+                                 |-- Number of polynomial coefficients
+                                    |-- Max Hour Angle (12 is continuous)
+                                       |-- Observatory code
                                            |-- Frequency in MHz
+
+References
+----------
+http://tempo.sourceforge.net/ref_man_sections/tz-polyco.txt
+https://bitbucket.org/psrsoft/tempo2/
 """
 
 from collections import OrderedDict
@@ -71,8 +76,7 @@ from astropy import units as u
 from astropy.table import QTable
 from astropy.coordinates import Angle
 from astropy.time import Time
-
-from ..transform.dedispersion import DispersionMeasure
+import pulsarbat as pb
 from .phase import Phase
 
 __all__ = ['Polyco']
@@ -85,45 +89,6 @@ class Polyco(QTable):
             data = polyco2table(data)
 
         super().__init__(data, *args, **kwargs)
-
-    def to_polyco(self, name='polyco.dat', style='tempo2'):
-        """Write the polyco table to a polyco file.
-
-        Parameters
-        ----------
-        name : str
-            Filename
-        style : {'tempo1'|'tempo2'}, optional
-            Package which the writer should emulate.  Default: 'tempo2'
-        """
-        header_fmt = ''.join(
-            ['{' + key + converter['fmt'] + ('}\n' if key == 'lgrms' else '}')
-             for key, converter in converters.items()
-             if key in self.keys() or key in ('date', 'utc_mid')])
-
-        coeff_fmt = fortran_fmt if style == 'tempo1' else '{:24.17e}'.format
-
-        with open(name, 'w') as fh:
-            for row in self:
-                items = {k: row[k] for k in converters if k in self.keys()}
-                # Special treatment for mjd_mid, date, and utc_mid.
-                mjd_mid = items['mjd_mid']
-                # Hack: unlike Time, Phase can format its int/frac as {:..f}.
-                items['mjd_mid'] = Phase(mjd_mid.jd1-2400000.5, mjd_mid.jd2)
-                item = mjd_mid.datetime.strftime('%d-%b-%y')
-                if style == 'tempo1':
-                    item = item.upper()
-                items['date'] = item if item[0] != '0' else ' '+item[1:]
-                mjd_mid.precision = 2
-                items['utc_mid'] = float(mjd_mid.isot.split('T')[1]
-                                         .replace(':', ''))
-
-                fh.write(header_fmt.format(**items) + '\n')
-
-                coeff = row['coeff']
-                for i in range(0, len(coeff), 3):
-                    fh.write(' ' + ' '.join([coeff_fmt(c)
-                                             for c in coeff[i:i+3]]) + '\n')
 
     def __call__(self, time, index=None, rphase=None, deriv=0, time_unit=u.s):
         """Predict phase or frequency (derivatives) for given mjd (array)
@@ -330,7 +295,7 @@ converters = OrderedDict(
      ('mjd_mid', dict(parse=int_frac, fmt=':20.11f',
                       convert=change_type(Time, format='mjd'))),
      ('dm', dict(parse=float, fmt='.value:21.6f',
-                 convert=change_type(DispersionMeasure))),
+                 convert=change_type(pb.DispersionMeasure))),
      ('vbyc_earth', dict(parse=float, fmt='.value:7.3f',
                          convert=change_type(u.Quantity, unit=1e-4))),
      ('lgrms', dict(parse=float, fmt=':7.3f')),
@@ -397,10 +362,3 @@ def polyco2table(name):
             pass
 
     return t
-
-
-def fortran_fmt(x, base_fmt='23.16e'):
-    s = format(x, base_fmt)
-    pre, _, post = s.partition('.')
-    mant, _, exp = post.partition('e')
-    return pre[:-1] + '0.' + pre[-1] + mant + 'D{:+03d}'.format(int(exp) + 1)
