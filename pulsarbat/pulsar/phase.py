@@ -1,12 +1,14 @@
 """Provide a Phase class with integer and fractional part.
 
 Written by Marten H. van Kerkwijk (@mhvk) for gh:mhvk/baseband_tasks.
+Licensed under the GPLv3.
 """
 
 import numpy as np
 from astropy import units as u
 from astropy.coordinates import Angle, Longitude
-from astropy.time.utils import day_frac
+from astropy.time.utils import two_sum, two_product
+
 
 __all__ = ['Phase', 'FractionalPhase']
 
@@ -16,6 +18,59 @@ FRACTION_UFUNCS = {np.cos, np.sin, np.tan, np.spacing}
 COMPARISON_UFUNCS = {
     np.equal, np.not_equal,
     np.less, np.less_equal, np.greater, np.greater_equal}
+
+
+def day_frac(val1, val2, factor=None, divisor=None):
+    """Return the sum of ``val1`` and ``val2`` as two float64s.
+    The returned floats are an integer part and the fractional remainder,
+    with the latter guaranteed to be within -0.5 and 0.5 (inclusive on
+    either side, as the integer is rounded to even).
+    The arithmetic is all done with exact floating point operations so no
+    precision is lost to rounding error.  It is assumed the sum is less
+    than about 1e16, otherwise the remainder will be greater than 1.0.
+    Parameters
+    ----------
+    val1, val2 : array of float
+        Values to be summed.
+    factor : float, optional
+        If given, multiply the sum by it.
+    divisor : float, optional
+        If given, divide the sum by it.
+    Returns
+    -------
+    day, frac : float64
+        Integer and fractional part of val1 + val2.
+    """
+    # Add val1 and val2 exactly, returning the result as two float64s.
+    # The first is the approximate sum (with some floating point error)
+    # and the second is the error of the float64 sum.
+    sum12, err12 = two_sum(val1, val2)
+
+    if factor is not None:
+        sum12, carry = two_product(sum12, factor)
+        carry += err12 * factor
+        sum12, err12 = two_sum(sum12, carry)
+
+    if divisor is not None:
+        q1 = sum12 / divisor
+        p1, p2 = two_product(q1, divisor)
+        d1, d2 = two_sum(sum12, -p1)
+        d2 += err12
+        d2 -= p2
+        q2 = (d1 + d2) / divisor  # 3-part float fine here; nothing can be lost
+        sum12, err12 = two_sum(q1, q2)
+
+    # get integer fraction
+    day = np.floor(sum12 + 0.5)
+    extra, frac = two_sum(sum12, -day)
+    frac += extra + err12
+    # Our fraction can now have gotten >0.5 or <-0.5, which means we would
+    # loose one bit of precision. So, correct for that.
+    excess = np.floor(frac + 0.5)
+    day += excess
+    extra, frac = two_sum(sum12, -day)
+    frac += extra + err12
+    return day, frac
 
 
 def _parse_string(s):
@@ -289,11 +344,8 @@ class Phase(Angle):
                 .format(cls=self.__class__.__name__))
 
         # Override Quantity.__iter__ since that iterates over self.value.
-        def phase_iter():
-            for i in range(len(self)):
-                yield self[i]
-
-        return phase_iter()
+        for i in range(len(self)):
+            yield self[i]
 
     def _set_unit(self, unit):
         if unit is None or unit != self._unit:
@@ -312,7 +364,7 @@ class Phase(Angle):
             " * 1j" if self.imaginary else '')
 
     def __str__(self):
-        return self.to_string()
+        return f"{self.view(np.ndarray)} {self.unit}"
 
     def __format__(self, format_spec):
         """Format a phase, special-casing the float format.

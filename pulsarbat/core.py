@@ -8,21 +8,22 @@ from astropy.time import Time
 from numpy.core.overrides import set_module
 
 __all__ = [
-    'Signal',
-    'RadioSignal',
-    'IntensitySignal',
-    'BasebandSignal',
-    'FullStokesSignal',
-    'DualPolarizationSignal',
+    "Signal",
+    "RadioSignal",
+    "IntensitySignal",
+    "BasebandSignal",
+    "FullStokesSignal",
+    "DualPolarizationSignal",
 ]
 
 
 class InvalidSignalError(ValueError):
     """Used to catch invalid signals."""
+
     pass
 
 
-@set_module('pulsarbat')
+@set_module("pulsarbat")
 class Signal:
     """Base class for all signals.
 
@@ -49,8 +50,9 @@ class Signal:
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
     """
-    _req_dtype = None
-    _req_shape = (None, )
+
+    _req_dtype = ()
+    _req_shape = (None,)
 
     def __init__(self, z, /, *, sample_rate, start_time=None, meta=None):
         min_ndim = len(self._req_shape)
@@ -68,18 +70,29 @@ class Signal:
         if np.prod(z.shape[1:]) == 0:
             raise InvalidSignalError("Sample shape must have non-zero size!")
 
-        if self._req_dtype is not None and z.dtype not in self._req_dtype:
-            err = (f"Signal has invalid dtype. Expected {self._req_dtype}, "
-                   f"got {z.dtype} instead.")
-            raise InvalidSignalError(err)
-        self._data = z
+        _temp = None
+        if z.dtype in self._req_dtype or not self._req_dtype:
+            _temp = z
+        else:
+            for d in self._req_dtype:
+                try:
+                    _temp = z.astype(self._req_dtype[0], casting="safe")
+                except TypeError:
+                    pass
+                else:
+                    break
 
+        if _temp is None:
+            err = f"Expected {self._req_dtype}, got {z.dtype}."
+            raise InvalidSignalError(f"Invalid dtype. {err}")
+
+        self._data = _temp
         self.sample_rate = sample_rate
         self.start_time = start_time
         self.meta = meta
 
     def _attr_repr(self):
-        st = 'N/A' if self.start_time is None else self.start_time.isot
+        st = "N/A" if self.start_time is None else self.start_time.isot
         return (f"Sample rate: {self.sample_rate}\n"
                 f"Time length: {self.time_length}\n"
                 f"Start time: {st}\n")
@@ -94,7 +107,7 @@ class Signal:
         if self.meta is not None:
             s += "\nMeta\n----\n"
             s += pprint.pformat(self.meta, sort_dicts=False, depth=2)
-        return s.strip()
+        return s
 
     def __repr__(self):
         info = f"shape={self.shape}, dtype={self.dtype}"
@@ -113,9 +126,9 @@ class Signal:
 
         kw = dict()
         if s.step > 1:
-            kw['sample_rate'] = self.sample_rate / s.step
+            kw["sample_rate"] = self.sample_rate / s.step
         if self.start_time is not None:
-            kw['start_time'] = self.start_time + s.start / self.sample_rate
+            kw["start_time"] = self.start_time + s.start / self.sample_rate
         return kw
 
     def __getitem__(self, index):
@@ -203,11 +216,11 @@ class Signal:
         try:
             temp = None
             if start_time is not None:
-                temp = Time(start_time, format='isot', precision=9)
+                temp = Time(start_time, format="isot", precision=9)
                 assert temp.isscalar
         except Exception:
-            raise ValueError("Invalid start_time. Must be a scalar astropy "
-                             "Time object.")
+            err = "Invalid start_time. Must be a scalar astropy Time object."
+            raise ValueError(err)
         else:
             self._start_time = temp
 
@@ -218,7 +231,7 @@ class Signal:
             return None
         return self.start_time + self.time_length
 
-    def contains(self, t):
+    def contains(self, t, /):
         """Whether time(s) are within the bounds of the signal."""
         if self.start_time is None:
             return np.zeros(t.shape, bool) if t.shape else False
@@ -267,14 +280,14 @@ class Signal:
                 if hasattr(obj, k):
                     kwargs[k] = getattr(obj, k)
                 elif v.default is v.empty:
-                    raise ValueError(f'Missing required keyword argument: {k}')
+                    raise ValueError(f"Missing required keyword argument: {k}")
 
         if z is None:
             z = obj.data
         return cls(z, **kwargs)
 
 
-@set_module('pulsarbat')
+@set_module("pulsarbat")
 class RadioSignal(Signal):
     """Class for heterodyned radio signals.
 
@@ -338,10 +351,11 @@ class RadioSignal(Signal):
     fixed to `'center'` since the channels must be necessarily centered
     on the `center_freq`.
     """
-    _req_shape = (None, None, )
+
+    _req_shape = (None, None,)
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 chan_bw, freq_align='center', meta=None):
+                 chan_bw, freq_align="center", meta=None):
 
         super().__init__(z, sample_rate=sample_rate, start_time=start_time,
                          meta=meta)
@@ -364,8 +378,8 @@ class RadioSignal(Signal):
         kw = dict()
         if s.stop - s.start < self.nchan:
             f = self.channel_freqs[s]
-            kw['center_freq'] = (f[0] + f[-1]) / 2
-            kw['freq_align'] = 'center'
+            kw["center_freq"] = (f[0] + f[-1]) / 2
+            kw["freq_align"] = "center"
         return kw
 
     def __getitem__(self, index):
@@ -441,8 +455,8 @@ class RadioSignal(Signal):
 
     @freq_align.setter
     def freq_align(self, freq_align):
-        if freq_align in {'bottom', 'center', 'top'}:
-            self._freq_align = 'center' if self.nchan % 2 else freq_align
+        if freq_align in {"bottom", "center", "top"}:
+            self._freq_align = "center" if self.nchan % 2 else freq_align
         else:
             choices = "{'bottom', 'center', 'top'}"
             raise ValueError(f"Invalid freq_align. Expected: {choices}")
@@ -450,12 +464,12 @@ class RadioSignal(Signal):
     @property
     def channel_freqs(self):
         """Returns a list of frequencies corresponding to all channels."""
-        _align = {'bottom': 0, 'center': 0.5, 'top': 1}[self.freq_align]
+        _align = {"bottom": 0, "center": 0.5, "top": 1}[self.freq_align]
         chan_ids = np.arange(self.nchan) + _align - self.nchan / 2
         return self.center_freq + self.chan_bw * chan_ids
 
 
-@set_module('pulsarbat')
+@set_module("pulsarbat")
 class IntensitySignal(RadioSignal):
     """Class for intensity signals such as Stokes I, Q, U, V, etc.
 
@@ -465,8 +479,7 @@ class IntensitySignal(RadioSignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`, and dtype of either `np.float32` or
-        `np.float64`.
+        `(nsample, nchan, ...)`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
     start_time : `~astropy.time.Time`, optional
@@ -490,10 +503,11 @@ class IntensitySignal(RadioSignal):
     Signal
     RadioSignal
     """
-    _req_dtype = (np.float32, np.float64)
+
+    _req_dtype = (np.float64, np.float32)
 
 
-@set_module('pulsarbat')
+@set_module("pulsarbat")
 class FullStokesSignal(IntensitySignal):
     """Class for full Stokes (I, Q, U, V) signals.
 
@@ -504,9 +518,8 @@ class FullStokesSignal(IntensitySignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, nstokes, ...)` where `nstokes = 4`, and dtype
-        of either `np.float32` or `np.float64`. The order of the Stokes
-        components is `[I, Q, U, V]`.
+        `(nsample, nchan, nstokes, ...)` where `nstokes = 4`.
+        The order of the Stokes components is `[I, Q, U, V]`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
     start_time : `~astropy.time.Time`, optional
@@ -536,10 +549,11 @@ class FullStokesSignal(IntensitySignal):
     Wikipedia, "Stokes Parameters",
     https://en.wikipedia.org/wiki/Stokes_parameters
     """
+
     _req_shape = (None, None, 4)
 
 
-@set_module('pulsarbat')
+@set_module("pulsarbat")
 class BasebandSignal(RadioSignal):
     """Class for complex baseband signals.
 
@@ -556,8 +570,7 @@ class BasebandSignal(RadioSignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`, and dtype of either `np.complex64` or
-        `np.complex128`.
+        `(nsample, nchan, ...)`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
     start_time : `~astropy.time.Time`, optional
@@ -578,10 +591,11 @@ class BasebandSignal(RadioSignal):
     Signal
     RadioSignal
     """
-    _req_dtype = (np.complex64, np.complex128)
+
+    _req_dtype = (np.complex128, np.complex64)
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 freq_align='center', meta=None):
+                 freq_align="center", meta=None):
 
         super().__init__(z, sample_rate=sample_rate, start_time=start_time,
                          center_freq=center_freq, chan_bw=sample_rate,
@@ -595,11 +609,11 @@ class BasebandSignal(RadioSignal):
         out : `~pulsarbat.IntensitySignal`
             The converted signal.
         """
-        z = self.data.real**2 + self.data.imag**2
+        z = self.data.real ** 2 + self.data.imag ** 2
         return IntensitySignal.like(self, z)
 
 
-@set_module('pulsarbat')
+@set_module("pulsarbat")
 class DualPolarizationSignal(BasebandSignal):
     """Class for dual-polarization complex baseband signals.
 
@@ -610,8 +624,7 @@ class DualPolarizationSignal(BasebandSignal):
     ----------
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, npol, ...)` where `npol = 2`, and dtype of
-        either `np.complex64` or `np.complex128`.
+        `(nsample, nchan, npol, ...)` where `npol = 2`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
     start_time : `~astropy.time.Time`, optional
@@ -644,10 +657,11 @@ class DualPolarizationSignal(BasebandSignal):
     `pol_type='circular'`, `z[:, :, 0]` refers to the right-handed
     circular polarization component.
     """
+
     _req_shape = (None, None, 2)
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 freq_align='center', pol_type, meta=None):
+                 freq_align="center", pol_type, meta=None):
 
         super().__init__(z, sample_rate=sample_rate, start_time=start_time,
                          center_freq=center_freq, freq_align=freq_align,
@@ -667,7 +681,7 @@ class DualPolarizationSignal(BasebandSignal):
 
     @pol_type.setter
     def pol_type(self, pol_type):
-        if pol_type in {'linear', 'circular'}:
+        if pol_type in {"linear", "circular"}:
             self._pol_type = pol_type
         else:
             raise ValueError("pol_type must be in {'linear', 'circular'}")
@@ -683,14 +697,14 @@ class DualPolarizationSignal(BasebandSignal):
         out : `~pulsarbat.DualPolarizationSignal`
             The converted signal.
         """
-        if self.pol_type == 'circular':
+        if self.pol_type == "circular":
             R, L = self.data[:, :, 0], self.data[:, :, 1]
             X, Y = R + L, 1j * (R - L)
             z = np.stack([X, Y], axis=2) / np.sqrt(2)
         else:
             z = self.data
 
-        return type(self).like(self, z, pol_type='linear')
+        return type(self).like(self, z, pol_type="linear")
 
     def to_circular(self):
         """Converts the dual-polarization signal to circular basis.
@@ -703,14 +717,14 @@ class DualPolarizationSignal(BasebandSignal):
         out : `~pulsarbat.DualPolarizationSignal`
             The converted signal.
         """
-        if self.pol_type == 'linear':
+        if self.pol_type == "linear":
             X, Y = self.data[:, :, 0], self.data[:, :, 1]
             R, L = X - 1j * Y, X + 1j * Y
             z = np.stack([R, L], axis=2) / np.sqrt(2)
         else:
             z = self.data
 
-        return type(self).like(self, z, pol_type='circular')
+        return type(self).like(self, z, pol_type="circular")
 
     def to_stokes(self):
         """Converts signal to IQUV Stokes representation.
@@ -720,21 +734,21 @@ class DualPolarizationSignal(BasebandSignal):
         out : `~pulsarbat.StokesSignal`
             Signal in Stokes IQUV representation.
         """
-        if self.pol_type == 'linear':
+        if self.pol_type == "linear":
             X, Y = self.data[:, :, 0], self.data[:, :, 1]
 
-            i = X.real**2 + X.imag**2 + Y.real**2 + Y.imag**2
-            Q = X.real**2 + X.imag**2 - Y.real**2 - Y.imag**2
+            i = X.real ** 2 + X.imag ** 2 + Y.real ** 2 + Y.imag ** 2
+            Q = X.real ** 2 + X.imag ** 2 - Y.real ** 2 - Y.imag ** 2
             U = +2 * (X * Y.conj()).real
             V = -2 * (X * Y.conj()).imag
 
-        elif self.pol_type == 'circular':
+        elif self.pol_type == "circular":
             R, L = self.data[:, :, 0], self.data[:, :, 1]
 
-            i = R.real**2 + R.imag**2 + L.real**2 + L.imag**2
+            i = R.real ** 2 + R.imag ** 2 + L.real ** 2 + L.imag ** 2
             Q = +2 * (R * L.conj()).real
             U = -2 * (R * L.conj()).imag
-            V = R.real**2 + R.imag**2 - L.real**2 - L.imag**2
+            V = R.real ** 2 + R.imag ** 2 - L.real ** 2 - L.imag ** 2
 
         z = np.stack([i, Q, U, V], axis=2)
         return FullStokesSignal.like(self, z)

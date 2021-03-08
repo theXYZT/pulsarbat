@@ -36,10 +36,10 @@ def test_pol_reversibility(complex_noise, pol_type):
     assert z.pol_type == y.pol_type
 
     x, y, z = np.array(x), np.array(y), np.array(z)
-    assert np.allclose(z.real, x.real)
-    assert np.allclose(z.real, y.real)
-    assert np.allclose(z.imag, x.imag)
-    assert np.allclose(z.imag, y.imag)
+    assert np.allclose(z.real - x.real, 0)
+    assert np.allclose(z.real - y.real, 0)
+    assert np.allclose(z.imag - x.imag, 0)
+    assert np.allclose(z.imag - y.imag, 0)
 
 
 @pytest.mark.parametrize("pol_type", ['linear', 'circular'])
@@ -49,5 +49,5 @@ def test_to_stokes(complex_noise, pol_type):
     x = z.to_linear().to_stokes()
     y = z.to_circular().to_stokes()
     x, y = np.array(x), np.array(y)
-    assert np.allclose(x.real, y.real)
-    assert np.allclose(x.imag, y.imag)
+    assert np.allclose(x.real - y.real, 0)
+    assert np.allclose(x.imag - y.imag, 0)

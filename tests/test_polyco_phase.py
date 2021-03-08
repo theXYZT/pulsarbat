@@ -52,14 +52,36 @@ class TestPolyco:
 class TestPhase:
     def test_basic(self):
         a = Phase(1.2)
-        _ = repr(a)
-        _ = str(a)
+        repr(a)
+        str(a)
+        assert a.isscalar
+        assert u.allclose(a.int, 1 * u.cycle)
+        assert u.allclose(a.frac, 0.2 * u.cycle)
+        assert u.allclose(a.cycle, 1.2 * u.cycle)
+        assert u.allclose(a.to(u.deg), 432 * u.deg)
 
-        u.isclose(4 * a, Phase(4 * 1.2))
-        u.isclose(a + 0.8, Phase(1.2 + 0.8))
+        a = Phase([1.2, 1.8, 2.6])
+        repr(a)
+        str(a)
+        assert u.allclose(a.int, [1, 2, 3] * u.cycle)
+        assert u.allclose(a.frac, [0.2, -0.2, -0.4] * u.cycle)
+        assert u.allclose(a.cycle, [1.2, 1.8, 2.6] * u.cycle)
+        assert u.allclose(a.to(u.deg), [432, 648, 936] * u.deg)
+
+        assert np.array_equal(np.int64(a.int.value), np.array([1, 2, 3]))
+        assert u.allclose(Phase(['49.64', '12.34']), Phase([49.64, 12.34]))
+
+    def test_math_operations(self):
+        a = Phase([1.2, 1.8, 2.6]) + Phase([3.4, 5.6, 2.3])
+        b = Phase([4.6, 7.4, 4.9])
+        assert u.allclose(a, b)
+
+        a = Phase(1.2)
+        assert u.isclose(4 * a, Phase(4 * 1.2))
+        assert u.isclose(a + 0.8, Phase(1.2 + 0.8))
 
         b = Phase(0.3, 0.5)
-        u.isclose(a + b, Phase(2.0))
+        assert u.isclose(a + b, Phase(2.0))
 
         assert u.isclose(Phase(100/3) + Phase(10/3), Phase(110/3))
         assert u.isclose(np.exp(1j * Phase(0.5)), -1)

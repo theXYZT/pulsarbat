@@ -11,7 +11,7 @@ import pulsarbat as pb
 @pytest.mark.parametrize("fn", [np.ones, da.ones])
 @pytest.mark.parametrize("fcen", [400 * u.MHz, 800 * u.MHz])
 @pytest.mark.parametrize("chan_bw", [1 * u.MHz, 10 * u.MHz])
-@pytest.mark.parametrize("nchan", [7, 8, 9])
+@pytest.mark.parametrize("nchan", [7, 8])
 @pytest.mark.parametrize("align", ["bottom", "top", "center"])
 def test_radiosignal(fn, fcen, chan_bw, nchan, align):
     z = pb.RadioSignal(fn((16, nchan, 2)), sample_rate=1*u.Hz,
@@ -96,11 +96,6 @@ def test_basebandsignal(sr, nchan):
 def test_baseband_dtype():
     fcen, sr = 800*u.MHz, 10*u.MHz
 
-    for dtype in [np.float32, np.float64]:
-        x = np.ones((16, 8), dtype=dtype)
-        with pytest.raises(ValueError):
-            _ = pb.BasebandSignal(x, sample_rate=sr, center_freq=fcen)
-
     for dtype in [np.complex64, np.complex128]:
         x = np.ones((16, 8), dtype=dtype)
         _ = pb.BasebandSignal(x, sample_rate=sr, center_freq=fcen)
@@ -122,7 +117,7 @@ def test_intensity_dtype():
 
 
 @pytest.mark.parametrize("use_dask", [True, False])
-@pytest.mark.parametrize("A", [1, 2, 4, 10])
+@pytest.mark.parametrize("A", [1, 4, 10])
 @pytest.mark.parametrize("in_dtype, out_dtype", [(np.complex64, np.float32),
                                                  (np.complex128, np.float64)])
 def test_baseband_to_intensity(A, use_dask, in_dtype, out_dtype):
