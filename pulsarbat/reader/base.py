@@ -1,27 +1,23 @@
 """Base module for readers.
 
-Readers are used to read data into `~Signal` objects. All readers
-should expose the following properties:
-  * `dtype` -- Data-type of signal data.
-  * `shape` -- Shape of data.
-  * `ndim` -- Number of dimensions in data.
-  * `sample_shape` -- Shape of a sample.
-  * `sample_rate` -- Number of samples per unit time.
-  * `dt` -- Sample spacing in time units.
-  * `time_length` -- Length of signal data in time units.
-  * `start_time` -- Timestamp at first sample (or None).
-  * `stop_time` -- Timestamp after last sample (or None).
-  * `time` -- Timestamp at current read position (or None).
+Readers are used to read data into `~Signal` objects. A reader `r`
+should expose the following user-facing attributes/methods:
 
-All readers should also expose the following methods:
-  * `__len__()` -- Returns length of stream in number of samples.
-  * `seek(n)` -- Change read position to the given offset.
-  * `tell()` -- Returns current stream position.
-  * `read(n, **kwargs)` -- Read `n` samples from current read position.
-  * `dask_read(n, **kwargs)` -- Alias for `read(n, use_dask=True, **kwargs)`.
+  * `len(r)` -- Length of data in number of samples.
+  * `r.shape` -- Shape of data.
+  * `r.sample_shape` -- Shape of a sample.
+  * `r.ndim` -- Number of dimensions.
+  * `r.dtype` -- Data-type of signal data.
+  * `r.sample_rate` -- Number of samples per unit time.
+  * `r.dt` -- Sample spacing in time units.
+  * `r.time_length` -- Length of signal data in time units.
+  * `r.start_time` -- Timestamp at first sample (or None).
+  * `r.stop_time` -- Timestamp after last sample (or None).
+  * `r.read(offset, n, **kwargs)` -- Read `n` samples from given offset.
+  * `r.offset_at(t)` -- Offset at given timestamp or Quantity.
+  * `r.time_at(offset)` -- Timestamp at given offset (or None).
 
-The following keyword arguments are assumed to be universally accepted
-by the `read()` for all readers:
+The following keyword arguments should be accepted the `read()` method:
   * `use_dask` -- boolean, whether to use Dask arrays.
 """
 
@@ -33,7 +29,6 @@ import pulsarbat as pb
 
 __all__ = [
     'BaseReader',
-    'ConcatenatedReader',
 ]
 
 
@@ -82,10 +77,9 @@ class BaseReader:
 
         self.sample_rate = sample_rate
         self.start_time = start_time
-        self.offset = 0
 
         # Read 0 samples now to catch potential errors earlier
-        z = self.read(0)
+        z = self.read(0, 0)
 
         # Make sure shape and dtype are consistent
         if z.shape != (0,) + self.sample_shape:
@@ -97,8 +91,7 @@ class BaseReader:
         st = 'N/A' if self.start_time is None else self.start_time.isot
         return (f"Start time: {st}\n"
                 f"Sample rate: {self.sample_rate}\n"
-                f"Time length: {self.time_length}\n"
-                f"Offset: {self.offset}\n")
+                f"Time length: {self.time_length}\n")
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -175,9 +168,7 @@ class BaseReader:
     @property
     def stop_time(self):
         """Timestamp after last sample."""
-        if self.start_time is None:
-            return None
-        return self.start_time + (len(self) / self.sample_rate)
+        return self.time_at(len(self))
 
     @property
     def dt(self):
@@ -189,93 +180,76 @@ class BaseReader:
         """Length of signal in time units."""
         return (len(self) / self.sample_rate).to(u.s)
 
-    @property
-    def time(self):
-        """Timestamp at current read position."""
+    def contains(self, t, /):
+        """Whether time(s) are within the bounds of the signal."""
         if self.start_time is None:
-            return None
-        return self.start_time + (self.tell() / self.sample_rate)
+            return np.zeros(t.shape, bool) if t.shape else False
 
-    def seek(self, offset, whence=0):
-        """Change read position to the given offset.
+        t0, t1 = self.start_time, self.stop_time
+        edge = ~Time.isclose(t, t1) | Time.isclose(t, t0)
+        return edge & (t0 <= t) & (t < t1)
 
-        Offset is interpreted relative to position indicated by `whence`:
-          * `0` or `'start'` -- Start of the stream (default). `offset`
-            must be positive.
-          * `1` or `'current'` -- Current stream position. `offset` must
-            be positive or negative.
-          * `2` or `'end'` -- End of the stream. `offset` must be negative.
+    def __contains__(self, t):
+        """Whether time is within the bounds of the signal."""
+        return self.contains(t)
+
+    def offset_at(self, t, /):
+        """Returns nearest integer offset at given time.
 
         Parameters
         ----------
-        offset : int, `~astropy.units.Quantity`, or `~astropy.time.Time`
-            Offset to move to. Can be an `int` (number of samples),
-            an astropy Quantity in time units, or an absolute time as an
-            astropy Time object (`whence` has no effect in this case).
-            For the latter two, the seek position is moved to the
-            nearest integer sample.
-        whence : {0, 1, 2, 'start', 'current', or 'end'}, optional
-            Position that `offset` is taken relative to. Default is `0`,
-            which is the start of the stream.
+        t : `~astropy.units.Quantity`, or `~astropy.time.Time`
+            Can be an absolute time as an astropy Time object, or an
+            astropy Quantity in time units relative to the start.
 
         Returns
         -------
         offset : int
-            The new absolute position (in number of samples).
+            The nearest integer position (in number of samples).
         """
         try:
-            offset = operator.index(offset)
+            t = t - self.start_time
         except Exception:
-            try:
-                offset = offset - self.start_time
-            except Exception:
-                pass
-            else:
-                whence = 0
+            pass
 
-            offset = int((offset * self.sample_rate).to(u.one).round())
+        offset = int((t * self.sample_rate).to(u.one).round())
 
-        if whence in {0, 'start'}:
-            new_offset = offset
-        elif whence in {1, 'current'}:
-            new_offset = self.offset + offset
-        elif whence in {2, 'end'}:
-            new_offset = len(self) + offset
-        else:
-            raise ValueError("Invalid 'whence'. Should be 0 or 'start', 1 or "
-                             "'current', or 2 or 'end'.")
+        if offset < 0 or offset > len(self):
+            raise OutOfBoundsError("Given time is out of bounds!")
 
-        if new_offset < 0 or new_offset > len(self):
-            raise OutOfBoundsError("Cannot seek beyond bounds of stream!")
+        return offset
 
-        self.offset = new_offset
-        return self.offset
-
-    def tell(self, unit=None):
-        """Returns current stream position.
+    def time_at(self, offset, /, unit=None):
+        """Returns time at given offset.
 
         Parameters
         ----------
+        offset : int
+            Position in number of samples.
         unit : `~astropy.units.Unit`, optional
-            Time unit the offset should be returned in. By default, the
-            current stream position is returned as an integer.
+            Desired unit of returned value (as an astropy unit).
+            By default (None), the absolute timestamp is returned.
 
         Returns
         -------
-        offset : int or `~astropy.units.Quantity`
-            Current stream position.
+        t : `~astropy.units.Quantity`, or `~astropy.time.Time`
+            Time relative to the start as an astropy Quantity if `unit`
+            is provided, otherwise an absolute time as an astropy Time
+            object.
         """
-        if unit is None:
-            return self.offset
+        if unit is not None:
+            return (offset / self.sample_rate).to(unit)
 
-        return (self.offset / self.sample_rate).to(unit)
+        if self.start_time is None:
+            return None
 
-    def _read_array(self, n, offset, /):
+        return self.start_time + (offset / self.sample_rate)
+
+    def _read_array(self, offset, n, /):
         """Read n samples from given offset into numpy array."""
-        raise NotImplementedError("Must be implemented by subclasses "
-                                  "if using the default read methods.")
+        return NotImplemented
 
-    def _read_data(self, n, /, use_dask=False, **kwargs):
+    def _read_data(self, offset, n, /, use_dask=False, **kwargs):
         """Read n samples from current read position into array-like."""
         if use_dask:
             import dask
@@ -284,31 +258,23 @@ class BaseReader:
             delayed_read = dask.delayed(self._read_array, pure=True)
 
             _out_shape = (n,) + self.sample_shape
-            z = da.from_delayed(delayed_read(n, self.offset, **kwargs),
+            z = da.from_delayed(delayed_read(offset, n, **kwargs),
                                 dtype=self.dtype, shape=_out_shape)
 
             chunks = (-1, ) + ('auto', ) * len(self.sample_shape)
             z = z.rechunk(chunks)
         else:
-            z = self._read_array(n, self.offset, **kwargs)
+            z = self._read_array(offset, n, **kwargs)
 
         return z
 
-    def _verify_n(self, n):
-        """Verify that n given to .read() is meaningful."""
-        if (n := operator.index(n)) < 0:
-            raise ValueError("n must be non-negative.")
-
-        if self.tell() + n > len(self):
-            raise OutOfBoundsError("Cannot read beyond end of stream")
-
-        return n
-
-    def read(self, n, /, **kwargs):
-        """Read `n` samples from current read position.
+    def read(self, offset, n, /, **kwargs):
+        """Read `n` samples from given offset.
 
         Parameters
         ----------
+        offset : int
+            Position to read from. Must be non-negative.
         n : int
             Number of samples to read. Must be non-negative.
         **kwargs
@@ -320,80 +286,39 @@ class BaseReader:
         out : `~Signal` object or subclass
             Signal of length `n` containing data that was read.
         """
-        n = self._verify_n(n)
+        if (offset := operator.index(offset)) < 0:
+            raise ValueError("offset must be a non-negative int.")
 
-        z = self._signal_type(self._read_data(n, **kwargs),
-                              sample_rate=self.sample_rate,
-                              start_time=self.time,
-                              **self._signal_kwargs)
+        if (n := operator.index(n)) < 0:
+            raise ValueError("n must be a non-negative int.")
 
-        self.seek(n, whence=1)
-        return z
+        if offset + n > len(self):
+            raise OutOfBoundsError("Cannot read beyond end of stream")
 
-    def dask_read(self, n, /, **kwargs):
-        """Read `n` samples from current read position using dask arrays.
+        return self._signal_type(self._read_data(offset, n, **kwargs),
+                                 sample_rate=self.sample_rate,
+                                 start_time=self.time_at(offset),
+                                 **self._signal_kwargs)
 
-        A convenience method equivalent to `.read(n, use_dask=True, **kwargs).
+    def dask_read(self, offset, n, /, **kwargs):
+        """Read `n` samples from given offset using dask arrays.
+
+        A convenience method equivalent to the `read()` method with
+        `use_dask=True`.
 
         Parameters
         ----------
+        offset : int
+            Position to read from. Must be non-negative.
         n : int
-            Number of samples to read.
+            Number of samples to read. Must be non-negative.
         **kwargs
             Additional keyword arguments.
 
         Returns
         -------
         out : `~Signal` object or subclass
-            Signal of length `n` containing data that was read.
+            Signal of length `n` containing data that was read as a
+            Dask array.
         """
-        return self.read(n, use_dask=True, **kwargs)
-
-
-class ConcatenatedReader(BaseReader):
-    def __init__(self, readers, axis):
-        if not all(isinstance(r, BaseReader) for r in readers):
-            raise TypeError("Not all objects in readers are readers!")
-
-        if axis in {0, 'time'}:
-            raise ValueError("Can't concatenate readers in time!")
-        self._axis = axis
-
-        for r in readers:
-            r.seek(0)
-        self._readers = tuple(readers)
-
-        z = pb.concatenate([r.read(0) for r in self._readers],
-                           axis=self._axis)
-
-        min_length = min(len(r) for r in readers)
-        super().__init__(shape=(min_length,) + z.sample_shape, dtype=z.dtype,
-                         signal_type=type(z), sample_rate=z.sample_rate,
-                         start_time=z.start_time)
-
-    def read(self, n, /, **kwargs):
-        """Read `n` samples from current read position.
-
-        Parameters
-        ----------
-        n : int
-            Number of samples to read.
-        **kwargs
-            Additional keyword arguments. Currently supported are:
-              * `use_dask` -- Whether to use dask arrays.
-
-        Returns
-        -------
-        out : `~Signal` object or subclass
-            Signal of length `n` containing data that was read.
-        """
-        n = self._verify_n(n)
-
-        for r in self._readers:
-            r.seek(self.offset)
-
-        z = pb.concatenate([r.read(n, **kwargs) for r in self._readers],
-                           axis=self._axis)
-
-        self.seek(n, whence=1)
-        return z
+        return self.read(offset, n, use_dask=True, **kwargs)

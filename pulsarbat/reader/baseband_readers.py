@@ -108,7 +108,7 @@ class BasebandReader(BaseReader):
 
         self._lower_sideband = s
 
-    def _read_baseband(self, n, offset, /, lock=nullcontext()):
+    def _read_baseband(self, offset, n, /, lock=nullcontext()):
         """Read n samples from given offset using baseband."""
         with lock:
             with self._get_fh() as fh:
@@ -127,22 +127,24 @@ class BasebandReader(BaseReader):
 
         return z.astype(self.dtype, copy=False)
 
-    def _read_array(self, n, offset, /, **kwargs):
+    def _read_array(self, offset, n, /, **kwargs):
         """Read n samples from given offset into numpy array.
 
         Post-processing for specific formats (such as correcting the
         order of data dimensions) should be done in this method by
         subclasses.
         """
-        return self._read_baseband(n, offset, **kwargs)
+        return self._read_baseband(offset, n, **kwargs)
 
-    def read(self, n, /, **kwargs):
-        """Read `n` samples from current read position.
+    def read(self, offset, n, /, **kwargs):
+        """Read `n` samples from given offset.
 
         Parameters
         ----------
+        offset : int
+            Position to read from. Must be non-negative.
         n : int
-            Number of samples to read.
+            Number of samples to read. Must be non-negative.
         **kwargs
             Additional keyword arguments. Currently supported are:
               * `use_dask` -- Whether to use dask arrays.
@@ -151,9 +153,9 @@ class BasebandReader(BaseReader):
         Returns
         -------
         out : `~Signal` object or subclass
-            Signal containing data that was read.
+            Signal of length `n` containing data that was read.
         """
-        return super().read(n, **kwargs)
+        return super().read(offset, n, **kwargs)
 
 
 class GUPPIRawReader(BasebandReader):
@@ -182,9 +184,9 @@ class GUPPIRawReader(BasebandReader):
                          signal_kwargs=signal_kwargs, intensity=False,
                          lower_sideband=not header.sideband, **kwargs)
 
-    def _read_array(self, n, offset, /, **kwargs):
+    def _read_array(self, offset, n, /, **kwargs):
         """Read n samples from current read position into numpy array."""
-        z = self._read_baseband(n, offset, **kwargs)
+        z = self._read_baseband(offset, n, **kwargs)
         return z.transpose(0, 2, 1)
 
 
@@ -220,9 +222,9 @@ class DADAStokesReader(BasebandReader):
                          signal_kwargs=signal_kwargs, intensity=True,
                          lower_sideband=lsb, **kwargs)
 
-    def _read_array(self, n, offset, /, **kwargs):
+    def _read_array(self, offset, n, /, **kwargs):
         """Read n samples from current read position into numpy array."""
-        z = self._read_baseband(n, offset, **kwargs)
+        z = self._read_baseband(offset, n, **kwargs)
 
         if self.lower_sideband:
             z = np.flip(z, axis=-1)
