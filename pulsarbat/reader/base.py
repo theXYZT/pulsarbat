@@ -107,6 +107,13 @@ class BaseReader:
         s = f"{self.__class__.__name__}<{sig}> @ {hex(id(self))}"
         return s
 
+    def __getattr__(self, name):
+        if name in self._signal_kwargs:
+            return self._signal_kwargs[name]
+
+        err = f"{self.__class__.__name__} has no attribute '{name}'"
+        raise AttributeError(err)
+
     def __len__(self):
         """Length of signal data in number of samples."""
         return self.shape[0]

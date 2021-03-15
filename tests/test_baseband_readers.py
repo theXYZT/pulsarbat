@@ -65,6 +65,9 @@ class TestGUPPIRawReader:
         r = pb.reader.GUPPIRawReader(fs)
         assert len(r) == 8192 * len(fs)
 
+        assert u.isclose(r.center_freq, 344.1875 * u.MHz)
+        assert r.pol_type == 'linear'
+
         z = r.read(0, 8, use_dask=use_dask)
         assert len(z) == 8
         assert u.isclose(z.sample_rate, 3.125 * u.MHz)
