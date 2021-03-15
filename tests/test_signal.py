@@ -106,7 +106,7 @@ def test_start_time_errors(ts):
 
 
 class ArbitrarySignal(pb.Signal):
-    _req_dtype = (np.int8, np.int16)
+    _req_dtype = (np.int16, np.int32)
     _req_shape = (None, 7, 4, None)
 
     def __init__(self, z, /, *, sample_rate, foo):
@@ -119,18 +119,17 @@ class ArbitrarySignal(pb.Signal):
 
 
 def test_dtype_constraints():
-    sr = 1 * u.Hz
-    shape = (10, 7, 4, 2)
-    x = np.empty(shape)
+    shape = (10, 7, 4, 1)
 
     for dtype in [np.int8, np.int16]:
-        z = ArbitrarySignal(x.astype(dtype), sample_rate=sr, foo='bar')
-        assert z.dtype == dtype
+        x = np.zeros(shape, dtype=dtype)
+        z = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
+        assert z.dtype == np.int16
 
-    for dtype in [np.float32, np.int32]:
-        x = np.empty((10, 7, 4, 1)).astype(dtype)
+    for dtype in [np.float32, np.int64]:
+        x = np.empty(shape, dtype=dtype)
         with pytest.raises(ValueError):
-            _ = ArbitrarySignal(x.astype(dtype), sample_rate=sr, foo='bar')
+            _ = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
 
 
 def test_shape_constraints():
@@ -142,7 +141,6 @@ def test_shape_constraints():
 
 def test_signal_like():
     x1 = RAND.integers(-50, 50, (10, 7, 4, 1)).astype(np.int8)
-    x2 = RAND.integers(-50, 50, (10, 7, 4, 1)).astype(np.int8)
 
     z1 = ArbitrarySignal(x1, sample_rate=1*u.Hz, foo='bar')
     z2 = pb.Signal.like(z1)
@@ -152,6 +150,7 @@ def test_signal_like():
     assert z1.start_time == z2.start_time
     assert type(z2) is pb.Signal
 
+    x2 = RAND.integers(-50, 50, (10, 7, 4, 1)).astype(np.int8)
     z2 = pb.Signal.like(z1, x2)
     assert not np.array_equal(np.array(z1), np.array(z2))
 

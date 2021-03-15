@@ -1,8 +1,10 @@
 """Tests for core signal functions."""
 
+import math
 import pytest
 import itertools
 import numpy as np
+import dask.array as da
 import astropy.units as u
 import pulsarbat as pb
 from astropy.time import Time
@@ -20,11 +22,16 @@ def assert_equal_radiosignals(x, y):
 
 
 class TestConcatenate:
-    def test_concatenate_basic(self):
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_basic(self, use_dask):
         """Basic concatenation functionality."""
+        if use_dask:
+            f = da.random.standard_normal
+        else:
+            f = np.random.standard_normal
+
         shape = (16, 16)
-        z = pb.Signal(np.random.default_rng().standard_normal(shape),
-                      sample_rate=1*u.Hz, start_time=Time.now())
+        z = pb.Signal(f(shape), sample_rate=1*u.Hz, start_time=Time.now())
 
         x, y = z[:10], z[10:]
         for axis in [0, 'time']:
@@ -45,8 +52,7 @@ class TestConcatenate:
         with pytest.raises(TypeError):
             _ = pb.concatenate([x, y], axis='freq')
 
-        z = pb.RadioSignal(np.random.default_rng().standard_normal(shape),
-                           sample_rate=1*u.Hz, start_time=Time.now(),
+        z = pb.RadioSignal(f(shape), sample_rate=1*u.Hz, start_time=Time.now(),
                            chan_bw=1*u.MHz, center_freq=1*u.GHz)
 
         x, y = z[:, :10], z[:, 10:]
@@ -61,7 +67,7 @@ class TestConcatenate:
         with pytest.raises(ValueError):
             _ = pb.concatenate([x, y], axis=1)
 
-    def test_concatenate_valid_signal(self):
+    def test_valid_signal(self):
         """
              🡒 t
            ┏━━━┳━━━┓
@@ -100,7 +106,7 @@ class TestConcatenate:
                 with pytest.raises(ValueError):
                     _ = pb.concatenate(XY, axis=1)
 
-    def test_concatenate_valid_radiosignal(self):
+    def test_valid_radiosignal(self):
         """
              🡒 t
            ┏━━━┳━━━┓
@@ -139,7 +145,7 @@ class TestConcatenate:
                 with pytest.raises(ValueError):
                     _ = pb.concatenate(XY, axis='freq')
 
-    def test_concatenate_start_time_none(self):
+    def test_start_time_none(self):
         shape = (32, 32)
         k = (0, 13, 19, 19, 23, 32)
 
@@ -162,7 +168,7 @@ class TestConcatenate:
         y = pb.concatenate(zs, axis='time')
         assert y.start_time is None
 
-    def test_concatenate_edge_cases(self):
+    def test_edge_cases(self):
         shape = (16, 16)
 
         z = pb.Signal(np.random.default_rng().standard_normal(shape),
@@ -176,3 +182,46 @@ class TestConcatenate:
 
         with pytest.raises(TypeError):
             _ = pb.concatenate([z[:8], z[8:].data])
+
+
+class TestTimeShift:
+    @pytest.mark.parametrize("use_dask", [True, False])
+    @pytest.mark.parametrize("use_complex", [True, False])
+    def test_int_roll(self, use_dask, use_complex):
+        if use_dask:
+            f = da.random.standard_normal
+        else:
+            f = np.random.standard_normal
+
+        shape = (4096, 4, 2)
+
+        if use_complex:
+            x = (f(shape) + 1j*f(shape)).astype(np.complex128)
+        else:
+            x = f(shape).astype(np.float64)
+
+        z = pb.Signal(x, sample_rate=1*u.kHz, start_time=Time.now())
+
+        for n in [1, 10, 55, 211]:
+            assert_equal_signals(z[:-n], pb.time_shift(z, n))
+            assert_equal_signals(z[:-n], pb.time_shift(z, n * u.ms))
+
+            assert_equal_signals(z[n:], pb.time_shift(z, -n))
+            assert_equal_signals(z[n:], pb.time_shift(z, -n * u.ms))
+
+    def test_subsample_roll(self):
+        def impulse(N, t0):
+            """Generate noisy impulse at t0, with given S/N."""
+            n = (np.arange(N) - N // 2) / N
+            x = np.exp(-2j * np.pi * t0 * n)
+            return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex128)
+
+        N = 1024
+        for shift in [16.5, 32.25, 50.1, 60.9, 466.666]:
+            imp1 = impulse(N, shift)
+            imp2 = impulse(N - math.ceil(shift), 0)
+            x = pb.Signal(imp1, sample_rate=1*u.kHz, start_time=Time.now())
+            y = pb.time_shift(x, -shift)
+            assert np.allclose(np.array(y), imp2)
+            z = pb.time_shift(x, -shift * u.ms)
+            assert np.allclose(np.array(z), imp2)

@@ -7,6 +7,7 @@ import pulsarbat as pb
 
 __all__ = [
     'concatenate',
+    'time_shift',
 ]
 
 
@@ -100,3 +101,66 @@ def concatenate(signals, /, axis=0):
 
     z = np.concatenate([s.data for s in signals], axis=axis)
     return sig_type.like(signals[0], z, **kw)
+
+
+def time_shift(z, t, /):
+    """Shift signal by given number of samples or time.
+
+    This function shifts signals in time via FFT by multiplying by
+    a phase gradient in frequency domain.
+
+    Parameters
+    ----------
+    z : `~Signal`
+        Input signal.
+    t : int, float or `~astropy.units.Quantity`
+        Shift amount. If a number (int or float), the signal is shifted
+        by that number of samples. An astropy Quantity with units of
+        time can also be passed, in which case the signal will be
+        shifted by `t * z.sample_rate` samples.
+
+    Returns
+    -------
+    out : `~Signal`
+        Shifted signal.
+    """
+    def transfer_func(shape, shift):
+        ndim = len(shape)
+        ix = tuple(slice(None) if i == 0 else None for i in range(ndim))
+        ph = np.exp(-2j * np.pi * shift * np.fft.fftfreq(shape[0], 1))[ix]
+        return ph.astype(np.complex128)
+
+    if isinstance(t, u.Quantity):
+        n = np.float64((t * z.sample_rate).to_value(u.one))
+    else:
+        n = np.float64(t)
+
+    try:
+        import dask
+        import dask.array as da
+    except ImportError:
+        use_dask = False
+    else:
+        use_dask = isinstance(z.data, da.Array)
+
+    if use_dask:
+        delayed_tf = dask.delayed(transfer_func, pure=True)
+        ph = da.from_delayed(delayed_tf(z.shape, n), dtype=np.complex64,
+                             shape=z.shape[:1] + (1,)*(z.ndim - 1))
+    else:
+        ph = transfer_func(z.shape, n)
+
+    shifted = np.fft.ifft(np.fft.fft(z.data, axis=0) * ph, axis=0)
+    if np.iscomplexobj(z.data):
+        shifted = shifted.astype(z.dtype)
+    else:
+        shifted = shifted.real.astype(z.dtype)
+
+    x = type(z).like(z, shifted, start_time=z.start_time - n*z.dt)
+
+    if n >= 0:
+        i = np.int64(np.ceil(n))
+        return x[i:]
+    else:
+        i = np.int64(np.floor(n))
+        return x[:i]

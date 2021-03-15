@@ -364,7 +364,14 @@ class Phase(Angle):
             " * 1j" if self.imaginary else '')
 
     def __str__(self):
-        return f"{self.view(np.ndarray)} {self.unit}"
+        # Override Angle, since one cannot override the formatter for
+        # structured dtype in array2string.
+        def formatter(x):
+            # [...] and view as self.__class__ are needed for scalar case.
+            return x[...].view(self.dtype, self.__class__).to_string()
+
+        return np.array2string(self.view(f"V{self.dtype.itemsize}"),
+                               formatter={'all': formatter}) + self._unitstr
 
     def __format__(self, format_spec):
         """Format a phase, special-casing the float format.
