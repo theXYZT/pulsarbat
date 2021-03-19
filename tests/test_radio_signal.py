@@ -105,13 +105,13 @@ def test_intensity_dtype():
     fcen, sr, cbw = 800*u.MHz, 1*u.Hz, 10*u.MHz
 
     for dtype in [np.complex64, np.complex128]:
-        x = np.ones((16, 8), dtype=dtype)
+        x = np.ones((16, 8, 1), dtype=dtype)
         with pytest.raises(ValueError):
             _ = pb.IntensitySignal(x, sample_rate=sr, center_freq=fcen,
                                    chan_bw=cbw)
 
     for dtype in [np.float32, np.float64]:
-        x = np.ones((16, 8), dtype=dtype)
+        x = np.ones((16, 8, 1), dtype=dtype)
         _ = pb.IntensitySignal(x, sample_rate=sr, center_freq=fcen,
                                chan_bw=cbw)
 
@@ -159,19 +159,18 @@ def test_radiosignal_slice():
     assert Time.isclose(y.start_time - 2*u.s, z.start_time)
     assert y.nchan == 6
     assert all(u.isclose(y.channel_freqs, z.channel_freqs[2:8]))
-    assert y.freq_align == 'center'
+    assert y.freq_align == "center"
 
     y = z[:, 1:13]
     assert y.nchan == 12
     assert all(u.isclose(y.channel_freqs, z.channel_freqs[1:13]))
-    assert y.freq_align == 'center'
+    assert y.freq_align == "center"
 
     b = np.random.random((4, 2)) > 0.5
     y = z[2:8, :, b]
     assert y.nchan == z.nchan
-    assert y.freq_align == z.freq_align
+    assert y.freq_align == "center"
     assert all(u.isclose(y.channel_freqs, z.channel_freqs))
-    assert u.isclose(y.center_freq, z.center_freq)
 
     y = z[2:8]
     assert y.nchan == z.nchan

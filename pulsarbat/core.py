@@ -11,8 +11,8 @@ __all__ = [
     "Signal",
     "RadioSignal",
     "IntensitySignal",
-    "BasebandSignal",
     "FullStokesSignal",
+    "BasebandSignal",
     "DualPolarizationSignal",
 ]
 
@@ -375,12 +375,8 @@ class RadioSignal(Signal):
         s = slice(*index.indices(self.shape[1]))
         assert s.step == 1, "Does not support slice step for frequency axis"
         assert s.stop > s.start, "Empty frequency slice!"
-        kw = dict()
-        if s.stop - s.start < self.nchan:
-            f = self.channel_freqs[s]
-            kw["center_freq"] = (f[0] + f[-1]) / 2
-            kw["freq_align"] = "center"
-        return kw
+        f = self.channel_freqs[s]
+        return {"center_freq": (f[0] + f[-1])/2, "freq_align": "center"}
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
@@ -471,15 +467,15 @@ class RadioSignal(Signal):
 
 @set_module("pulsarbat")
 class IntensitySignal(RadioSignal):
-    """Class for intensity signals such as Stokes I, Q, U, V, etc.
+    """Class for intensity signals.
 
     See the documentation for `~RadioSignal` for more details.
 
     Parameters
     ----------
     z : `~numpy.ndarray`-like
-        The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`.
+        The signal data. Must be at least 3-dimensional with shape
+        `(nsample, nchan, npol, ...)`.
     sample_rate : `~astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
     start_time : `~astropy.time.Time`, optional
@@ -609,7 +605,7 @@ class BasebandSignal(RadioSignal):
         out : `~pulsarbat.IntensitySignal`
             The converted signal.
         """
-        z = self.data.real ** 2 + self.data.imag ** 2
+        z = self.data.real**2 + self.data.imag**2
         return IntensitySignal.like(self, z)
 
 
@@ -737,18 +733,18 @@ class DualPolarizationSignal(BasebandSignal):
         if self.pol_type == "linear":
             X, Y = self.data[:, :, 0], self.data[:, :, 1]
 
-            i = X.real ** 2 + X.imag ** 2 + Y.real ** 2 + Y.imag ** 2
-            Q = X.real ** 2 + X.imag ** 2 - Y.real ** 2 - Y.imag ** 2
+            i = X.real**2 + X.imag**2 + Y.real**2 + Y.imag**2
+            Q = X.real**2 + X.imag**2 - Y.real**2 - Y.imag**2
             U = +2 * (X * Y.conj()).real
             V = -2 * (X * Y.conj()).imag
 
         elif self.pol_type == "circular":
             R, L = self.data[:, :, 0], self.data[:, :, 1]
 
-            i = R.real ** 2 + R.imag ** 2 + L.real ** 2 + L.imag ** 2
+            i = R.real**2 + R.imag**2 + L.real**2 + L.imag**2
             Q = +2 * (R * L.conj()).real
             U = -2 * (R * L.conj()).imag
-            V = R.real ** 2 + R.imag ** 2 - L.real ** 2 - L.imag ** 2
+            V = R.real**2 + R.imag**2 - L.real**2 - L.imag**2
 
         z = np.stack([i, Q, U, V], axis=2)
         return FullStokesSignal.like(self, z)

@@ -12,17 +12,19 @@ from .core import *
 from . import transform
 from .transform import *
 
-from . import utils
+from . import timing
+from .timing import *
+
 from . import reader
-from . import pulsar
-from . import generator
+from . import utils
+from . import misc
 
 __all__ = [
-    'utils',
     'reader',
-    'generator',
-    'pulsar',
+    'utils',
+    'misc',
 ]
 
 __all__.extend(core.__all__)
 __all__.extend(transform.__all__)
+__all__.extend(timing.__all__)

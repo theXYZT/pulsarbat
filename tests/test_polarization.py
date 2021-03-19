@@ -6,24 +6,17 @@ import dask.array as da
 import astropy.units as u
 import pulsarbat as pb
 
-SHAPE = (4096, 8, 2)
 
-
-@pytest.fixture(params=[True, False])
-def use_dask(request):
-    return request.param
-
-
-@pytest.fixture
-def complex_noise(use_dask):
-    f = da.random.standard_normal if use_dask else np.random.standard_normal
-    return (f(SHAPE) + 1j * f(SHAPE)).astype(np.complex128)
-
-
+@pytest.mark.parametrize("use_dask", [True, False])
 @pytest.mark.parametrize("pol_type", ['linear', 'circular'])
-def test_pol_reversibility(complex_noise, pol_type):
-    z = pb.DualPolarizationSignal(complex_noise, pol_type=pol_type,
-                                  sample_rate=1*u.MHz, center_freq=1*u.GHz)
+def test_pol_reversibility(use_dask, pol_type):
+    shape = (4096, 16, 2)
+    kw = {'sample_rate': 1*u.MHz, 'center_freq': 1*u.GHz}
+
+    p = da if use_dask else np
+    sig = p.exp(1j * p.random.uniform(-np.pi, +np.pi, shape))
+
+    z = pb.DualPolarizationSignal(sig, pol_type=pol_type, **kw)
 
     if pol_type == 'linear':
         x = z.to_linear()
@@ -32,22 +25,44 @@ def test_pol_reversibility(complex_noise, pol_type):
         x = z.to_circular()
         y = z.to_linear().to_circular()
 
-    assert z.pol_type == x.pol_type
-    assert z.pol_type == y.pol_type
-
-    x, y, z = np.array(x), np.array(y), np.array(z)
-    assert np.allclose(z.real - x.real, 0)
-    assert np.allclose(z.real - y.real, 0)
-    assert np.allclose(z.imag - x.imag, 0)
-    assert np.allclose(z.imag - y.imag, 0)
+    for a in [x, y]:
+        assert isinstance(a.data, type(sig))
+        assert a.pol_type == pol_type
+        assert np.allclose(np.array(z), np.array(a))
 
 
-@pytest.mark.parametrize("pol_type", ['linear', 'circular'])
-def test_to_stokes(complex_noise, pol_type):
-    z = pb.DualPolarizationSignal(complex_noise, pol_type=pol_type,
-                                  sample_rate=1*u.MHz, center_freq=1*u.GHz)
-    x = z.to_linear().to_stokes()
-    y = z.to_circular().to_stokes()
-    x, y = np.array(x), np.array(y)
-    assert np.allclose(x.real - y.real, 0)
-    assert np.allclose(x.imag - y.imag, 0)
+@pytest.mark.parametrize("use_dask", [True, False])
+def test_to_stokes(use_dask):
+    kw = {'sample_rate': 1*u.MHz, 'center_freq': 1*u.GHz}
+
+    pol_comp = [np.complex128([[[1 + 1j, 1 + 0j]]]),
+                np.complex128([[[1 + 2j, 2 + 1j]]]),
+                np.complex128([[[0 + 1j, 3 + 1j]]])]
+
+    lin_stokes = [np.float64([[[3, 1, 2, -2]]]),
+                  np.float64([[[10, 0, 8, -6]]]),
+                  np.float64([[[11, -9, 2, -6]]])]
+
+    cir_stokes = [np.float64([[[3, 2, -2, 1]]]),
+                  np.float64([[[10, 8, -6, 0]]]),
+                  np.float64([[[11, 2, -6, -9]]])]
+
+    for x, lin, cir in zip(pol_comp, lin_stokes, cir_stokes):
+        if use_dask:
+            x = da.from_array(x)
+
+        z = pb.DualPolarizationSignal(x, pol_type='linear', **kw)
+        y1 = z.to_linear().to_stokes().data
+        y2 = z.to_circular().to_stokes().data
+        assert isinstance(y1, type(x))
+        assert isinstance(y2, type(x))
+        assert np.allclose(np.array(y1), lin)
+        assert np.allclose(np.array(y2), lin)
+
+        z = pb.DualPolarizationSignal(x, pol_type='circular', **kw)
+        y1 = z.to_linear().to_stokes().data
+        y2 = z.to_circular().to_stokes().data
+        assert isinstance(y1, type(x))
+        assert isinstance(y2, type(x))
+        assert np.allclose(np.array(y1), cir)
+        assert np.allclose(np.array(y2), cir)

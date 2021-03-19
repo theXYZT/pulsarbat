@@ -2,6 +2,7 @@
 
 import math
 import numpy as np
+from numpy.core.overrides import set_module
 import astropy.units as u
 import pulsarbat as pb
 
@@ -10,6 +11,7 @@ __all__ = [
 ]
 
 
+@set_module("pulsarbat")
 class DispersionMeasure(u.SpecificTypeQuantity):
     _equivalent_unit = _default_unit = u.pc / u.cm**3
     dispersion_constant = u.s * u.MHz**2 * u.cm**3 / u.pc / 2.41E-4
@@ -32,6 +34,7 @@ class DispersionMeasure(u.SpecificTypeQuantity):
         return phase.to_value(u.rad)
 
 
+@set_module("pulsarbat")
 def coherent_dedispersion(z, DM, /, *, ref_freq=None):
     """Coherently dedisperses a baseband signal by a given dispersion measure.
 
@@ -96,6 +99,7 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None):
     return type(z).like(z, x)[start:stop]
 
 
+@set_module("pulsarbat")
 def incoherent_dedispersion(z, DM, /, *, ref_freq=None):
     """Incoherently dedisperses a signal by a given dispersion measure.
 

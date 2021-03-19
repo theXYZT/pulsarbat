@@ -1,6 +1,7 @@
 """Core signal functions."""
 
 import numpy as np
+from numpy.core.overrides import set_module
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
@@ -11,6 +12,7 @@ __all__ = [
 ]
 
 
+@set_module("pulsarbat")
 def concatenate(signals, /, axis=0):
     """Concatenates multiple signals along given axis.
 
@@ -103,6 +105,7 @@ def concatenate(signals, /, axis=0):
     return sig_type.like(signals[0], z, **kw)
 
 
+@set_module("pulsarbat")
 def time_shift(z, t, /):
     """Shift signal by given number of samples or time.
 
