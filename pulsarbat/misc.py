@@ -103,7 +103,6 @@ def phase_deconvolution(z, h):
 
     sig = np.fft.fft(z.data, axis=0)
     filt = np.fft.fft(h.data, axis=0, n=N)
-    x = np.divide(sig * np.abs(filt), filt,
-                  where=(np.abs(filt) > 1E-20))
-    res = type(z).like(z, np.fft.ifft(x, axis=0))[:N-Nh+1]
-    return res
+    filt = np.where(np.abs(filt) > 1E-20, filt / np.abs(filt), 1)
+    x = np.fft.ifft(sig / filt, axis=0)
+    return type(z).like(z, x)[:N-Nh+1]
