@@ -112,9 +112,7 @@ class BaseReader:
     def __getattr__(self, name):
         if name in self._signal_kwargs:
             return self._signal_kwargs[name]
-
-        err = f"{self.__class__.__name__} has no attribute '{name}'"
-        raise AttributeError(err)
+        return self.__getattribute__(name)
 
     def __len__(self):
         """Length of signal data in number of samples."""
