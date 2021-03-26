@@ -85,6 +85,7 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None):
         delayed_tf = dask.delayed(transfer_func, pure=True)
         chirp = da.from_delayed(delayed_tf(*tf_args), dtype=np.complex128,
                                 shape=z.shape[:2] + (1,)*(z.ndim - 2))
+        chirp = chirp.rechunk((-1,) + ('auto',) * chirp.ndim)
     else:
         chirp = transfer_func(*tf_args)
 

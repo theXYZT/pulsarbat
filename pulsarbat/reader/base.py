@@ -60,6 +60,8 @@ class BaseReader:
         Additional `kwargs` to pass on to `signal_type` when creating a
         Signal object.
     """
+    _signal_kwargs = dict()
+
     def __init__(self, /, *, shape, dtype, signal_type=pb.Signal,
                  sample_rate, start_time=None, **signal_kwargs):
 
