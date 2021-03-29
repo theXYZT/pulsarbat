@@ -112,7 +112,12 @@ class BaseReader:
     def __getattr__(self, name):
         if name in self._signal_kwargs:
             return self._signal_kwargs[name]
-        return self.__getattribute__(name)
+        return super().__getattribute__(name)
+
+    def __dir__(self):
+        members = set(object.__dir__(self))
+        members.update(self._signal_kwargs)
+        return sorted(members)
 
     def __len__(self):
         """Length of signal data in number of samples."""
