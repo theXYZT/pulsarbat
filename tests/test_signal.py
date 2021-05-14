@@ -108,6 +108,7 @@ def test_start_time_errors(ts):
 class ArbitrarySignal(pb.Signal):
     _req_dtype = (np.int16, np.int32)
     _req_shape = (None, 7, 4, None)
+    _axes_labels = {'time': 0, 'fish': 1, 'foo': 2, 'bar': 3}
 
     def __init__(self, z, /, *, sample_rate, foo):
         self._foo = foo
@@ -224,3 +225,92 @@ def test_signal_slice_errors():
 
     with pytest.raises(AssertionError):
         _ = z[::-2]
+
+
+def test_get_axis():
+    x = np.zeros((5, 7, 4, 3), dtype=np.int32)
+    z = ArbitrarySignal(x, sample_rate=1*u.Hz, foo='bar')
+
+    for a in [-5, 4]:
+        with pytest.raises(ValueError):
+            _ = z.get_axis(a)
+
+    for a in range(-4, 4):
+        assert a == z.get_axis(a)
+
+    for i, a in enumerate(['time', 'fish', 'foo', 'bar']):
+        assert i == z.get_axis(a)
+
+
+class TestSignalUfuncs:
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_basic_ufunc(self, use_dask):
+        arange = da.arange if use_dask else np.arange
+        x = arange(8, dtype=np.int64) + 11
+        y = arange(8, dtype=np.int64) + 2
+
+        a = pb.Signal(x, sample_rate=2 * u.Hz)
+        b = pb.Signal(y, sample_rate=5 * u.Hz)
+
+        for s in [a + 2, a + y, 2 + a, y + a, a + b]:
+            assert type(s) == type(a)
+            assert s.sample_rate == a.sample_rate
+
+        assert np.allclose(np.array(a + 2), np.array(x + 2))
+        assert np.allclose(np.array(a + y), np.array(x + y))
+        assert np.allclose(np.array(a + b), np.array(x + y))
+
+        z = x + y
+        s = a
+        a += b
+        assert np.allclose(np.array(a), np.array(z))
+        assert np.allclose(np.array(s), np.array(z))
+
+        empty = da.empty if use_dask else np.empty
+        c = pb.Signal(empty(a.shape), sample_rate=10*u.Hz)
+        d = np.add(a, b, c)
+
+        assert d is c
+        assert c.sample_rate == 10 * u.Hz
+        assert np.allclose(np.array(c), np.array(a + b))
+
+    def test_multiple_outs(self):
+        x = np.arange(16) / 4.0
+        y, z = np.modf(x)
+
+        a = pb.Signal(x, sample_rate=1*u.Hz)
+        b, c = np.modf(a)
+
+        assert type(a) == type(b) == type(c)
+        assert a.sample_rate == b.sample_rate == c.sample_rate
+        assert np.allclose(b.data, y) and np.allclose(c.data, z)
+
+        b = pb.Signal(np.zeros(x.shape), sample_rate=2 * u.Hz)
+        c = pb.Signal(np.zeros(x.shape), sample_rate=5 * u.Hz)
+
+        bb, cc = np.modf(a, b, c)
+
+        assert bb is b and cc is c
+        assert type(a) == type(bb) == type(cc)
+        assert bb.sample_rate == 2 * u.Hz and cc.sample_rate == 5 * u.Hz
+        assert np.allclose(bb.data, y) and np.allclose(cc.data, z)
+
+        b = pb.Signal(np.zeros(x.shape), sample_rate=2 * u.Hz)
+        c = pb.Signal(np.zeros(x.shape), sample_rate=5 * u.Hz)
+
+        bb, cc = np.modf(a, b)
+
+        assert bb is b and cc is not c
+        assert type(a) == type(bb) == type(cc)
+        assert bb.sample_rate == 2 * u.Hz and cc.sample_rate == a.sample_rate
+        assert np.allclose(bb.data, y) and np.allclose(cc.data, z)
+
+        b = pb.Signal(np.zeros(x.shape), sample_rate=2 * u.Hz)
+        c = pb.Signal(np.zeros(x.shape), sample_rate=5 * u.Hz)
+
+        bb, cc = np.modf(a, out=(None, c))
+
+        assert bb is not b and cc is c
+        assert type(a) == type(bb) == type(cc)
+        assert bb.sample_rate == a.sample_rate and cc.sample_rate == 5 * u.Hz
+        assert np.allclose(bb.data, y) and np.allclose(cc.data, z)

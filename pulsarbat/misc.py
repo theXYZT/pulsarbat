@@ -42,10 +42,9 @@ def stft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
     z = z[:len(z) - len(z) % nperseg, :]
 
     x = z.data.reshape((-1, nperseg) + z.sample_shape).swapaxes(1, 2)
-    x = np.fft.fftshift(np.fft.fft(x, axis=2, n=nfft), axes=(2,))
+    x = np.fft.fftshift(pb.fft.fft(x, axis=2, n=nfft), axes=(2,))
     x = x.reshape((x.shape[0], -1) + x.shape[3:]) / nperseg
 
-    out_sr = z.sample_rate / nfft
     falign = 'center' if nfft % 2 else 'bottom'
     return type(z).like(z, x, sample_rate=z.sample_rate / nfft,
                         freq_align=falign)
@@ -76,10 +75,9 @@ def istft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
 
     x = z.data.reshape((len(z), -1, nfft) + z.sample_shape[1:]) * nperseg
     x = np.fft.ifftshift(x.swapaxes(1, 2), axes=(1,))
-    x = np.fft.ifft(x, axis=1, n=nfft)[:, :nperseg]
+    x = pb.fft.ifft(x, axis=1, n=nfft)[:, :nperseg]
     x = x.reshape((-1,) + x.shape[2:])
 
-    out_sr = z.sample_rate * nfft
     return type(z).like(z, x, sample_rate=z.sample_rate * nfft,
                         freq_align='center')
 
@@ -101,8 +99,8 @@ def phase_deconvolution(z, h):
 
     h = h[(slice(None),) * h.ndim + (None,) * (z.ndim - h.ndim)]
 
-    sig = np.fft.fft(z.data, axis=0)
-    filt = np.fft.fft(h.data, axis=0, n=N)
+    sig = pb.fft.fft(z.data, axis=0)
+    filt = pb.fft.fft(h.data, axis=0, n=N)
     filt = np.where(np.abs(filt) > 1E-20, filt / np.abs(filt), 1)
-    x = np.fft.ifft(sig / filt, axis=0)
+    x = pb.fft.ifft(sig / filt, axis=0)
     return type(z).like(z, x)[:N-Nh+1]

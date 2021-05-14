@@ -57,14 +57,14 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None):
     out : `~pulsarbat.BasebandSignal`
         The dedispersed signal.
     """
-    def transfer_func(DM, ref_freq, shape, dt, chan_freqs):
-        ndim = len(shape)
-        ix = tuple(slice(None) if i == 0 else None for i in range(ndim))
-        jx = tuple(slice(None) if i == 1 else None for i in range(ndim))
+    def _transfer_func(DM, center_freq, N, dt, ref_freq):
+        f = center_freq + np.fft.fftfreq(N, dt)
+        return np.exp(-1j * DM.phase_delay(f, ref_freq)).astype(np.complex64)
 
-        f = chan_freqs[jx] + np.fft.fftfreq(shape[0], dt)[ix]
-        x = np.exp(-1j * DM.phase_delay(f, ref_freq))
-        return x.astype(np.complex128)
+    def _delayed_transfer_func(DM, center_freq, N, dt, ref_freq):
+        delayed_tf = dask.delayed(_transfer_func, pure=True)
+        delayed_chirp = delayed_tf(DM, center_freq, N, dt, ref_freq)
+        return da.from_delayed(delayed_chirp, dtype=np.complex64, shape=(N,))
 
     if not isinstance(z, pb.BasebandSignal):
         raise TypeError("Signal must be a BasebandSignal object.")
@@ -80,16 +80,17 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None):
     else:
         use_dask = isinstance(z.data, da.Array)
 
-    tf_args = (DM, ref_freq, z.shape, z.dt, z.channel_freqs)
     if use_dask:
-        delayed_tf = dask.delayed(transfer_func, pure=True)
-        chirp = da.from_delayed(delayed_tf(*tf_args), dtype=np.complex128,
-                                shape=z.shape[:2] + (1,)*(z.ndim - 2))
-        chirp = chirp.rechunk((-1,) + ('auto',) * chirp.ndim)
+        transfer_func = _delayed_transfer_func
     else:
-        chirp = transfer_func(*tf_args)
+        transfer_func = _transfer_func
 
-    x = np.fft.ifft(np.fft.fft(z.data, axis=0) * chirp, axis=0)
+    ix = tuple(slice(None) if i < 2 else None for i in range(z.ndim))
+
+    chirp = np.stack([transfer_func(DM, f, len(z), z.dt, ref_freq)
+                      for f in z.channel_freqs], axis=1)[ix]
+
+    x = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * chirp, axis=0)
 
     delay_top = DM.sample_delay(z.max_freq, ref_freq, z.sample_rate)
     delay_bot = DM.sample_delay(z.min_freq, ref_freq, z.sample_rate)

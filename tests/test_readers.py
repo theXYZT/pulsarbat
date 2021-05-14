@@ -34,6 +34,7 @@ class TestBaseReader:
 
         _ = repr(r)
         _ = str(r)
+        _ = dir(r)
 
         assert r.shape == shape
         assert len(r) == shape[0]

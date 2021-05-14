@@ -127,19 +127,12 @@ def time_shift(z, t, /):
     out : `~Signal`
         Shifted signal.
     """
-    def transfer_func(shape, shift):
-        ndim = len(shape)
-        ix = tuple(slice(None) if i == 0 else None for i in range(ndim))
-        ph = np.exp(-2j * np.pi * shift * np.fft.fftfreq(shape[0], 1))[ix]
-        return ph.astype(np.complex128)
-
     if isinstance(t, u.Quantity):
         n = np.float64((t * z.sample_rate).to_value(u.one))
     else:
         n = np.float64(t)
 
     try:
-        import dask
         import dask.array as da
     except ImportError:
         use_dask = False
@@ -147,13 +140,14 @@ def time_shift(z, t, /):
         use_dask = isinstance(z.data, da.Array)
 
     if use_dask:
-        delayed_tf = dask.delayed(transfer_func, pure=True)
-        ph = da.from_delayed(delayed_tf(z.shape, n), dtype=np.complex64,
-                             shape=z.shape[:1] + (1,)*(z.ndim - 1))
+        f = da.fft.fftfreq(len(z), 1)
     else:
-        ph = transfer_func(z.shape, n)
+        f = np.fft.fftfreq(len(z), 1)
 
-    shifted = np.fft.ifft(np.fft.fft(z.data, axis=0) * ph, axis=0)
+    ix = tuple(slice(None) if i == 0 else None for i in range(z.ndim))
+    ph = np.exp(-2j * np.pi * n * f).astype(np.complex64)[ix]
+    shifted = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * ph, axis=0)
+
     if np.iscomplexobj(z.data):
         shifted = shifted.astype(z.dtype)
     else:
@@ -163,7 +157,9 @@ def time_shift(z, t, /):
 
     if n >= 0:
         i = np.int64(np.ceil(n))
-        return x[i:]
+        x = x[i:]
     else:
         i = np.int64(np.floor(n))
-        return x[:i]
+        x = x[:i]
+
+    return x

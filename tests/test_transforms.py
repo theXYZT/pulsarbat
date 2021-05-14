@@ -11,7 +11,7 @@ from astropy.time import Time
 
 
 def assert_equal_signals(x, y):
-    assert np.allclose(np.array(x), np.array(y))
+    assert np.allclose(np.array(x), np.array(y), atol=1E-6)
     assert Time.isclose(x.start_time, y.start_time)
     assert u.isclose(x.sample_rate, y.sample_rate)
 
@@ -92,19 +92,23 @@ class TestConcatenate:
                             pb.concatenate([B, D], axis=1)], axis=0)
         assert_equal_signals(z, y)
 
-        for XY in itertools.product([A, B, C, D], repeat=2):
-            if XY in [(A, B), (A, D), (C, B), (C, D)]:
-                _ = pb.concatenate(XY, axis=0)
-            else:
-                with pytest.raises(ValueError):
-                    _ = pb.concatenate(XY, axis=0)
+        for X, Y in itertools.product([A, B, C, D], repeat=2):
+            time_pairs = [(A, B), (A, D), (C, B), (C, D)]
 
-            if XY in [(A, A), (A, C), (B, B), (B, D),
-                      (C, C), (C, A), (D, D), (D, B)]:
-                _ = pb.concatenate(XY, axis=1)
+            if any(X is M and Y is N for M, N in time_pairs):
+                _ = pb.concatenate([X, Y], axis=0)
             else:
                 with pytest.raises(ValueError):
-                    _ = pb.concatenate(XY, axis=1)
+                    _ = pb.concatenate([X, Y], axis=0)
+
+            freq_pairs = [(A, A), (A, C), (B, B), (B, D),
+                          (C, C), (C, A), (D, D), (D, B)]
+
+            if any(X is M and Y is N for M, N in freq_pairs):
+                _ = pb.concatenate([X, Y], axis=1)
+            else:
+                with pytest.raises(ValueError):
+                    _ = pb.concatenate([X, Y], axis=1)
 
     def test_valid_radiosignal(self):
         """
@@ -132,18 +136,22 @@ class TestConcatenate:
                             pb.concatenate([B, D], axis='freq')], axis='time')
         assert_equal_radiosignals(z, y)
 
-        for XY in itertools.product([A, B, C, D], repeat=2):
-            if XY in [(A, B), (C, D)]:
-                _ = pb.concatenate(XY, axis='time')
-            else:
-                with pytest.raises(ValueError):
-                    _ = pb.concatenate(XY, axis='time')
+        for X, Y in itertools.product([A, B, C, D], repeat=2):
+            time_pairs = [(A, B), (C, D)]
 
-            if XY in [(A, C), (B, D)]:
-                _ = pb.concatenate(XY, axis='freq')
+            if any(X is M and Y is N for M, N in time_pairs):
+                _ = pb.concatenate([X, Y], axis=0)
             else:
                 with pytest.raises(ValueError):
-                    _ = pb.concatenate(XY, axis='freq')
+                    _ = pb.concatenate([X, Y], axis=0)
+
+            freq_pairs = [(A, C), (B, D)]
+
+            if any(X is M and Y is N for M, N in freq_pairs):
+                _ = pb.concatenate([X, Y], axis=1)
+            else:
+                with pytest.raises(ValueError):
+                    _ = pb.concatenate([X, Y], axis=1)
 
     def test_start_time_none(self):
         shape = (32, 32)

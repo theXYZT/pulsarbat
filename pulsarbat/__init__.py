@@ -18,11 +18,13 @@ from .timing import *
 from . import reader
 from . import utils
 from . import misc
+from . import fft
 
 __all__ = [
     'reader',
     'utils',
     'misc',
+    'fft',
 ]
 
 __all__.extend(core.__all__)

@@ -1,5 +1,6 @@
 """Core module defining Signal classes."""
 
+import operator
 import inspect
 import pprint
 import numpy as np
@@ -24,7 +25,7 @@ class InvalidSignalError(ValueError):
 
 
 @set_module("pulsarbat")
-class Signal:
+class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     """Base class for all signals.
 
     A signal is sufficiently described by an array of samples (`z`),
@@ -53,6 +54,7 @@ class Signal:
 
     _req_dtype = ()
     _req_shape = (None,)
+    _axes_labels = {'time': 0}
 
     def __init__(self, z, /, *, sample_rate, start_time=None, meta=None):
         min_ndim = len(self._req_shape)
@@ -90,6 +92,34 @@ class Signal:
         self.sample_rate = sample_rate
         self.start_time = start_time
         self.meta = meta
+
+    def __array_ufunc__(self, ufunc, method, *inputs, out=None, **kwargs):
+        if method != "__call__" or ufunc == np.matmul:
+            return NotImplemented
+
+        ref = next((i for i in inputs if isinstance(i, Signal)))
+
+        in_arr = tuple((i.data if isinstance(i, Signal) else i)
+                       for i in inputs)
+
+        if out is None:
+            out = (None,) * ufunc.nout
+
+        out_arr = tuple((i.data if isinstance(i, Signal) else i)
+                        for i in out)
+
+        results = ufunc(*in_arr, out=out_arr, **kwargs)
+
+        if results is NotImplemented:
+            return NotImplemented
+
+        if ufunc.nout == 1:
+            results = (results,)
+
+        results = tuple((type(ref).like(ref, a) if b is None else b)
+                        for a, b in zip(results, out))
+
+        return results[0] if len(results) == 1 else results
 
     def _attr_repr(self):
         st = "N/A" if self.start_time is None else self.start_time.isot
@@ -142,6 +172,23 @@ class Signal:
         kw = dict()
         kw.update(self._time_slice(index[0]))
         return type(self).like(self, self.data[index], **kw)
+
+    def get_axis(self, axis):
+        """Returns axis from an integer or axis label."""
+        try:
+            axis = operator.index(axis)
+        except TypeError:
+            axis = self.axes_labels.get(axis, None)
+
+        if (axis is None) or (axis < -self.ndim) or (self.ndim <= axis):
+            raise ValueError("Invalid axis.")
+
+        return axis
+
+    @property
+    def axes_labels(self):
+        """Dictionary of axes labels."""
+        return self._axes_labels
 
     @property
     def meta(self):
@@ -353,6 +400,7 @@ class RadioSignal(Signal):
     """
 
     _req_shape = (None, None,)
+    _axes_labels = {'time': 0, 'freq': 1}
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
                  chan_bw, freq_align="center", meta=None):
@@ -547,6 +595,7 @@ class FullStokesSignal(IntensitySignal):
     """
 
     _req_shape = (None, None, 4)
+    _axes_labels = {'time': 0, 'freq': 1, 'pol': 2}
 
 
 @set_module("pulsarbat")
@@ -655,6 +704,7 @@ class DualPolarizationSignal(BasebandSignal):
     """
 
     _req_shape = (None, None, 2)
+    _axes_labels = {'time': 0, 'freq': 1, 'pol': 2}
 
     def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
                  freq_align="center", pol_type, meta=None):
