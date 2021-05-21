@@ -27,10 +27,6 @@ def test_signal_basic(fn, shape):
         assert type(z.data) is type(x)
         assert np.all(np.array(z) == np.array(x))
 
-        y = z.compute()
-        assert type(y.data) is np.ndarray
-        assert np.all(y.data == z.data)
-
 
 @pytest.mark.parametrize("ts", [None, Time.now()])
 @pytest.mark.parametrize("sample_rate", [1 * u.Hz, 33 * u.kHz])
@@ -314,3 +310,69 @@ class TestSignalUfuncs:
         assert type(a) == type(bb) == type(cc)
         assert bb.sample_rate == a.sample_rate and cc.sample_rate == 5 * u.Hz
         assert np.allclose(bb.data, y) and np.allclose(cc.data, z)
+
+
+class TestSignalDaskFuncs:
+    def test_compute(self):
+        a = da.random.standard_normal((256, 16)).astype(np.float32)
+        b = a.compute()
+
+        x = pb.Signal(a, sample_rate=1*u.Hz)
+
+        for kw in [{}, {'scheduler': 'threads'}]:
+            y = x.compute(**kw)
+            assert isinstance(y, type(x))
+            assert isinstance(y.data, type(b))
+            assert np.allclose(y.data, b)
+
+            x = pb.Signal(b, sample_rate=1*u.Hz)
+            y = x.compute(**kw)
+            assert isinstance(y, type(x))
+            assert isinstance(y.data, type(b))
+            assert np.allclose(y.data, b)
+
+    def test_dask_persist(self):
+        def bunch_of_operations(x):
+            return np.abs(2 * (x - (x/2))) + 1
+
+        a = da.random.standard_normal((256, 16)).astype(np.float32)
+        b = bunch_of_operations(a).compute()
+
+        x = pb.Signal(a, sample_rate=1*u.Hz)
+        x = bunch_of_operations(x)
+
+        for kw in [{}, {'scheduler': 'threads'}]:
+            y = x.persist(**kw)
+
+            assert isinstance(y, pb.Signal)
+            assert isinstance(y.data, type(a))
+
+            assert len(x.data.__dask_graph__()) == 7
+            assert len(y.data.__dask_graph__()) == 1
+            assert np.allclose(y.data.compute(), b)
+
+            z = pb.Signal(b, sample_rate=1*u.Hz)
+            y = z.persist(**kw)
+
+            assert isinstance(y, pb.Signal)
+            assert isinstance(y.data, type(b))
+            assert np.allclose(y.data, b)
+
+    def test_to_dask(self):
+        a = RAND.standard_normal((256, 16), dtype=np.float32)
+        x = pb.Signal(a, sample_rate=1*u.Hz)
+        y = x.to_dask_array(chunks=(-1, 1))
+
+        assert isinstance(y, pb.Signal)
+        assert isinstance(y.data, da.Array)
+        assert y.data.chunksize == (256, 1)
+        assert np.allclose(a, y.data.compute())
+
+        x = pb.Signal(da.from_array(a), sample_rate=1*u.Hz)
+        with pytest.raises(ValueError):
+            _ = x.to_dask_array()
+
+        pb.core.has_dask = False
+        with pytest.raises(ImportError):
+            _ = x.to_dask_array()
+        pb.core.has_dask = True

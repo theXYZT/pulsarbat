@@ -19,6 +19,7 @@ should expose the following user-facing attributes/methods:
 
 The following keyword arguments should be accepted the `read()` method:
   * `use_dask` -- boolean, whether to use Dask arrays.
+  * `chunks` -- Chunk sizes if using dask arrays.
 """
 
 import operator
@@ -273,8 +274,11 @@ class BaseReader:
             z = da.from_delayed(delayed_read(offset, n, **kwargs),
                                 dtype=self.dtype, shape=_out_shape)
 
-            chunks = (-1, ) + ('auto', ) * len(self.sample_shape)
+            chunks = kwargs.get("chunks")
+            if chunks is None:
+                chunks = (-1,) + ("auto",) * len(self.sample_shape)
             z = z.rechunk(chunks)
+
         else:
             z = self._read_array(offset, n, **kwargs)
 
@@ -290,8 +294,11 @@ class BaseReader:
         n : int
             Number of samples to read. Must be non-negative.
         **kwargs
-            Additional keyword arguments. Currently supported are:
+            Additional keyword arguments. Currently supported:
               * `use_dask` -- Whether to use dask arrays.
+              * `chunks` -- Chunk sizes if using dask arrays.
+                            By default, there is no chunking along the
+                            zeroth dimension.
 
         Returns
         -------
@@ -325,7 +332,10 @@ class BaseReader:
         n : int
             Number of samples to read. Must be non-negative.
         **kwargs
-            Additional keyword arguments.
+            Additional keyword arguments. Currently supported:
+              * `chunks` -- Chunk sizes if using dask arrays.
+                            By default, there is no chunking along the
+                            zeroth dimension.
 
         Returns
         -------

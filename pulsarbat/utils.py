@@ -1,6 +1,7 @@
 """Collection of handy utilities."""
 
 import numpy as np
+from functools import lru_cache
 import scipy.fft
 
 
@@ -64,6 +65,7 @@ def real_to_complex(z, axis=0):
     return z[tuple(dec)].astype(out_dtype)
 
 
+@lru_cache(maxsize=1024)
 def next_fast_len(N):
     """Returns smallest 7-smooth number >= N."""
     if N <= 10:
@@ -95,6 +97,7 @@ def next_fast_len(N):
     return guess
 
 
+@lru_cache(maxsize=1024)
 def prev_fast_len(N):
     """Returns largest 7-smooth number <= N."""
     if N <= 10:

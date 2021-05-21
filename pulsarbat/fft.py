@@ -37,7 +37,8 @@ def __getattr__(name):
     if has_dask:
         @func.register(dask.array.Array)
         def _(*args, **kwargs):
-            return dask.array.fft.fft_wrap(_fft_func)(*args, **kwargs)
+            wrapped_func = dask.array.fft.fft_wrap(_fft_func)
+            return wrapped_func(*args, **kwargs)
 
     func.__qualname__ = _fft_func.__qualname__
     func.__name__ = _fft_func.__name__

@@ -8,6 +8,14 @@ import astropy.units as u
 from astropy.time import Time
 from numpy.core.overrides import set_module
 
+try:
+    import dask.array
+except ImportError:
+    has_dask = False
+else:
+    has_dask = True
+
+
 __all__ = [
     "Signal",
     "RadioSignal",
@@ -58,6 +66,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
     def __init__(self, z, /, *, sample_rate, start_time=None, meta=None):
         min_ndim = len(self._req_shape)
+
         if z.ndim < min_ndim:
             err = (f"Expected signal with at least {min_ndim} dimension(s), "
                    f"got signal with {z.ndim} dimension(s) instead.")
@@ -97,8 +106,6 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         if method != "__call__" or ufunc == np.matmul:
             return NotImplemented
 
-        ref = next((i for i in inputs if isinstance(i, Signal)))
-
         in_arr = tuple((i.data if isinstance(i, Signal) else i)
                        for i in inputs)
 
@@ -116,7 +123,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         if ufunc.nout == 1:
             results = (results,)
 
-        results = tuple((type(ref).like(ref, a) if b is None else b)
+        results = tuple((type(self).like(self, a) if b is None else b)
                         for a, b in zip(results, out))
 
         return results[0] if len(results) == 1 else results
@@ -291,13 +298,48 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         """Whether time is within the bounds of the signal."""
         return self.contains(t)
 
-    def compute(self):
-        """Returns a signal with data as a numpy.ndarray (or subclass).
+    def compute(self, **kwargs):
+        """Returns signal with computed data.
 
-        If the data is contained in a dask array, then this will compute
-        it as a consequence.
+        Has no effect unless data is stored as a Dask Array. `kwargs` are
+        passed on to the `dask.compute` function.
         """
-        return type(self).like(self, np.asanyarray(self))
+        if has_dask and isinstance(self.data, dask.array.Array):
+            x = self.data.compute(**kwargs)
+        else:
+            x = np.asarray(self.data)
+
+        return type(self).like(self, x)
+
+    def persist(self, **kwargs):
+        """Returns signal with data persisted in memory.
+
+        Has no effect unless data is stored as a Dask Array. `kwargs` are
+        passed on to the `dask.persist` function.
+        """
+        if has_dask and isinstance(self.data, dask.array.Array):
+            x = self.data.persist(**kwargs)
+        else:
+            x = np.asarray(self.data)
+
+        return type(self).like(self, x)
+
+    def to_dask_array(self, **kwargs):
+        """Returns signal with data as a dask array.
+
+        Has no effect is data is stored as a Dask Array. Otherwise,
+        `dask.array.from_array` is called on the signal data with `kwargs`
+        passed on to the function.
+        """
+        if not has_dask:
+            err = "The 'dask' module is required for this function."
+            raise ImportError(err)
+        elif isinstance(self.data, dask.array.Array):
+            err = "Signal data is already stored as a dask array!"
+            raise ValueError(err)
+
+        x = dask.array.from_array(self.data, **kwargs)
+        return type(self).like(self, x)
 
     @classmethod
     def like(cls, obj, z=None, /, **kwargs):
@@ -596,6 +638,36 @@ class FullStokesSignal(IntensitySignal):
 
     _req_shape = (None, None, 4)
     _axes_labels = {'time': 0, 'freq': 1, 'pol': 2}
+    _stokes_ids = {"I": 0, "Q": 1, "U": 2, "V": 3}
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            index = self._stokes_ids.get(key)
+            if index is None:
+                err = "Invalid key. Should be in {'I', 'Q', 'U', 'V'}."
+                raise KeyError(err)
+            else:
+                axis = self.get_axis("pol")
+                x = np.take(self.data, index, axis=axis)
+                return IntensitySignal.like(self, x)
+        else:
+            return super().__getitem__(key)
+
+    @property
+    def stokesI(self):
+        return self["I"]
+
+    @property
+    def stokesQ(self):
+        return self["Q"]
+
+    @property
+    def stokesU(self):
+        return self["U"]
+
+    @property
+    def stokesV(self):
+        return self["V"]
 
 
 @set_module("pulsarbat")
@@ -685,7 +757,7 @@ class DualPolarizationSignal(BasebandSignal):
     pol_type : {'linear', 'circular'}
         The polarization type of the signal. `'linear'` for linearly
         polarized signals (with basis `[X, Y]`) or `'circular'` for
-        circularly polarized signals (with basis `[R, L]`).
+        circularly polarized signals (with basis `[L, R]`).
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
@@ -698,7 +770,7 @@ class DualPolarizationSignal(BasebandSignal):
     Notes
     -----
     Linear polarization is assumed to have basis `[X, Y]` and circular
-    polarization is assumed to have basis `[R, L]`. For example, with
+    polarization is assumed to have basis `[L, R]`. For example, with
     `pol_type='circular'`, `z[:, :, 0]` refers to the right-handed
     circular polarization component.
     """
@@ -717,7 +789,9 @@ class DualPolarizationSignal(BasebandSignal):
 
     def _attr_repr(self):
         s = super()._attr_repr()
-        s += f"Polarization Type: {self.pol_type}\n"
+        pols = {"linear": "[X, Y]", "circular": "[L, R]"}
+        pol_str = f"{self.pol_type} {pols[self.pol_type]}"
+        s += f"Polarization Type: {pol_str}\n"
         return s
 
     @property
@@ -744,9 +818,14 @@ class DualPolarizationSignal(BasebandSignal):
             The converted signal.
         """
         if self.pol_type == "circular":
-            R, L = self.data[:, :, 0], self.data[:, :, 1]
-            X, Y = R + L, 1j * (R - L)
-            z = np.stack([X, Y], axis=2) / np.sqrt(2)
+            axis = self.get_axis("pol")
+            L = np.take(self.data, 0, axis=axis)
+            R = np.take(self.data, 1, axis=axis)
+
+            X = L + R
+            Y = 1j * (R - L)
+
+            z = np.stack([X, Y], axis=axis) / np.sqrt(2)
         else:
             z = self.data
 
@@ -764,9 +843,14 @@ class DualPolarizationSignal(BasebandSignal):
             The converted signal.
         """
         if self.pol_type == "linear":
-            X, Y = self.data[:, :, 0], self.data[:, :, 1]
-            R, L = X - 1j * Y, X + 1j * Y
-            z = np.stack([R, L], axis=2) / np.sqrt(2)
+            axis = self.get_axis("pol")
+            X = np.take(self.data, 0, axis=axis)
+            Y = np.take(self.data, 1, axis=axis)
+
+            L = X + 1j*Y
+            R = X - 1j*Y
+
+            z = np.stack([L, R], axis=axis) / np.sqrt(2)
         else:
             z = self.data
 
@@ -780,21 +864,33 @@ class DualPolarizationSignal(BasebandSignal):
         out : `~pulsarbat.StokesSignal`
             Signal in Stokes IQUV representation.
         """
-        if self.pol_type == "linear":
-            X, Y = self.data[:, :, 0], self.data[:, :, 1]
+        axis = self.get_axis("pol")
+        A = np.take(self.data, 0, axis=axis)
+        B = np.take(self.data, 1, axis=axis)
 
-            i = X.real**2 + X.imag**2 + Y.real**2 + Y.imag**2
-            Q = X.real**2 + X.imag**2 - Y.real**2 - Y.imag**2
-            U = +2 * (X * Y.conj()).real
-            V = -2 * (X * Y.conj()).imag
+        if self.pol_type == "linear":
+            X, Y = A, B
+
+            XX = X.real**2 + X.imag**2
+            YY = Y.real**2 + Y.imag**2
+            XY = X * np.conj(Y)
+
+            i = XX + YY
+            Q = XX - YY
+            U = +2 * XY.real
+            V = -2 * XY.imag
 
         elif self.pol_type == "circular":
-            R, L = self.data[:, :, 0], self.data[:, :, 1]
+            L, R = A, B
 
-            i = R.real**2 + R.imag**2 + L.real**2 + L.imag**2
-            Q = +2 * (R * L.conj()).real
-            U = -2 * (R * L.conj()).imag
-            V = R.real**2 + R.imag**2 - L.real**2 - L.imag**2
+            LL = L.real**2 + L.imag**2
+            RR = R.real**2 + R.imag**2
+            LR = np.conj(L) * R
 
-        z = np.stack([i, Q, U, V], axis=2)
+            i = LL + RR
+            Q = +2 * LR.real
+            U = -2 * LR.imag
+            V = RR - LL
+
+        z = np.stack([i, Q, U, V], axis=axis)
         return FullStokesSignal.like(self, z)
