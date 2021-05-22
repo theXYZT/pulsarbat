@@ -108,7 +108,7 @@ class BasebandReader(BaseReader):
 
         self._lower_sideband = s
 
-    def _read_baseband(self, offset, n, /, lock=nullcontext()):
+    def _read_baseband(self, offset, n, /, lock=nullcontext(), **kwargs):
         """Read n samples from given offset using baseband."""
         with lock:
             with self._get_fh() as fh:

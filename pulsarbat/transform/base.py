@@ -9,6 +9,7 @@ import pulsarbat as pb
 __all__ = [
     'concatenate',
     'time_shift',
+    'fast_len',
 ]
 
 
@@ -163,3 +164,25 @@ def time_shift(z, t, /):
         x = x[:i]
 
     return x
+
+
+@set_module("pulsarbat")
+def fast_len(z, /):
+    """Crops signal to an efficient length for FFTs.
+
+    Output signal is cropped to a length of the largest 7-smooth number
+    less than or equal to the length of the input signal.
+
+    Parameters
+    ----------
+    z : `~Signal`
+        Input signal.
+
+    Returns
+    -------
+    out : `~Signal`
+        Cropped signal.
+    """
+    N = len(z)
+    fast_N = pb.utils.prev_fast_len(N)
+    return z[:fast_N]

@@ -233,3 +233,13 @@ class TestTimeShift:
             assert np.allclose(np.array(y), imp2)
             z = pb.time_shift(x, -shift * u.ms)
             assert np.allclose(np.array(z), imp2)
+
+
+class TestFastLen:
+    def test_fast(self):
+        for N in [4096, 4100, 4111]:
+            x = np.arange(N, dtype=np.float64)
+            z = pb.Signal(x, sample_rate=1*u.Hz)
+            y = pb.fast_len(z)
+            assert len(y) == 4096
+            assert np.allclose(y.data, np.arange(4096))
