@@ -51,6 +51,10 @@ class TestCoherentDedispersion:
             z = pb.Signal(x, sample_rate=SR)
             _ = pb.coherent_dedispersion(z, DM)
 
+        with pytest.raises(TypeError):
+            z = pb.Signal(x, sample_rate=SR)
+            _ = DM.chirp_from_signal(z)
+
         z = pb.BasebandSignal(x, sample_rate=SR, center_freq=fcen,
                               start_time=Time.now())
 
