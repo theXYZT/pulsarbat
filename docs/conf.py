@@ -21,7 +21,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-import pulsarbat # noqa
+import pulsarbat  # noqa
 
 # -- General configuration ---------------------------------------------
 

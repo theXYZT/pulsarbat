@@ -27,12 +27,6 @@ class TestDispersionMeasure:
             dn = DM.sample_delay(1*u.MHz, np.inf, SR)
             assert np.isclose(dn, (SR * u.s).to_value(u.one))
 
-        ph = DM.phase_delay(1*u.GHz, np.inf)
-        assert np.isclose(ph, 2E3*np.pi)
-
-        ph = DM.phase_delay(1*u.MHz, np.inf)
-        assert np.isclose(ph, 2E6*np.pi)
-
         for a in [10, 20, 100]:
             DM = pb.DispersionMeasure(2.41E-4 * a)
             assert u.isclose(DM.time_delay(1*u.MHz, np.inf), a*u.s)
@@ -98,8 +92,7 @@ class TestCoherentDedispersion:
         res = np.array(sig1) - np.array(sig2)
         assert np.allclose(res, 0, atol=3E-8)
 
-    @pytest.mark.parametrize("DM", [pb.DispersionMeasure(0.01),
-                                    pb.DispersionMeasure(0.02)])
+    @pytest.mark.parametrize("DM", [pb.DM(0.01), pb.DM(0.02)])
     def test_correctness(self, DM):
         def gabor_wavelet(t, t0, f0, ts):
             a = 2j*np.pi*(t - t0)*f0 - ((t - t0)/ts)**2
@@ -135,6 +128,30 @@ class TestCoherentDedispersion:
         assert np.allclose(sig1_power, sig2_power)
         assert np.allclose(sig2[id2:], 0)
         assert np.allclose(sig2[:id1], 0)
+
+    @pytest.mark.parametrize("use_dask", [True, False])
+    @pytest.mark.parametrize("DM", [pb.DM(10), pb.DM(20), pb.DM(50)])
+    def test_chirp(self, use_dask, DM):
+        shape = (8192, 4)
+
+        if use_dask:
+            f = da.random.standard_normal
+        else:
+            f = np.random.standard_normal
+
+        x = f(shape) + 1j*f(shape)
+        z = pb.BasebandSignal(x, sample_rate=1*u.MHz, center_freq=1*u.GHz)
+
+        chirp = DM.chirp_from_signal(z)
+
+        y1 = pb.coherent_dedispersion(z, DM)
+        y2 = pb.coherent_dedispersion(z, DM, chirp=chirp)
+
+        for rf in [z.min_freq, z.max_freq]:
+            chirp = DM.chirp_from_signal(z, ref_freq=rf)
+            y1 = pb.coherent_dedispersion(z, DM, ref_freq=rf)
+            y2 = pb.coherent_dedispersion(z, DM, ref_freq=rf, chirp=chirp)
+            assert np.allclose(y1, y2)
 
 
 class TestIncoherentDedispersion:

@@ -47,9 +47,9 @@ def test_stokes(use_dask):
                            [[25, -7, 0, 24]],
                            [[14, -6, 4, -12]]])
 
-    cir_stokes = np.array([[[7, 6, 2, 3]],
-                           [[25, 0, -24, 7]],
-                           [[14, 4, 12, 6]]])
+    cir_stokes = np.array([[[7, 6, -2, -3]],
+                           [[25, 0, 24, -7]],
+                           [[14, 4, -12, -6]]])
 
     for pol_type, stokes in zip(["linear", "circular"],
                                 [lin_stokes, cir_stokes]):
@@ -57,6 +57,10 @@ def test_stokes(use_dask):
         z = pb.DualPolarizationSignal(x, pol_type=pol_type, **kw)
         y_lin = z.to_linear().to_stokes()
         y_cir = z.to_circular().to_stokes()
+
+        print(pol_type)
+        print(y_lin.data)
+        print(y_cir.data)
 
         for y in [y_lin, y_cir]:
             assert isinstance(y, pb.FullStokesSignal)

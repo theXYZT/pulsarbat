@@ -4,11 +4,11 @@ import scipy.fft
 from functools import singledispatch
 
 try:
-    import dask.array
+    import dask.array as da
 except ImportError:
-    has_dask = False
+    HAS_DASK = False
 else:
-    has_dask = True
+    HAS_DASK = True
 
 
 _FFT_FUNCS = [
@@ -34,10 +34,10 @@ def __getattr__(name):
     def func(*args, **kwargs):
         return _fft_func(*args, **kwargs)
 
-    if has_dask:
-        @func.register(dask.array.Array)
+    if HAS_DASK:
+        @func.register(da.Array)
         def _(*args, **kwargs):
-            wrapped_func = dask.array.fft.fft_wrap(_fft_func)
+            wrapped_func = da.fft.fft_wrap(_fft_func)
             return wrapped_func(*args, **kwargs)
 
     func.__qualname__ = _fft_func.__qualname__

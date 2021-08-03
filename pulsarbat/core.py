@@ -51,13 +51,20 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     z : array
         The signal data. Must be at least 1-dimensional with shape
         `(nsample, ...)`, and must have non-zero size.
-    sample_rate : :py:class:`astropy.units.Quantity`
+
+    sample_rate : `astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
-    start_time : :py:class:`astropy.time.Time`, optional
+
+    start_time : `astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first
-        sample of the signal). Default is None.
+        sample of the signal).
+
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
+
+    Notes
+    -----
+
     """
 
     _req_dtype = ()
@@ -823,7 +830,7 @@ class DualPolarizationSignal(BasebandSignal):
             R = np.take(self.data, 1, axis=axis)
 
             X = L + R
-            Y = 1j * (R - L)
+            Y = 1j * (L - R)
 
             z = np.stack([X, Y], axis=axis) / np.sqrt(2)
         else:
@@ -847,8 +854,8 @@ class DualPolarizationSignal(BasebandSignal):
             X = np.take(self.data, 0, axis=axis)
             Y = np.take(self.data, 1, axis=axis)
 
-            L = X + 1j*Y
-            R = X - 1j*Y
+            L = X - 1j*Y
+            R = X + 1j*Y
 
             z = np.stack([L, R], axis=axis) / np.sqrt(2)
         else:
@@ -873,24 +880,24 @@ class DualPolarizationSignal(BasebandSignal):
 
             XX = X.real**2 + X.imag**2
             YY = Y.real**2 + Y.imag**2
-            XY = X * np.conj(Y)
+            XY = X.conj() * Y
 
             i = XX + YY
             Q = XX - YY
-            U = +2 * XY.real
-            V = -2 * XY.imag
+            U = 2 * XY.real
+            V = 2 * XY.imag
 
         elif self.pol_type == "circular":
             L, R = A, B
 
             LL = L.real**2 + L.imag**2
             RR = R.real**2 + R.imag**2
-            LR = np.conj(L) * R
+            LR = L.conj() * R
 
             i = LL + RR
-            Q = +2 * LR.real
-            U = -2 * LR.imag
-            V = RR - LL
+            Q = 2 * LR.real
+            U = 2 * LR.imag
+            V = LL - RR
 
         z = np.stack([i, Q, U, V], axis=axis)
         return FullStokesSignal.like(self, z)
