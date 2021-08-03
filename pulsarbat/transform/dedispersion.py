@@ -180,9 +180,8 @@ def incoherent_dedispersion(z, DM, /, *, ref_freq=None):
 
     x = np.stack([z.data[j:j+N, i] for i, j in enumerate(delays)], axis=1)
 
+    new_start = z.start_time
     if crop_before and z.start_time is not None:
-        new_start = z.start_time + crop_before * z.dt
-    else:
-        new_start = z.start_time
+        new_start += crop_before * z.dt
 
     return type(z).like(z, x, start_time=new_start)
