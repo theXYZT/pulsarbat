@@ -8,8 +8,8 @@ pulsarbat
 .. image:: https://img.shields.io/pypi/pyversions/pulsarbat.svg
         :target: https://pypi.python.org/pypi/pulsarbat
 
-.. image:: https://img.shields.io/travis/theXYZT/pulsarbat.svg
-        :target: https://travis-ci.org/theXYZT/pulsarbat
+.. image:: https://github.com/theXYZT/pulsarbat/workflows/CI/badge.svg
+        :target: https://github.com/theXYZT/pulsarbat/actions
 
 .. image:: https://codecov.io/gh/theXYZT/pulsarbat/branch/master/graph/badge.svg?token=Ia6qdZNhHE
         :target: https://codecov.io/gh/theXYZT/pulsarbat
