@@ -5,4 +5,4 @@
 from .phase import FractionalPhase, Phase
 from .predictor import Polyco
 
-__all__ = ['Polyco', 'Phase', 'FractionalPhase']
+__all__ = ["Polyco", "Phase", "FractionalPhase"]

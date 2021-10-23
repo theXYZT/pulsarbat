@@ -8,17 +8,17 @@ import pulsarbat as pb
 
 
 @pytest.mark.parametrize("use_dask", [True, False])
-@pytest.mark.parametrize("pol_type", ['linear', 'circular'])
+@pytest.mark.parametrize("pol_type", ["linear", "circular"])
 def test_pol_reversibility(use_dask, pol_type):
     shape = (4096, 16, 2)
-    kw = {'sample_rate': 1*u.MHz, 'center_freq': 1*u.GHz}
+    kw = {"sample_rate": 1 * u.MHz, "center_freq": 1 * u.GHz}
 
     p = da if use_dask else np
     sig = p.exp(1j * p.random.uniform(-np.pi, +np.pi, shape))
 
     z = pb.DualPolarizationSignal(sig, pol_type=pol_type, **kw)
 
-    if pol_type == 'linear':
+    if pol_type == "linear":
         x = z.to_linear()
         y = z.to_circular().to_linear()
     else:
@@ -33,26 +33,21 @@ def test_pol_reversibility(use_dask, pol_type):
 
 @pytest.mark.parametrize("use_dask", [True, False])
 def test_stokes(use_dask):
-    kw = {'sample_rate': 1*u.MHz, 'center_freq': 1*u.GHz}
+    kw = {"sample_rate": 1 * u.MHz, "center_freq": 1 * u.GHz}
 
-    x = np.array([[[1 + 1j, 2 + 1j]],
-                  [[3 + 0j, 0 + 4j]],
-                  [[0 + 2j, 3 + 1j]]],
-                 dtype=np.complex128)
+    x = np.array(
+        [[[1 + 1j, 2 + 1j]], [[3 + 0j, 0 + 4j]], [[0 + 2j, 3 + 1j]]],
+        dtype=np.complex128,
+    )
 
     if use_dask:
         x = da.from_array(x)
 
-    lin_stokes = np.array([[[7, -3, 6, -2]],
-                           [[25, -7, 0, 24]],
-                           [[14, -6, 4, -12]]])
+    lin_stokes = np.array([[[7, -3, 6, -2]], [[25, -7, 0, 24]], [[14, -6, 4, -12]]])
 
-    cir_stokes = np.array([[[7, 6, -2, -3]],
-                           [[25, 0, 24, -7]],
-                           [[14, 4, -12, -6]]])
+    cir_stokes = np.array([[[7, 6, -2, -3]], [[25, 0, 24, -7]], [[14, 4, -12, -6]]])
 
-    for pol_type, stokes in zip(["linear", "circular"],
-                                [lin_stokes, cir_stokes]):
+    for pol_type, stokes in zip(["linear", "circular"], [lin_stokes, cir_stokes]):
 
         z = pb.DualPolarizationSignal(x, pol_type=pol_type, **kw)
         y_lin = z.to_linear().to_stokes()
@@ -74,11 +69,9 @@ def test_stokes(use_dask):
 
 
 def test_stokes_getitem():
-    kw = {'sample_rate': 1*u.MHz, 'center_freq': 1*u.GHz, 'chan_bw': 1*u.MHz}
+    kw = {"sample_rate": 1 * u.MHz, "center_freq": 1 * u.GHz, "chan_bw": 1 * u.MHz}
 
-    x = np.array([[[7, -3, 6, -2]],
-                  [[25, -7, 0, 24]],
-                  [[14, -6, 4, -12]]])
+    x = np.array([[[7, -3, 6, -2]], [[25, -7, 0, 24]], [[14, -6, 4, -12]]])
 
     z = pb.FullStokesSignal(x, **kw)
 
@@ -87,4 +80,4 @@ def test_stokes_getitem():
     assert np.allclose(np.array(y), x[:2])
 
     with pytest.raises(KeyError):
-        _ = z['fish']
+        _ = z["fish"]

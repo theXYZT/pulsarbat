@@ -10,14 +10,19 @@ from astropy.coordinates import Angle, Longitude
 from astropy.time.utils import two_sum, two_product
 
 
-__all__ = ['Phase', 'FractionalPhase']
+__all__ = ["Phase", "FractionalPhase"]
 
 
 FRACTION_UFUNCS = {np.cos, np.sin, np.tan, np.spacing}
 
 COMPARISON_UFUNCS = {
-    np.equal, np.not_equal,
-    np.less, np.less_equal, np.greater, np.greater_equal}
+    np.equal,
+    np.not_equal,
+    np.less,
+    np.less_equal,
+    np.greater,
+    np.greater_equal,
+}
 
 
 def day_frac(val1, val2, factor=None, divisor=None):
@@ -79,23 +84,23 @@ def _parse_string(s):
     Generally, first part before the decimal dot, second after,
     but takes account of possible exponents.
     """
-    s = s.strip().lower().translate(s.maketrans('d', 'e'))
-    if s[-1] == 'j':
+    s = s.strip().lower().translate(s.maketrans("d", "e"))
+    if s[-1] == "j":
         s = s[:-1]
         factor = 1j
     else:
         factor = 1
-    if s[0] == '+':
+    if s[0] == "+":
         s = s[1:]
-    elif s[0] == '-':
+    elif s[0] == "-":
         s = s[1:]
         factor *= -1
 
     # Just test string is basically OK (and reference value below).
     test = float(s) * factor
 
-    s_float, exp, s_exp = s.partition('e')
-    s_count, sep, s_frac = s_float.rpartition('.')
+    s_float, exp, s_exp = s.partition("e")
+    s_count, sep, s_frac = s_float.rpartition(".")
     if exp:
         exponent = int(s_exp)
         if exponent < 0:
@@ -108,10 +113,10 @@ def _parse_string(s):
             s_count = s_count + s_frac[:n]
             s_frac = s_frac[n:]
             exponent -= n
-        factor *= 10**exponent
+        factor *= 10 ** exponent
 
-    frac = float('0.' + s_frac) * factor
-    count = float('0' + s_count) * factor
+    frac = float("0." + s_frac) * factor
+    count = float("0" + s_count) * factor
 
     assert count + frac == test
     return count, frac
@@ -150,6 +155,7 @@ class FractionalPhase(Longitude):
     `TypeError`
         If the angle parameter is a :class:`~astropy.coordinates.Latitude`.
     """
+
     _default_wrap_angle = Angle(0.5, u.cycle)
     _equivalent_unit = _default_unit = u.cycle
 
@@ -158,9 +164,8 @@ class FractionalPhase(Longitude):
         # default tries to convert to float also for structured arrays,
         # maybe via astype.
         if isinstance(angle, Phase):
-            angle = angle['frac']
-        return super().__new__(cls, angle, unit=unit, wrap_angle=wrap_angle,
-                               **kwargs)
+            angle = angle["frac"]
+        return super().__new__(cls, angle, unit=unit, wrap_angle=wrap_angle, **kwargs)
 
 
 def check_imaginary(a):
@@ -232,8 +237,7 @@ class Phase(Angle):
     """
 
     _equivalent_unit = _unit = _default_unit = u.cycle
-    _phase_dtype = np.dtype({'names': ['int', 'frac'],
-                             'formats': ['f8']*2})
+    _phase_dtype = np.dtype({"names": ["int", "frac"], "formats": ["f8"] * 2})
 
     def __new__(cls, phase1, phase2=None, copy=True, subok=False):
         if isinstance(phase1, Phase):
@@ -258,8 +262,7 @@ class Phase(Angle):
         return cls.from_angles(phase1, phase2)
 
     @classmethod
-    def from_angles(cls, phase1, phase2=None, factor=None, divisor=None,
-                    out=None):
+    def from_angles(cls, phase1, phase2=None, factor=None, divisor=None, out=None):
         """Create a Phase instance from two angles.
 
         The two angles will be added, and possibly multiplied by a factor or
@@ -288,8 +291,9 @@ class Phase(Angle):
         if phase2 is not None:
             phase2, im2 = check_imaginary(phase2)
             if im2 is not imaginary:
-                raise ValueError("phase1 and phase2 must either be both "
-                                 "real or both imaginary.")
+                raise ValueError(
+                    "phase1 and phase2 must either be both " "real or both imaginary."
+                )
         if factor is not None:
             factor, imf = check_imaginary(factor)
             imaginary ^= imf
@@ -302,34 +306,35 @@ class Phase(Angle):
         # TODO: would be nice if day_frac had an out parameter.
         phase1_value = phase1.to_value(cls._unit)
         if phase2 is None:
-            phase2_value = 0.
+            phase2_value = 0.0
         else:
             phase2_value = phase2.to_value(cls._unit)
-        count, fraction = day_frac(phase1_value, phase2_value,
-                                   factor=factor, divisor=divisor)
+        count, fraction = day_frac(
+            phase1_value, phase2_value, factor=factor, divisor=divisor
+        )
         if out is None:
             value = np.empty(count.shape, cls._phase_dtype)
             out = value.view(cls)
         else:
             value = out.view(np.ndarray)
-        value['int'] = count
-        value['frac'] = fraction
+        value["int"] = count
+        value["frac"] = fraction
         out.imaginary = imaginary
         return out
 
     def __array_finalize__(self, obj):
         super().__array_finalize__(obj)
-        self.imaginary = getattr(obj, 'imaginary', False)
+        self.imaginary = getattr(obj, "imaginary", False)
 
     def __getitem__(self, item):
         result = super().__getitem__(item)
         if result.dtype is self.dtype:
             return result
 
-        if item == 'frac':
+        if item == "frac":
             result = result.view(Angle if self.imaginary else FractionalPhase)
         else:
-            assert item == 'int'
+            assert item == "int"
             result = result.view(Angle)
 
         if self.imaginary:
@@ -340,8 +345,10 @@ class Phase(Angle):
     def __iter__(self):
         if self.isscalar:
             raise TypeError(
-                "'{cls}' object with a scalar value is not iterable"
-                .format(cls=self.__class__.__name__))
+                "'{cls}' object with a scalar value is not iterable".format(
+                    cls=self.__class__.__name__
+                )
+            )
 
         # Override Quantity.__iter__ since that iterates over self.value.
         for i in range(len(self)):
@@ -350,18 +357,26 @@ class Phase(Angle):
     def _set_unit(self, unit):
         if unit is None or unit != self._unit:
             raise u.UnitTypeError(
-                "{0} instances require units of '{1}'"
-                .format(type(self).__name__, self._unit)
-                + (", but no unit was given." if unit is None else
-                   ", so cannot set it to '{0}'.".format(unit)))
+                "{0} instances require units of '{1}'".format(
+                    type(self).__name__, self._unit
+                )
+                + (
+                    ", but no unit was given."
+                    if unit is None
+                    else ", so cannot set it to '{0}'.".format(unit)
+                )
+            )
 
         super()._set_unit(unit)
 
     def __repr__(self):
         v = self.view(np.ndarray)
         return "{0}({1}{3} cycle, {2}{3} cycle)".format(
-            self.__class__.__name__, v['int'], v['frac'],
-            " * 1j" if self.imaginary else '')
+            self.__class__.__name__,
+            v["int"],
+            v["frac"],
+            " * 1j" if self.imaginary else "",
+        )
 
     def __str__(self):
         # Override Angle, since one cannot override the formatter for
@@ -370,8 +385,12 @@ class Phase(Angle):
             # [...] and view as self.__class__ are needed for scalar case.
             return x[...].view(self.dtype, self.__class__).to_string()
 
-        return np.array2string(self.view(f"V{self.dtype.itemsize}"),
-                               formatter={'all': formatter}) + self._unitstr
+        return (
+            np.array2string(
+                self.view(f"V{self.dtype.itemsize}"), formatter={"all": formatter}
+            )
+            + self._unitstr
+        )
 
     def __format__(self, format_spec):
         """Format a phase, special-casing the float format.
@@ -379,22 +398,30 @@ class Phase(Angle):
         For the 'f' format, precision is kept, and the unit is suppressed.
         For everything else, the Quantity formatter is used.
         """
-        if format_spec.endswith('f'):
+        if format_spec.endswith("f"):
             # Check that formatting works at all...
             test = format(self.value, format_spec)
-            pre, dot, post = test.partition('.')
+            pre, dot, post = test.partition(".")
             if post:
                 precise = self.to_string(precision=len(post))
-                pre, _, post = precise.partition('.')
+                pre, _, post = precise.partition(".")
                 # Just to ensure no bad rounding happened
-                pre = format(float(pre), format_spec).partition('.')[0]
+                pre = format(float(pre), format_spec).partition(".")[0]
                 return pre + dot + post
 
         return self.cycle.__format__(format_spec)
 
-    def to_string(self, unit=None, decimal=True, sep='fromunit',
-                  precision=None, alwayssign=False, pad=False,
-                  fields=3, format=None):
+    def to_string(
+        self,
+        unit=None,
+        decimal=True,
+        sep="fromunit",
+        precision=None,
+        alwayssign=False,
+        pad=False,
+        fields=3,
+        format=None,
+    ):
         """ A string representation of the Phase.
 
         By default, uses a decimal representation that is guaranteed to
@@ -403,9 +430,15 @@ class Phase(Angle):
         """
         if not decimal or (unit is not None and unit != u.cycle):
             return self.cycle.to_string(
-                unit=unit, decimal=decimal, sep=sep, precision=precision,
-                alwayssign=alwayssign, pad=pad, fields=fields,
-                format=format)
+                unit=unit,
+                decimal=decimal,
+                sep=sep,
+                precision=precision,
+                alwayssign=alwayssign,
+                pad=pad,
+                fields=fields,
+                format=format,
+            )
 
         if precision is None:
             func = str
@@ -417,11 +450,11 @@ class Phase(Angle):
             if neg:
                 count = -count
                 frac = -frac
-                sign = '-'
+                sign = "-"
             elif alwayssign:
-                sign = '+'
+                sign = "+"
             else:
-                sign = ''
+                sign = ""
 
             if frac < 0:
                 frac += 1
@@ -430,34 +463,34 @@ class Phase(Angle):
             if frac < 0.25:
                 # Ensure that we do not get 1e-16, etc., yet can use numpy's
                 # guarantee that the right number of digits is shown.
-                frac_str = func(frac+0.25)
+                frac_str = func(frac + 0.25)
                 f24 = int(frac_str[2:4])
-                if func is str and (len(frac_str) == 3
-                                    or (len(frac_str) == 4
-                                        and frac_str[3] == '5')):
+                if func is str and (
+                    len(frac_str) == 3 or (len(frac_str) == 4 and frac_str[3] == "5")
+                ):
                     if len(frac_str) == 3:
-                        f24 = '{:02d}'.format(f24 * 10 - 25)
+                        f24 = "{:02d}".format(f24 * 10 - 25)
                     else:
-                        f24 = '{:1d}'.format((f24 - 5) // 10 - 2)
+                        f24 = "{:1d}".format((f24 - 5) // 10 - 2)
                 else:
-                    f24 = '{:02d}'.format(f24 - 25)
+                    f24 = "{:02d}".format(f24 - 25)
                 frac_str = frac_str[:2] + f24 + frac_str[4:]
             else:
                 frac_str = func(frac)
-                if frac_str[0] == '1':
+                if frac_str[0] == "1":
                     count += 1
             s = sign + str(int(count)) + frac_str[1:]
             if self.imaginary:
-                s += 'j'
-            if format == 'latex':
-                s = '$' + s + '$'
+                s += "j"
+            if format == "latex":
+                s = "$" + s + "$"
             return s
 
-        format_ufunc = np.vectorize(do_format, otypes=['U'])
+        format_ufunc = np.vectorize(do_format, otypes=["U"])
         if self.imaginary:
-            count, frac = self['int'].value.imag, self['frac'].value.imag
+            count, frac = self["int"].value.imag, self["frac"].value.imag
         else:
-            count, frac = self['int'].value, self['frac'].value
+            count, frac = self["int"].value, self["frac"].value
 
         result = format_ufunc(count, frac)
 
@@ -473,20 +506,20 @@ class Phase(Angle):
         made to parse an angle.
         """
         string = np.asanyarray(string)
-        if string.dtype.kind not in 'SU':
-            raise ValueError('require string input.')
+        if string.dtype.kind not in "SU":
+            raise ValueError("require string input.")
         count, frac = _parse_strings(string)
         return cls(count, frac)
 
     @property
     def int(self):
         """Rounded cycle count."""
-        return self['int']
+        return self["int"]
 
     @property
     def frac(self):
         """Fractional phase, between -0.5 and 0.5 cycles."""
-        return self['frac']
+        return self["frac"]
 
     @property
     def cycle(self):
@@ -494,7 +527,7 @@ class Phase(Angle):
 
         The result will use a standard double, and thus likely loose precision.
         """
-        return self['int'] + self['frac']
+        return self["int"] + self["frac"]
 
     def to_value(self, unit=None, equivalencies=[]):
         """The numerical value, possibly in a different unit.
@@ -503,15 +536,17 @@ class Phase(Angle):
         """
         return self.cycle.to_value(unit, equivalencies)
 
-    value = property(to_value,
-                     doc="""The numerical value.
+    value = property(
+        to_value,
+        doc="""The numerical value.
 
     The result will use a standard double, and thus likely loose precision.
 
     See also
     --------
     to_value : Get the numerical value in a given unit.
-    """)
+    """,
+    )
 
     def to(self, unit, equivalencies=[]):
         """The phase in a different unit.
@@ -540,13 +575,13 @@ class Phase(Angle):
     def argmin(self, axis=None, out=None):
         """Return indices of the minimum values along the given axis."""
         approx = np.min(self.cycle, axis, keepdims=True)
-        dt = (self['int'] - approx) + self['frac']
+        dt = (self["int"] - approx) + self["frac"]
         return dt.argmin(axis, out)
 
     def argmax(self, axis=None, out=None):
         """Return indices of the maximum values along the given axis."""
         approx = np.max(self.cycle, axis, keepdims=True)
-        dt = (self['int'] - approx) + self['frac']
+        dt = (self["int"] - approx) + self["frac"]
         return dt.argmax(axis, out)
 
     def argsort(self, axis=-1):
@@ -587,8 +622,7 @@ class Phase(Angle):
         """
         if out is not None:
             raise ValueError("An `out` argument is not yet supported.")
-        return (self.max(axis, keepdims=keepdims)
-                - self.min(axis, keepdims=keepdims))
+        return self.max(axis, keepdims=keepdims) - self.min(axis, keepdims=keepdims)
 
     def sort(self, axis=-1):
         """Return a copy sorted along the specified axis.
@@ -654,11 +688,11 @@ class Phase(Angle):
 
         # Some bools for use in the if-statements below.
         # TODO: support reductions on add, minimum, maximum; others?
-        basic = method == '__call__' and i_self < function.nin
+        basic = method == "__call__" and i_self < function.nin
         basic_real = basic and not self.imaginary
         basic_phase_out = basic
 
-        out = kwargs.get('out', None)
+        out = kwargs.get("out", None)
         if out is not None:
             if len(out) == 1 and isinstance(out[0], Phase):
                 phase_out = out[0]
@@ -671,50 +705,52 @@ class Phase(Angle):
 
         if function in {np.add, np.subtract} and basic and out is None:
             try:
-                phases = [Phase(input_, copy=False, subok=True)
-                          for input_ in inputs]
+                phases = [Phase(input_, copy=False, subok=True) for input_ in inputs]
             except Exception:
                 return NotImplemented
 
             if phases[0].imaginary == phases[1].imaginary:
                 return self.from_angles(
-                    function(phases[0]['int'], phases[1]['int']),
-                    function(phases[0]['frac'], phases[1]['frac']),
-                    out=phase_out)
+                    function(phases[0]["int"], phases[1]["int"]),
+                    function(phases[0]["frac"], phases[1]["frac"]),
+                    out=phase_out,
+                )
 
         elif function in COMPARISON_UFUNCS and basic:
             phases = list(inputs)
             try:
-                phases[1-i_self] = Phase(inputs[1-i_self], copy=False,
-                                         subok=True)
+                phases[1 - i_self] = Phase(inputs[1 - i_self], copy=False, subok=True)
             except Exception:
                 return NotImplemented
 
             if phases[0].imaginary == phases[1].imaginary:
-                diff = ((phases[0]['int'] - phases[1]['int'])
-                        + (phases[0]['frac'] - phases[1]['frac']))
+                diff = (phases[0]["int"] - phases[1]["int"]) + (
+                    phases[0]["frac"] - phases[1]["frac"]
+                )
                 return getattr(function, method)(diff, 0, **kwargs)
 
-        elif ((function is np.multiply
-               or function is np.divide and i_self == 0)
-              and basic_phase_out):
+        elif (
+            function is np.multiply or function is np.divide and i_self == 0
+        ) and basic_phase_out:
             try:
-                other = u.Quantity(inputs[1-i_self], u.dimensionless_unscaled,
-                                   copy=False).value
+                other = u.Quantity(
+                    inputs[1 - i_self], u.dimensionless_unscaled, copy=False
+                ).value
                 if function is np.multiply:
-                    return self.from_angles(self['int'], self['frac'],
-                                            factor=other, out=phase_out)
+                    return self.from_angles(
+                        self["int"], self["frac"], factor=other, out=phase_out
+                    )
                 else:
-                    return self.from_angles(self['int'], self['frac'],
-                                            divisor=other, out=phase_out)
+                    return self.from_angles(
+                        self["int"], self["frac"], divisor=other, out=phase_out
+                    )
             except Exception:
                 # If not consistent with a dimensionless quantity, or mixed
                 # real and complex, we follow the standard route of
                 # downgrading ourself to a quantity and see if things work.
                 pass
 
-        elif (function in {np.floor_divide, np.remainder, np.divmod}
-              and basic_real):
+        elif function in {np.floor_divide, np.remainder, np.divmod} and basic_real:
             fd_out = None
             if out is not None:
                 if function is np.divmod:
@@ -745,23 +781,23 @@ class Phase(Angle):
                 return fd, remainder
 
         elif function is np.positive and basic_phase_out:
-            return self.from_angles(self['int'], self['frac'],
-                                    out=phase_out)
+            return self.from_angles(self["int"], self["frac"], out=phase_out)
 
         elif function is np.negative and basic_phase_out:
-            return self.from_angles(-self['int'], -self['frac'],
-                                    out=phase_out)
+            return self.from_angles(-self["int"], -self["frac"], out=phase_out)
 
         elif function in {np.absolute, np.fabs} and basic_phase_out:
             # Go via view to avoid having to deal with imaginary.
             v = self.view(np.ndarray)
-            return self.from_angles(u.Quantity(v['int'], u.cycle, copy=False),
-                                    u.Quantity(v['frac'], u.cycle, copy=False),
-                                    factor=np.sign(v['int'] + v['frac']),
-                                    out=phase_out)
+            return self.from_angles(
+                u.Quantity(v["int"], u.cycle, copy=False),
+                u.Quantity(v["frac"], u.cycle, copy=False),
+                factor=np.sign(v["int"] + v["frac"]),
+                out=phase_out,
+            )
 
         elif function is np.rint and basic:
-            return np.positive(self['int'], **kwargs)
+            return np.positive(self["int"], **kwargs)
 
         elif function in FRACTION_UFUNCS and basic_real:
             frac = self.frac.view(Angle)
@@ -774,21 +810,21 @@ class Phase(Angle):
 
         # Fall-back: treat Phase as a simple Quantity.
         if basic:
-            inputs = tuple((input_.cycle if isinstance(input_, Phase)
-                            else input_) for input_ in inputs)
+            inputs = tuple(
+                (input_.cycle if isinstance(input_, Phase) else input_)
+                for input_ in inputs
+            )
             quantity = inputs[i_self]
         else:
             quantity = self.cycle
 
         if phase_out is None:
-            return quantity.__array_ufunc__(function, method, *inputs,
-                                            **kwargs)
+            return quantity.__array_ufunc__(function, method, *inputs, **kwargs)
         else:
             # We won't be able to store in a phase directly, but might
             # as well use one of its elements to store the angle.
-            kwargs['out'] = (phase_out['int'],)
-            result = quantity.__array_ufunc__(function, method, *inputs,
-                                              **kwargs)
+            kwargs["out"] = (phase_out["int"],)
+            result = quantity.__array_ufunc__(function, method, *inputs, **kwargs)
             return phase_out.from_angles(result, out=phase_out)
 
     def _new_view(self, obj=None, unit=None):
@@ -802,21 +838,24 @@ class Phase(Angle):
 
         return super()._new_view(obj, unit)
 
-    def astype(self, dtype, order='K', casting='unsafe', subok=True,
-               copy=True):
+    def astype(self, dtype, order="K", casting="unsafe", subok=True, copy=True):
         """Copy of the array, cast to a specified type.
 
         As `numpy.ndarray.astype`, but using knowledge of format to cast to
         floats.
         """
         dtype = np.dtype(dtype)
-        if not dtype.fields and casting in {'same_kind', 'unsafe'}:
-            parts = [self[part].astype(dtype, order=order, casting=casting,
-                                       subok=subok, copy=copy)
-                     for part, copy in (('int', True), ('frac', False))]
+        if not dtype.fields and casting in {"same_kind", "unsafe"}:
+            parts = [
+                self[part].astype(
+                    dtype, order=order, casting=casting, subok=subok, copy=copy
+                )
+                for part, copy in (("int", True), ("frac", False))
+            ]
             parts[0] += parts[1]
             return parts[0]
 
         else:
-            return super().astype(dtype, order=order, casting=casting,
-                                  subok=subok, copy=copy)
+            return super().astype(
+                dtype, order=order, casting=casting, subok=subok, copy=copy
+            )

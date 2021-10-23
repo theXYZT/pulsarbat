@@ -16,6 +16,8 @@ should expose the following user-facing attributes/methods:
   * `r.read(offset, n, **kwargs)` -- Read `n` samples from given offset.
   * `r.offset_at(t)` -- Offset at given timestamp or Quantity.
   * `r.time_at(offset)` -- Timestamp at given offset (or None).
+  * `r.contains(t)` -- Whether time(s) are within the bounds of the data.
+  * `t in r` -- Whether times is within the bounds of the data.
 
 The following keyword arguments should be accepted the `read()` method:
   * `use_dask` -- boolean, whether to use Dask arrays.
@@ -29,12 +31,13 @@ from astropy.time import Time
 import pulsarbat as pb
 
 __all__ = [
-    'BaseReader',
+    "BaseReader",
 ]
 
 
 class OutOfBoundsError(EOFError):
     """Raised when stream position is out of bounds."""
+
     pass
 
 
@@ -42,7 +45,8 @@ class BaseReader:
     """Base class for readers.
 
     Subclasses must either implement the `_read_array()` method if using
-    the default `read()` implementation and structure.
+    the default `.read()` implementation, or implement their own
+    `.read()` method.
 
     Parameters
     ----------
@@ -61,10 +65,18 @@ class BaseReader:
         Additional `kwargs` to pass on to `signal_type` when creating a
         Signal object.
     """
-    _signal_kwargs = dict()
 
-    def __init__(self, /, *, shape, dtype, signal_type=pb.Signal,
-                 sample_rate, start_time=None, **signal_kwargs):
+    def __init__(
+        self,
+        /,
+        *,
+        shape,
+        dtype,
+        signal_type=pb.Signal,
+        sample_rate,
+        start_time=None,
+        **signal_kwargs,
+    ):
 
         if not issubclass(signal_type, pb.Signal):
             raise ValueError("Bad signal_type. Must be Signal or subclass.")
@@ -87,14 +99,17 @@ class BaseReader:
         # Make sure shape and dtype are consistent
         if z.shape != (0,) + self.sample_shape:
             raise ValueError("Provided shape does not match output shape!")
+
         if z.dtype != self.dtype:
             raise ValueError("Provided dtype does not match output dtype!")
 
     def _attr_repr(self):
-        st = 'N/A' if self.start_time is None else self.start_time.isot
-        return (f"Start time: {st}\n"
-                f"Sample rate: {self.sample_rate}\n"
-                f"Time length: {self.time_length}\n")
+        st = "N/A" if self.start_time is None else self.start_time.isot
+        return (
+            f"Start time: {st}\n"
+            f"Sample rate: {self.sample_rate}\n"
+            f"Time length: {self.time_length}\n"
+        )
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -152,11 +167,13 @@ class BaseReader:
     @sample_rate.setter
     def sample_rate(self, sample_rate):
         try:
-            temp = sample_rate.to(u.MHz)
+            temp = sample_rate.to(u.Hz)
             assert temp.isscalar and temp > 0
         except Exception:
-            raise ValueError("Invalid sample_rate. Must be a positive scalar "
-                             "Quantity with units of Hz or equivalent.")
+            raise ValueError(
+                "Invalid sample_rate. Must be a positive scalar "
+                "Quantity with units of Hz or equivalent."
+            )
         else:
             self._sample_rate = sample_rate
 
@@ -170,11 +187,12 @@ class BaseReader:
         try:
             temp = None
             if start_time is not None:
-                temp = Time(start_time, format='isot', precision=9)
+                temp = Time(start_time, format="isot", precision=9)
                 assert temp.isscalar
         except Exception:
-            raise ValueError("Invalid start_time. Must be a scalar astropy "
-                             "Time object.")
+            raise ValueError(
+                "Invalid start_time. Must be a scalar astropy " "Time object."
+            )
         else:
             self._start_time = temp
 
@@ -314,13 +332,15 @@ class BaseReader:
         if offset + n > len(self):
             raise OutOfBoundsError("Cannot read beyond end of stream")
 
-        return self._signal_type(self._read_data(offset, n, **kwargs),
-                                 sample_rate=self.sample_rate,
-                                 start_time=self.time_at(offset),
-                                 **self._signal_kwargs)
+        return self._signal_type(
+            self._read_data(offset, n, **kwargs),
+            sample_rate=self.sample_rate,
+            start_time=self.time_at(offset),
+            **self._signal_kwargs,
+        )
 
     def dask_read(self, offset, n, /, **kwargs):
-        """Read `n` samples from given offset using dask arrays.
+        """Read `n` samples from given offset using Dask arrays.
 
         A convenience method equivalent to the `read()` method with
         `use_dask=True`.

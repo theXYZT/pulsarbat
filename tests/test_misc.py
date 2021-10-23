@@ -24,10 +24,12 @@ class TestSTFT:
     @pytest.mark.parametrize("use_dask", [True, False])
     def test_reversibility(self, use_dask, shape):
         p = da if use_dask else np
-        kw = {'sample_rate': 4 * u.MHz,
-              'center_freq': 400 * u.MHz,
-              'pol_type': 'linear',
-              'start_time': Time.now()}
+        kw = {
+            "sample_rate": 4 * u.MHz,
+            "center_freq": 400 * u.MHz,
+            "pol_type": "linear",
+            "start_time": Time.now(),
+        }
 
         x = p.exp(1j * p.random.uniform(-np.pi, +np.pi, shape))
         z = pb.DualPolarizationSignal(x, **kw)
@@ -36,14 +38,14 @@ class TestSTFT:
             y = pb.misc.istft(pb.misc.stft(z, nperseg=n), nperseg=n)
             assert isinstance(y, type(z))
             assert isinstance(y.data, type(z.data))
-            assert_equal_radiosignals(z[:len(y)], y)
+            assert_equal_radiosignals(z[: len(y)], y)
 
     def test_single_tone(self):
-        x = np.exp(2j*np.pi*np.arange(1024)*0.25)[:, None]
-        z = pb.BasebandSignal(x, sample_rate=1*u.MHz, center_freq=1*u.GHz)
+        x = np.exp(2j * np.pi * np.arange(1024) * 0.25)[:, None]
+        z = pb.BasebandSignal(x, sample_rate=1 * u.MHz, center_freq=1 * u.GHz)
 
         for n in [32, 64, 512, 1024]:
             y = pb.misc.stft(z, nperseg=n)
             a = np.zeros_like(y)
-            a[:, 3*n//4] = 1.
+            a[:, 3 * n // 4] = 1.0
             assert np.allclose(a, y.data)

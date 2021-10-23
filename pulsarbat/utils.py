@@ -6,9 +6,9 @@ import scipy.fft
 
 
 __all__ = [
-    'real_to_complex',
-    'next_fast_len',
-    'prev_fast_len',
+    "real_to_complex",
+    "next_fast_len",
+    "prev_fast_len",
 ]
 
 
@@ -52,9 +52,9 @@ def real_to_complex(z, axis=0):
     # Get analytic signal via Hilbert transform and shift by -B/2
     h = np.zeros(N, dtype=out_dtype)
     h[0] = 1
-    h[1:N//2] = 2
+    h[1 : N // 2] = 2
     if N > 1:
-        h[N//2] = 2 if N % 2 else 1
+        h[N // 2] = 2 if N % 2 else 1
 
     z = scipy.fft.ifft(scipy.fft.fft(z, axis=axis) * h[tuple(ind)], axis=axis)
     z *= np.exp(-1j * np.pi / 2 * np.arange(N))[tuple(ind)]
@@ -71,7 +71,7 @@ def next_fast_len(N):
     if N <= 10:
         return N
 
-    f7, guess = 1, 2*N
+    f7, guess = 1, 2 * N
     while f7 < guess:
         f75 = f7
         while f75 < guess:

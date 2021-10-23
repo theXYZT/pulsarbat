@@ -11,7 +11,7 @@ from astropy.time import Time
 
 
 def assert_equal_signals(x, y):
-    assert np.allclose(np.array(x), np.array(y), atol=1E-6)
+    assert np.allclose(np.array(x), np.array(y), atol=1e-6)
     assert Time.isclose(x.start_time, y.start_time)
     assert u.isclose(x.sample_rate, y.sample_rate)
 
@@ -31,10 +31,10 @@ class TestConcatenate:
             f = np.random.standard_normal
 
         shape = (16, 16)
-        z = pb.Signal(f(shape), sample_rate=1*u.Hz, start_time=Time.now())
+        z = pb.Signal(f(shape), sample_rate=1 * u.Hz, start_time=Time.now())
 
         x, y = z[:10], z[10:]
-        for axis in [0, 'time']:
+        for axis in [0, "time"]:
             z2 = pb.concatenate([x, y], axis=axis)
             assert_equal_signals(z, z2)
 
@@ -50,13 +50,18 @@ class TestConcatenate:
         assert_equal_signals(z, z2)
 
         with pytest.raises(TypeError):
-            _ = pb.concatenate([x, y], axis='freq')
+            _ = pb.concatenate([x, y], axis="freq")
 
-        z = pb.RadioSignal(f(shape), sample_rate=1*u.Hz, start_time=Time.now(),
-                           chan_bw=1*u.MHz, center_freq=1*u.GHz)
+        z = pb.RadioSignal(
+            f(shape),
+            sample_rate=1 * u.Hz,
+            start_time=Time.now(),
+            chan_bw=1 * u.MHz,
+            center_freq=1 * u.GHz,
+        )
 
         x, y = z[:, :10], z[:, 10:]
-        for axis in [1, 'freq']:
+        for axis in [1, "freq"]:
             z2 = pb.concatenate([x, y], axis=axis)
             assert_equal_radiosignals(z, z2)
 
@@ -79,17 +84,22 @@ class TestConcatenate:
         valid along x = AA, AC, BB, BD, CC, CA, DD, DB
         """
         shape = (16, 16)
-        z = pb.Signal(np.random.default_rng().standard_normal(shape),
-                      sample_rate=1*u.Hz, start_time=Time.now())
+        z = pb.Signal(
+            np.random.default_rng().standard_normal(shape),
+            sample_rate=1 * u.Hz,
+            start_time=Time.now(),
+        )
 
         A, B, C, D = z[:8, :8], z[8:, :8], z[:8, 8:], z[8:, 8:]
 
-        y = pb.concatenate([pb.concatenate([A, B], axis=0),
-                            pb.concatenate([C, D], axis=0)], axis=1)
+        y = pb.concatenate(
+            [pb.concatenate([A, B], axis=0), pb.concatenate([C, D], axis=0)], axis=1
+        )
         assert_equal_signals(z, y)
 
-        y = pb.concatenate([pb.concatenate([A, C], axis=1),
-                            pb.concatenate([B, D], axis=1)], axis=0)
+        y = pb.concatenate(
+            [pb.concatenate([A, C], axis=1), pb.concatenate([B, D], axis=1)], axis=0
+        )
         assert_equal_signals(z, y)
 
         for X, Y in itertools.product([A, B, C, D], repeat=2):
@@ -101,8 +111,16 @@ class TestConcatenate:
                 with pytest.raises(ValueError):
                     _ = pb.concatenate([X, Y], axis=0)
 
-            freq_pairs = [(A, A), (A, C), (B, B), (B, D),
-                          (C, C), (C, A), (D, D), (D, B)]
+            freq_pairs = [
+                (A, A),
+                (A, C),
+                (B, B),
+                (B, D),
+                (C, C),
+                (C, A),
+                (D, D),
+                (D, B),
+            ]
 
             if any(X is M and Y is N for M, N in freq_pairs):
                 _ = pb.concatenate([X, Y], axis=1)
@@ -122,18 +140,26 @@ class TestConcatenate:
         valid along f = AC, BD
         """
         shape = (16, 16)
-        z = pb.RadioSignal(np.random.default_rng().standard_normal(shape),
-                           sample_rate=1*u.Hz, start_time=Time.now(),
-                           chan_bw=1*u.MHz, center_freq=1*u.GHz)
+        z = pb.RadioSignal(
+            np.random.default_rng().standard_normal(shape),
+            sample_rate=1 * u.Hz,
+            start_time=Time.now(),
+            chan_bw=1 * u.MHz,
+            center_freq=1 * u.GHz,
+        )
 
         A, B, C, D = z[:8, :8], z[8:, :8], z[:8, 8:], z[8:, 8:]
 
-        y = pb.concatenate([pb.concatenate([A, B], axis='time'),
-                            pb.concatenate([C, D], axis='time')], axis='freq')
+        y = pb.concatenate(
+            [pb.concatenate([A, B], axis="time"), pb.concatenate([C, D], axis="time")],
+            axis="freq",
+        )
         assert_equal_radiosignals(z, y)
 
-        y = pb.concatenate([pb.concatenate([A, C], axis='freq'),
-                            pb.concatenate([B, D], axis='freq')], axis='time')
+        y = pb.concatenate(
+            [pb.concatenate([A, C], axis="freq"), pb.concatenate([B, D], axis="freq")],
+            axis="time",
+        )
         assert_equal_radiosignals(z, y)
 
         for X, Y in itertools.product([A, B, C, D], repeat=2):
@@ -157,8 +183,11 @@ class TestConcatenate:
         shape = (32, 32)
         k = (0, 13, 19, 19, 23, 32)
 
-        z = pb.Signal(np.random.default_rng().standard_normal(shape),
-                      sample_rate=1*u.Hz, start_time=Time.now())
+        z = pb.Signal(
+            np.random.default_rng().standard_normal(shape),
+            sample_rate=1 * u.Hz,
+            start_time=Time.now(),
+        )
 
         for c in range(len(k) - 1):
             zs = [z[i:j] for i, j in zip(k, k[1:])]
@@ -167,20 +196,23 @@ class TestConcatenate:
                 if j != c:
                     x.start_time = None
 
-            y = pb.concatenate(zs, axis='time')
+            y = pb.concatenate(zs, axis="time")
             assert_equal_signals(z, y)
 
         zs = [z[i:j] for i, j in zip(k, k[1:])]
         for x in zs:
             x.start_time = None
-        y = pb.concatenate(zs, axis='time')
+        y = pb.concatenate(zs, axis="time")
         assert y.start_time is None
 
     def test_edge_cases(self):
         shape = (16, 16)
 
-        z = pb.Signal(np.random.default_rng().standard_normal(shape),
-                      sample_rate=1*u.Hz, start_time=Time.now())
+        z = pb.Signal(
+            np.random.default_rng().standard_normal(shape),
+            sample_rate=1 * u.Hz,
+            start_time=Time.now(),
+        )
 
         with pytest.raises(ValueError):
             _ = pb.concatenate([])
@@ -204,11 +236,11 @@ class TestTimeShift:
         shape = (4096, 4, 2)
 
         if use_complex:
-            x = (f(shape) + 1j*f(shape)).astype(np.complex128)
+            x = (f(shape) + 1j * f(shape)).astype(np.complex128)
         else:
             x = f(shape).astype(np.float64)
 
-        z = pb.Signal(x, sample_rate=1*u.kHz, start_time=Time.now())
+        z = pb.Signal(x, sample_rate=1 * u.kHz, start_time=Time.now())
 
         for n in [1, 10, 55, 211]:
             assert_equal_signals(z[:-n], pb.time_shift(z, n))
@@ -228,7 +260,7 @@ class TestTimeShift:
         for shift in [16.5, 32.25, 50.1, 60.9, 466.666]:
             imp1 = impulse(N, shift)
             imp2 = impulse(N - math.ceil(shift), 0)
-            x = pb.Signal(imp1, sample_rate=1*u.kHz, start_time=Time.now())
+            x = pb.Signal(imp1, sample_rate=1 * u.kHz, start_time=Time.now())
             y = pb.time_shift(x, -shift)
             assert np.allclose(np.array(y), imp2)
             z = pb.time_shift(x, -shift * u.ms)
@@ -239,7 +271,22 @@ class TestFastLen:
     def test_fast(self):
         for N in [4096, 4100, 4111]:
             x = np.arange(N, dtype=np.float64)
-            z = pb.Signal(x, sample_rate=1*u.Hz)
+            z = pb.Signal(x, sample_rate=1 * u.Hz)
             y = pb.fast_len(z)
             assert len(y) == 4096
             assert np.allclose(y.data, np.arange(4096))
+
+
+class TestTransform:
+    @pytest.mark.parametrize("arange", [np.arange, da.arange])
+    def test_median_filter(self, arange):
+        from scipy.ndimage import median_filter
+
+        kw = dict(sample_rate=1*u.Hz, start_time=Time.now())
+
+        z = pb.Signal(arange(9).reshape(-1, 3), **kw)
+
+        res = median_filter(arange(9).reshape(-1, 3), size=3, mode='constant')
+        x = type(z).like(z, res)
+        y = pb.transform(median_filter)(z, size=3, mode='constant')
+        assert_equal_signals(x, y)

@@ -79,7 +79,7 @@ from astropy.time import Time
 import pulsarbat as pb
 from .phase import Phase
 
-__all__ = ['Polyco']
+__all__ = ["Polyco"]
 
 
 class Polyco(QTable):
@@ -123,27 +123,28 @@ class Polyco(QTable):
             A phase if ``deriv=0`` and ``rphase=None`` to preserve precision;
             otherwise, a quantity with units of ``cycle / time_unit**deriv``.
         """
-        time = Time(time, format='mjd', scale='utc')
+        time = Time(time, format="mjd", scale="utc")
         try:  # This also catches index=None
             index = operator.index(index)
         except TypeError:
             if index is None:
-                if np.any((time < (self['mjd_mid']-self['span']/2.).min())
-                          | (time > (self['mjd_mid']+self['span']/2.).max())):
-                    raise ValueError(
-                        '(some) MJD outside of polyco range') from None
+                if np.any(
+                    (time < (self["mjd_mid"] - self["span"] / 2.0).min())
+                    | (time > (self["mjd_mid"] + self["span"] / 2.0).max())
+                ):
+                    raise ValueError("(some) MJD outside of polyco range") from None
                 index = self.searchclosest(time)
             else:
                 index = self.searchclosest(index)
 
         # Convert offsets to minutes for later use in polynomial evaluation.
-        dt = (time - self['mjd_mid'][index]).to_value(u.min)
+        dt = (time - self["mjd_mid"][index]).to_value(u.min)
 
         # Check whether we need to add the reference phase at the end.
-        do_phase = (deriv == 0 and rphase is None)
+        do_phase = deriv == 0 and rphase is None
         if do_phase:
             # If so, do not add it inside the polynomials.
-            rphase = 'ignore'
+            rphase = "ignore"
 
         if time.isscalar:
             result = self.polynomial(index, rphase, deriv)(dt)
@@ -154,15 +155,22 @@ class Polyco(QTable):
                 result[sel] = self.polynomial(j, rphase, deriv)(dt[sel])
 
         # Apply units from the polynomials.
-        result = result << u.cycle/u.min**deriv
+        result = result << u.cycle / u.min ** deriv
         # Convert to requested unit in-place.
-        result <<= u.cycle/time_unit**deriv
+        result <<= u.cycle / time_unit ** deriv
         # Add reference phase to it if needed.
-        return result + self['rphase'][index] if do_phase else result
+        return result + self["rphase"][index] if do_phase else result
 
-    def polynomial(self, index, rphase=None, deriv=0,
-                   t0=None, time_unit=u.min, out_unit=None,
-                   convert=False):
+    def polynomial(
+        self,
+        index,
+        rphase=None,
+        deriv=0,
+        t0=None,
+        time_unit=u.min,
+        out_unit=None,
+        convert=False,
+    ):
         """Prediction polynomial set up for times in MJD
 
         Parameters
@@ -197,25 +205,24 @@ class Polyco(QTable):
             index = operator.index(index)
         except TypeError:
             index = self.searchclosest(index)
-        window = np.array([-1, 1]) * self['span'][index]/2
+        window = np.array([-1, 1]) * self["span"][index] / 2
 
-        polynomial = Polynomial(self['coeff'][index],
-                                window.value, window.value)
-        polynomial.coef[1] += self['f0'][index].to_value(u.cycle/u.minute)
+        polynomial = Polynomial(self["coeff"][index], window.value, window.value)
+        polynomial.coef[1] += self["f0"][index].to_value(u.cycle / u.minute)
 
         if deriv == 0:
             if rphase is None:
-                polynomial.coef[0] += self['rphase'][index].value
-            elif rphase == 'fraction':
-                polynomial.coef[0] += self['rphase']['frac'][index].value % 1
-            elif rphase != 'ignore':
+                polynomial.coef[0] += self["rphase"][index].value
+            elif rphase == "fraction":
+                polynomial.coef[0] += self["rphase"]["frac"][index].value % 1
+            elif rphase != "ignore":
                 polynomial.coef[0] = rphase
         else:
             polynomial = polynomial.deriv(deriv)
-            polynomial.coef /= u.min.to(out_unit)**deriv
+            polynomial.coef /= u.min.to(out_unit) ** deriv
 
         if t0 is not None:
-            dt = Time(t0, format='mjd') - self['mjd_mid'][index]
+            dt = Time(t0, format="mjd") - self["mjd_mid"][index]
             polynomial.domain = (window - dt).to(time_unit).value
 
         if convert:
@@ -223,8 +230,7 @@ class Polyco(QTable):
         else:
             return polynomial
 
-    def phasepol(self, index, rphase=None, t0=0., time_unit=u.day,
-                 convert=False):
+    def phasepol(self, index, rphase=None, t0=0.0, time_unit=u.day, convert=False):
         """Phase prediction polynomial set up for times in MJD
 
         Parameters
@@ -242,10 +248,11 @@ class Polyco(QTable):
         phasepol : Polynomial
             set up for MJDs between mjd_mid +/- span
         """
-        return self.polynomial(index, rphase, t0=t0, time_unit=time_unit,
-                               convert=convert)
+        return self.polynomial(
+            index, rphase, t0=t0, time_unit=time_unit, convert=convert
+        )
 
-    def fpol(self, index, t0=0., time_unit=u.day, convert=False):
+    def fpol(self, index, t0=0.0, time_unit=u.day, convert=False):
         """Frequency prediction polynomial set up for times in MJD
 
         Parameters
@@ -258,23 +265,25 @@ class Polyco(QTable):
         freqpol : Polynomial
             set up for MJDs between mjd_mid +/- span
         """
-        return self.polynomial(index, deriv=1,
-                               t0=t0, time_unit=time_unit, out_unit=u.s,
-                               convert=convert)
+        return self.polynomial(
+            index, deriv=1, t0=t0, time_unit=time_unit, out_unit=u.s, convert=convert
+        )
 
     def searchclosest(self, mjd):
         """Find index to polyco that is closest in time to (set of) Time/MJD"""
-        mjd = getattr(mjd, 'mjd', mjd)
-        mjd_mid = self['mjd_mid'].mjd
-        i = np.clip(np.searchsorted(mjd_mid, mjd), 1, len(self)-1)
-        i -= mjd-mjd_mid[i-1] < mjd_mid[i]-mjd
+        mjd = getattr(mjd, "mjd", mjd)
+        mjd_mid = self["mjd_mid"].mjd
+        i = np.clip(np.searchsorted(mjd_mid, mjd), 1, len(self) - 1)
+        i -= mjd - mjd_mid[i - 1] < mjd_mid[i] - mjd
         return i
 
 
 def int_frac(s):
-    mjd_int, _, frac = s.strip().partition('.')
-    return np.array((int('0' + mjd_int), float('0.' + frac)),
-                    dtype=[('int', np.int64), ('frac', np.float64)])
+    mjd_int, _, frac = s.strip().partition(".")
+    return np.array(
+        (int("0" + mjd_int), float("0." + frac)),
+        dtype=[("int", np.int64), ("frac", np.float64)],
+    )
 
 
 def change_type(cls, **kwargs):
@@ -289,30 +298,74 @@ def change_type(cls, **kwargs):
 
 
 converters = OrderedDict(
-    (('psr', dict(parse=str, fmt=':<10s')),
-     ('date', dict(fmt=':>10s')),  # inferred from mjd_mid
-     ('utc_mid', dict(fmt=':11.2f')),  # inferred from mjd_mid
-     ('mjd_mid', dict(parse=int_frac, fmt=':20.11f',
-                      convert=change_type(Time, format='mjd'))),
-     ('dm', dict(parse=float, fmt='.value:21.6f',
-                 convert=change_type(pb.DispersionMeasure))),
-     ('vbyc_earth', dict(parse=float, fmt='.value:7.3f',
-                         convert=change_type(u.Quantity, unit=1e-4))),
-     ('lgrms', dict(parse=float, fmt=':7.3f')),
-     ('rphase', dict(parse=int_frac, fmt=':20.6f',
-                     convert=change_type(Phase))),
-     ('f0', dict(parse=float, fmt='.value:18.12f',
-                 convert=change_type(u.Quantity, unit=u.cycle/u.s))),
-     ('obs', dict(parse=str, fmt=':>5s')),
-     ('span', dict(parse=int, fmt='.value:5.0f',
-                   convert=change_type(u.Quantity, unit=u.minute))),
-     ('ncoeff', dict(parse=int, fmt=':5d')),
-     ('freq', dict(parse=float, fmt='.value:10.3f',
-                   convert=change_type(u.Quantity, unit=u.MHz))),
-     ('binphase', dict(parse=float, fmt='.value:7.4f',
-                       convert=change_type(Angle, unit=u.cy))),
-     ('forb', dict(parse=float, fmt='.value:9.4f',
-                   convert=change_type(u.Quantity, unit=u.cy/u.day)))))
+    (
+        ("psr", dict(parse=str, fmt=":<10s")),
+        ("date", dict(fmt=":>10s")),  # inferred from mjd_mid
+        ("utc_mid", dict(fmt=":11.2f")),  # inferred from mjd_mid
+        (
+            "mjd_mid",
+            dict(
+                parse=int_frac, fmt=":20.11f", convert=change_type(Time, format="mjd")
+            ),
+        ),
+        (
+            "dm",
+            dict(
+                parse=float,
+                fmt=".value:21.6f",
+                convert=change_type(pb.DispersionMeasure),
+            ),
+        ),
+        (
+            "vbyc_earth",
+            dict(
+                parse=float,
+                fmt=".value:7.3f",
+                convert=change_type(u.Quantity, unit=1e-4),
+            ),
+        ),
+        ("lgrms", dict(parse=float, fmt=":7.3f")),
+        ("rphase", dict(parse=int_frac, fmt=":20.6f", convert=change_type(Phase))),
+        (
+            "f0",
+            dict(
+                parse=float,
+                fmt=".value:18.12f",
+                convert=change_type(u.Quantity, unit=u.cycle / u.s),
+            ),
+        ),
+        ("obs", dict(parse=str, fmt=":>5s")),
+        (
+            "span",
+            dict(
+                parse=int,
+                fmt=".value:5.0f",
+                convert=change_type(u.Quantity, unit=u.minute),
+            ),
+        ),
+        ("ncoeff", dict(parse=int, fmt=":5d")),
+        (
+            "freq",
+            dict(
+                parse=float,
+                fmt=".value:10.3f",
+                convert=change_type(u.Quantity, unit=u.MHz),
+            ),
+        ),
+        (
+            "binphase",
+            dict(parse=float, fmt=".value:7.4f", convert=change_type(Angle, unit=u.cy)),
+        ),
+        (
+            "forb",
+            dict(
+                parse=float,
+                fmt=".value:9.4f",
+                convert=change_type(u.Quantity, unit=u.cy / u.day),
+            ),
+        ),
+    )
+)
 
 
 def polyco2table(name):
@@ -331,25 +384,27 @@ def polyco2table(name):
         rphase, f0, obs, span, ncoeff, freq, binphase & forb (optional),
         and coeff[ncoeff].
     """
-    d2e = ''.maketrans('Dd', 'ee')
+    d2e = "".maketrans("Dd", "ee")
 
     t = []
-    with open(name, 'r') as polyco:
+    with open(name, "r") as polyco:
         line = polyco.readline()
-        while line != '':
+        while line != "":
             # Parse Header.
             pieces = line.split() + polyco.readline().split()
-            d = OrderedDict(((key, converter['parse'](piece))
-                             for (key, converter), piece in
-                             zip(converters.items(), pieces)
-                             if 'parse' in converter))
+            d = OrderedDict(
+                (
+                    (key, converter["parse"](piece))
+                    for (key, converter), piece in zip(converters.items(), pieces)
+                    if "parse" in converter
+                )
+            )
             # Parse coefficients.
-            d['coeff'] = []
-            while len(d['coeff']) < d['ncoeff']:
-                d['coeff'] += polyco.readline().split()
+            d["coeff"] = []
+            while len(d["coeff"]) < d["ncoeff"]:
+                d["coeff"] += polyco.readline().split()
 
-            d['coeff'] = np.array([float(c.translate(d2e))
-                                   for c in d['coeff']])
+            d["coeff"] = np.array([float(c.translate(d2e)) for c in d["coeff"]])
 
             t.append(d)
             line = polyco.readline()
@@ -357,7 +412,7 @@ def polyco2table(name):
     t = QTable(t)
     for key in t.colnames:
         try:
-            t[key] = converters[key]['convert'](t[key])
+            t[key] = converters[key]["convert"](t[key])
         except KeyError:
             pass
 

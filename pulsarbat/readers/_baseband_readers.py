@@ -6,12 +6,12 @@ from astropy.time import Time
 from contextlib import nullcontext
 import baseband
 import pulsarbat as pb
-from pulsarbat.reader import BaseReader
+from pulsarbat.readers import BaseReader
 
 __all__ = [
-    'BasebandReader',
-    'GUPPIRawReader',
-    'DADAStokesReader',
+    "BasebandReader",
+    "GUPPIRawReader",
+    "DADAStokesReader",
 ]
 
 
@@ -31,23 +31,46 @@ class BasebandReader(BaseReader):
         Signal object. Must not include `sample_rate` or `start_time` as
         dictionary fields.
     intensity : bool, optional
-        Whether the data is intensity data. Default is False. This allows
-        for proper handling of real-value baseband data.
+        Whether the data is intensity data. If `signal_type` is a
+        subclass of `pb.IntensitySignal`, assumed to be True. If
+        `signal_type` is a subclass of `pb.BasebandSignal`, assumed to be
+        False. Default is False.
     lower_sideband : bool or array-like, optional
         Whether the data is lower-sideband (LSB) data. Default is False.
         If not a boolean, must be an array-like of booleans with the
         same shape as `sample_shape` of original data as read by
         `StreamReader` in the `baseband` package.
     """
-    def __init__(self, name, /, *, signal_type=pb.Signal, signal_kwargs=dict(),
-                 intensity=False, lower_sideband=False, **kwargs):
+
+    def __init__(
+        self,
+        name,
+        /,
+        *,
+        signal_type=pb.Signal,
+        signal_kwargs=dict(),
+        intensity=None,
+        lower_sideband=False,
+        **kwargs,
+    ):
 
         self._name = name
         self._kwargs = kwargs
-        self._intensity = bool(intensity)
+
+        if intensity is None:
+            self._intensity = issubclass(signal_type, pb.IntensitySignal)
+        else:
+            self._intensity = bool(intensity)
+
+            if issubclass(signal_type, pb.BasebandSignal) and self.intensity:
+                raise ValueError("intensity must be False when using pb.BasebandSignal")
+
+            if issubclass(signal_type, pb.IntensitySignal) and not self.intensity:
+                raise ValueError("intensity must be True when using pb.IntensitySignal")
 
         with self._get_fh() as fh:
             self._complex_data = bool(fh.complex_data)
+            self._in_sample_shape = fh.shape[1:]
 
             if self.intensity and self.complex_data:
                 raise ValueError("Intensity data cannot be complex-valued!")
@@ -61,7 +84,7 @@ class BasebandReader(BaseReader):
                 _length = fh.shape[0]
                 _dtype = np.complex64 if self.complex_data else np.float32
 
-            _t0 = Time(fh.start_time, format='isot', precision=9)
+            _t0 = Time(fh.start_time, format="isot", precision=9)
 
         self.lower_sideband = lower_sideband
         self._dtype = np.dtype(_dtype)
@@ -69,11 +92,17 @@ class BasebandReader(BaseReader):
         # Determine sample shape by reading a dummy array
         _shape = (_length,) + self._read_array(0, 0).shape[1:]
 
-        super().__init__(shape=_shape, dtype=_dtype, signal_type=signal_type,
-                         sample_rate=_sr, start_time=_t0, **signal_kwargs)
+        super().__init__(
+            shape=_shape,
+            dtype=_dtype,
+            signal_type=signal_type,
+            sample_rate=_sr,
+            start_time=_t0,
+            **signal_kwargs,
+        )
 
     def _get_fh(self):
-        return baseband.open(self._name, 'rs', **self._kwargs)
+        return baseband.open(self._name, "rs", **self._kwargs)
 
     @property
     def complex_data(self):
@@ -97,13 +126,10 @@ class BasebandReader(BaseReader):
 
     @lower_sideband.setter
     def lower_sideband(self, s):
-        with self._get_fh() as fh:
-            _sample_shape = fh.shape[1:]
-
         if type(s) != bool:
             s = np.array(s).astype(bool)
-            if s.shape != _sample_shape:
-                err = f"Got {s.shape}, expected {_sample_shape}"
+            if s.shape != self._in_sample_shape:
+                err = f"Got {s.shape}, expected {self._in_sample_shape}"
                 raise ValueError(f"Invalid lower_sideband shape. {err}")
 
         self._lower_sideband = s
@@ -113,8 +139,8 @@ class BasebandReader(BaseReader):
         with lock:
             with self._get_fh() as fh:
                 if self.real_baseband:
-                    fh.seek(2*offset)
-                    z = pb.utils.real_to_complex(fh.read(2*n), axis=0)
+                    fh.seek(2 * offset)
+                    z = pb.utils.real_to_complex(fh.read(2 * n), axis=0)
                 else:
                     fh.seek(offset)
                     z = fh.read(n)
@@ -149,6 +175,7 @@ class BasebandReader(BaseReader):
             Additional keyword arguments. Currently supported are:
               * `use_dask` -- Whether to use dask arrays.
               * `lock` -- A lock object to prevent concurrent reads.
+                          Must be a context manager.
 
         Returns
         -------
@@ -168,21 +195,28 @@ class GUPPIRawReader(BasebandReader):
         `~baseband.open` to create a GUPPIStreamReader object via
         `baseband.open(name, 'rs', format='guppi', squeeze=False)`.
     """
+
     def __init__(self, name, /):
-        kwargs = {'format': 'guppi', 'squeeze': False}
+        kwargs = {"format": "guppi", "squeeze": False}
 
-        with baseband.open(name, 'rs', **kwargs) as fh:
+        with baseband.open(name, "rs", **kwargs) as fh:
             header = fh.header0
-            obsfreq = header['OBSFREQ'] * u.MHz
-            pol = {'LIN': 'linear', 'CIRC': 'circular'}[header['FD_POLN']]
+            obsfreq = header["OBSFREQ"] * u.MHz
+            pol = {"LIN": "linear", "CIRC": "circular"}[header["FD_POLN"]]
 
-        signal_kwargs = {'center_freq': obsfreq,
-                         'freq_align': 'center',
-                         'pol_type': pol}
+        signal_kwargs = {
+            "center_freq": obsfreq,
+            "freq_align": "center",
+            "pol_type": pol,
+        }
 
-        super().__init__(name, signal_type=pb.DualPolarizationSignal,
-                         signal_kwargs=signal_kwargs, intensity=False,
-                         lower_sideband=not header.sideband, **kwargs)
+        super().__init__(
+            name,
+            signal_type=pb.DualPolarizationSignal,
+            signal_kwargs=signal_kwargs,
+            lower_sideband=not header.sideband,
+            **kwargs,
+        )
 
     def _read_array(self, offset, n, /, **kwargs):
         """Read n samples from current read position into numpy array."""
@@ -200,27 +234,34 @@ class DADAStokesReader(BasebandReader):
         `~baseband.open` to create a DADAStreamReader object via
         `baseband.open(name, 'rs', format='dada')`.
     """
-    def __init__(self, name, /):
-        kwargs = {'format': 'dada', 'squeeze': False}
 
-        with baseband.open(name, 'rs', **kwargs) as fh:
+    def __init__(self, name, /):
+        kwargs = {"format": "dada", "squeeze": False}
+
+        with baseband.open(name, "rs", **kwargs) as fh:
             header = fh.header0
 
-            if not (header['NPOL'] == 4 and header['NDIM'] == 1):
+            if not (header["NPOL"] == 4 and header["NDIM"] == 1):
                 raise ValueError("Does not look like Full Stokes data")
 
-            lsb = header['BW'] < 0
-            freq = header['FREQ'] * u.MHz
-            chan_bw = abs(header['BW'] / header['NCHAN']) * u.MHz
-            freq_align = 'top' if lsb else 'bottom'
+            lsb = header["BW"] < 0
+            freq = header["FREQ"] * u.MHz
+            chan_bw = abs(header["BW"] / header["NCHAN"]) * u.MHz
+            freq_align = "top" if lsb else "bottom"
 
-        signal_kwargs = {'center_freq': freq,
-                         'chan_bw': chan_bw,
-                         'freq_align': freq_align}
+        signal_kwargs = {
+            "center_freq": freq,
+            "chan_bw": chan_bw,
+            "freq_align": freq_align,
+        }
 
-        super().__init__(name, signal_type=pb.FullStokesSignal,
-                         signal_kwargs=signal_kwargs, intensity=True,
-                         lower_sideband=lsb, **kwargs)
+        super().__init__(
+            name,
+            signal_type=pb.FullStokesSignal,
+            signal_kwargs=signal_kwargs,
+            lower_sideband=lsb,
+            **kwargs,
+        )
 
     def _read_array(self, offset, n, /, **kwargs):
         """Read n samples from current read position into numpy array."""

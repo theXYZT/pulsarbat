@@ -9,13 +9,13 @@ import pulsarbat as pb
 
 
 __all__ = [
-    'stft',
-    'istft',
-    'phase_deconvolution',
+    "stft",
+    "istft",
+    "phase_deconvolution",
 ]
 
 
-def stft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
+def stft(z, /, window="boxcar", nperseg=256, noverlap=0, nfft=None):
     """Performs a short-time Fourier transform on a baseband signal.
 
     Behaves the same as `scipy.signal.stft`. Currently, only supports
@@ -29,7 +29,7 @@ def stft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
     with support for different window and overlap configurations, and
     lazy execution via dask.
     """
-    if window != 'boxcar' or noverlap != 0 or nfft != None:
+    if window != "boxcar" or noverlap != 0 or nfft != None:
         return NotImplemented
 
     if not isinstance(z, pb.BasebandSignal):
@@ -39,7 +39,7 @@ def stft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
         nfft = nperseg
 
     nperseg, noverlap, nfft = int(nperseg), int(noverlap), int(nfft)
-    z = z[:len(z) - len(z) % nperseg, :]
+    z = z[: len(z) - len(z) % nperseg, :]
 
     new_shape = (-1, nperseg) + z.sample_shape
     x = z.data.reshape(new_shape)
@@ -52,12 +52,11 @@ def stft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
     x = x.reshape(out_shape)
     x /= nperseg
 
-    falign = 'center' if nfft % 2 else 'bottom'
-    return type(z).like(z, x, sample_rate=z.sample_rate / nfft,
-                        freq_align=falign)
+    falign = "center" if nfft % 2 else "bottom"
+    return type(z).like(z, x, sample_rate=z.sample_rate / nfft, freq_align=falign)
 
 
-def istft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
+def istft(z, /, window="boxcar", nperseg=256, noverlap=0, nfft=None):
     """Performs an inverse short-time Fourier transform.
 
     Behaves the same as `scipy.signal.istft`. Currently, only supports
@@ -69,7 +68,7 @@ def istft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
     with support for different window and overlap configurations, and
     lazy execution via dask.
     """
-    if window != 'boxcar' or noverlap != 0 or nfft != None:
+    if window != "boxcar" or noverlap != 0 or nfft != None:
         return NotImplemented
 
     if not isinstance(z, pb.BasebandSignal):
@@ -92,8 +91,7 @@ def istft(z, /, window='boxcar', nperseg=256, noverlap=0, nfft=None):
     out_shape = (-1,) + x.shape[2:]
     x = x.reshape(out_shape)
 
-    return type(z).like(z, x, sample_rate=z.sample_rate * nfft,
-                        freq_align='center')
+    return type(z).like(z, x, sample_rate=z.sample_rate * nfft, freq_align="center")
 
 
 def phase_deconvolution(z, h):
@@ -116,7 +114,7 @@ def phase_deconvolution(z, h):
     sig = pb.fft.fft(z.data, axis=0)
 
     filt = pb.fft.fft(h.data, axis=0, n=N)
-    filt = np.where(np.abs(filt) > 1E-20, filt / np.abs(filt), 1)
+    filt = np.where(np.abs(filt) > 1e-20, filt / np.abs(filt), 1)
 
     x = pb.fft.ifft(sig / filt, axis=0)
-    return type(z).like(z, x)[:N-Nh+1]
+    return type(z).like(z, x)[: N - Nh + 1]

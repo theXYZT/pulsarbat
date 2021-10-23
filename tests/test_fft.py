@@ -8,8 +8,20 @@ import scipy.fft
 import pulsarbat as pb
 
 FFT_FUNCS = [
-    'fft', 'fft2', 'fftn', 'ifft', 'ifft2', 'ifftn', 'hfft', 'ihfft',
-    'rfft', 'rfft2', 'rfftn', 'irfft', 'irfft2', 'irfftn'
+    "fft",
+    "fft2",
+    "fftn",
+    "ifft",
+    "ifft2",
+    "ifftn",
+    "hfft",
+    "ihfft",
+    "rfft",
+    "rfft2",
+    "rfftn",
+    "irfft",
+    "irfft2",
+    "irfftn",
 ]
 
 
@@ -26,8 +38,9 @@ class TestFFT:
         with pytest.raises(AttributeError):
             _ = pb.fft.fish
 
-    @pytest.mark.parametrize("fft_func, N", [("fft", 8), ("ifft", 8),
-                                             ("irfft", 9), ("hfft", 9)])
+    @pytest.mark.parametrize(
+        "fft_func, N", [("fft", 8), ("ifft", 8), ("irfft", 9), ("hfft", 9)]
+    )
     def test_complex_input_fft(self, fft_func, N):
         pb_fft_func = getattr(pb.fft, fft_func)
         sp_fft_func = getattr(scipy.fft, fft_func)

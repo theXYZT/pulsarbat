@@ -14,14 +14,19 @@ import pulsarbat as pb
 @pytest.mark.parametrize("nchan", [7, 8])
 @pytest.mark.parametrize("align", ["bottom", "top", "center"])
 def test_radiosignal(fn, fcen, chan_bw, nchan, align):
-    z = pb.RadioSignal(fn((16, nchan, 2)), sample_rate=1*u.Hz,
-                       center_freq=fcen, chan_bw=chan_bw, freq_align=align)
+    z = pb.RadioSignal(
+        fn((16, nchan, 2)),
+        sample_rate=1 * u.Hz,
+        center_freq=fcen,
+        chan_bw=chan_bw,
+        freq_align=align,
+    )
 
     bw = chan_bw * nchan
-    f = np.fft.fftshift(np.fft.fftfreq(nchan, 1/bw))
-    if align == 'center' and nchan % 2 == 0:
-        chan_cens = fcen + f + (bw/nchan/2)
-    elif align == 'top' and nchan % 2 == 0:
+    f = np.fft.fftshift(np.fft.fftfreq(nchan, 1 / bw))
+    if align == "center" and nchan % 2 == 0:
+        chan_cens = fcen + f + (bw / nchan / 2)
+    elif align == "top" and nchan % 2 == 0:
         chan_cens = (fcen - f)[::-1]
     else:
         chan_cens = fcen + f
@@ -34,15 +39,15 @@ def test_radiosignal(fn, fcen, chan_bw, nchan, align):
     assert u.isclose(z.center_freq, fcen)
     assert u.isclose(z.bandwidth, bw)
     assert u.isclose(z.chan_bw, chan_bw)
-    assert u.isclose(z.max_freq, fcen + bw/2)
-    assert u.isclose(z.min_freq, fcen - bw/2)
+    assert u.isclose(z.max_freq, fcen + bw / 2)
+    assert u.isclose(z.min_freq, fcen - bw / 2)
     print(z.channel_freqs)
     print()
     print(chan_cens, align)
     assert all(u.isclose(z.channel_freqs, chan_cens))
 
     if nchan % 2:
-        assert z.freq_align == 'center'
+        assert z.freq_align == "center"
     else:
         assert z.freq_align == align
 
@@ -50,38 +55,58 @@ def test_radiosignal(fn, fcen, chan_bw, nchan, align):
 def test_shape_errors():
     for shape in [(10,), (24, 0), (4, 4, 0)]:
         with pytest.raises(ValueError):
-            _ = pb.RadioSignal(np.empty(shape), sample_rate=1*u.Hz,
-                               center_freq=1*u.GHz, chan_bw=1*u.MHz)
+            _ = pb.RadioSignal(
+                np.empty(shape),
+                sample_rate=1 * u.Hz,
+                center_freq=1 * u.GHz,
+                chan_bw=1 * u.MHz,
+            )
 
 
 def test_center_freq_errors():
-    for x in [99., 4*u.m, [5, 6]*u.Hz]:
+    for x in [99.0, 4 * u.m, [5, 6] * u.Hz]:
         with pytest.raises(ValueError):
-            _ = pb.RadioSignal(np.empty((8, 4)), sample_rate=1*u.Hz,
-                               center_freq=x, chan_bw=10*u.MHz)
+            _ = pb.RadioSignal(
+                np.empty((8, 4)),
+                sample_rate=1 * u.Hz,
+                center_freq=x,
+                chan_bw=10 * u.MHz,
+            )
 
 
 def test_chan_bw_errors():
-    for x in [99., 4*u.m, [5, 6]*u.Hz, -1*u.Hz]:
+    for x in [99.0, 4 * u.m, [5, 6] * u.Hz, -1 * u.Hz]:
         with pytest.raises(ValueError):
-            _ = pb.RadioSignal(np.empty((8, 4)), sample_rate=1*u.Hz,
-                               center_freq=400*u.MHz, chan_bw=x)
+            _ = pb.RadioSignal(
+                np.empty((8, 4)),
+                sample_rate=1 * u.Hz,
+                center_freq=400 * u.MHz,
+                chan_bw=x,
+            )
 
 
 def test_freq_align_errors():
-    for x in [None, (), 'invalid']:
+    for x in [None, (), "invalid"]:
         with pytest.raises(ValueError):
-            _ = pb.RadioSignal(np.empty((8, 4)), sample_rate=1*u.Hz,
-                               center_freq=400*u.MHz, chan_bw=10*u.MHz,
-                               freq_align=x)
+            _ = pb.RadioSignal(
+                np.empty((8, 4)),
+                sample_rate=1 * u.Hz,
+                center_freq=400 * u.MHz,
+                chan_bw=10 * u.MHz,
+                freq_align=x,
+            )
 
-    for x in ['top', 'center', 'bottom']:
-        _ = pb.RadioSignal(np.empty((8, 4)), sample_rate=1*u.Hz,
-                           center_freq=400*u.MHz, chan_bw=10*u.MHz,
-                           freq_align=x)
+    for x in ["top", "center", "bottom"]:
+        _ = pb.RadioSignal(
+            np.empty((8, 4)),
+            sample_rate=1 * u.Hz,
+            center_freq=400 * u.MHz,
+            chan_bw=10 * u.MHz,
+            freq_align=x,
+        )
 
 
-@pytest.mark.parametrize("sr", [1*u.MHz, 5*u.MHz])
+@pytest.mark.parametrize("sr", [1 * u.MHz, 5 * u.MHz])
 @pytest.mark.parametrize("nchan", [7, 8])
 def test_basebandsignal(sr, nchan):
     x = np.ones((16, nchan)).astype(np.complex64)
@@ -90,11 +115,11 @@ def test_basebandsignal(sr, nchan):
     z = pb.BasebandSignal(x, sample_rate=sr, center_freq=center_freq)
     assert u.isclose(z.sample_rate, sr)
     assert u.isclose(z.chan_bw, sr)
-    assert u.isclose(z.bandwidth, sr*nchan)
+    assert u.isclose(z.bandwidth, sr * nchan)
 
 
 def test_baseband_dtype():
-    fcen, sr = 800*u.MHz, 10*u.MHz
+    fcen, sr = 800 * u.MHz, 10 * u.MHz
 
     for dtype in [np.complex64, np.complex128]:
         x = np.ones((16, 8), dtype=dtype)
@@ -102,24 +127,23 @@ def test_baseband_dtype():
 
 
 def test_intensity_dtype():
-    fcen, sr, cbw = 800*u.MHz, 1*u.Hz, 10*u.MHz
+    fcen, sr, cbw = 800 * u.MHz, 1 * u.Hz, 10 * u.MHz
 
     for dtype in [np.complex64, np.complex128]:
         x = np.ones((16, 8, 1), dtype=dtype)
         with pytest.raises(ValueError):
-            _ = pb.IntensitySignal(x, sample_rate=sr, center_freq=fcen,
-                                   chan_bw=cbw)
+            _ = pb.IntensitySignal(x, sample_rate=sr, center_freq=fcen, chan_bw=cbw)
 
     for dtype in [np.float32, np.float64]:
         x = np.ones((16, 8, 1), dtype=dtype)
-        _ = pb.IntensitySignal(x, sample_rate=sr, center_freq=fcen,
-                               chan_bw=cbw)
+        _ = pb.IntensitySignal(x, sample_rate=sr, center_freq=fcen, chan_bw=cbw)
 
 
 @pytest.mark.parametrize("use_dask", [True, False])
 @pytest.mark.parametrize("A", [1, 4, 10])
-@pytest.mark.parametrize("in_dtype, out_dtype", [(np.complex64, np.float32),
-                                                 (np.complex128, np.float64)])
+@pytest.mark.parametrize(
+    "in_dtype, out_dtype", [(np.complex64, np.float32), (np.complex128, np.float64)]
+)
 def test_baseband_to_intensity(A, use_dask, in_dtype, out_dtype):
     shape = (1024, 8, 2)
 
@@ -130,33 +154,39 @@ def test_baseband_to_intensity(A, use_dask, in_dtype, out_dtype):
     z_phasor = np.exp(1j * x).astype(in_dtype)
 
     st = Time.now()
-    z = pb.BasebandSignal(A * z_phasor, sample_rate=1*u.MHz, start_time=st,
-                          center_freq=600 * u.MHz)
+    z = pb.BasebandSignal(
+        A * z_phasor, sample_rate=1 * u.MHz, start_time=st, center_freq=600 * u.MHz
+    )
 
     assert isinstance(z.data, type(x))
 
     zi = z.to_intensity()
     assert isinstance(zi.data, type(x))
-    assert np.allclose(A**2, np.array(zi))
+    assert np.allclose(A ** 2, np.array(zi))
     Time.isclose(zi.start_time, st)
     assert u.isclose(z.time_length, zi.time_length)
     assert u.isclose(z.sample_rate, zi.sample_rate)
     assert u.isclose(z.chan_bw, zi.chan_bw)
     assert u.isclose(z.center_freq, zi.center_freq)
-    assert z.freq_align == zi.freq_align == 'center'
+    assert z.freq_align == zi.freq_align == "center"
     assert zi.dtype == out_dtype
 
 
 def test_radiosignal_slice():
     x = np.ones((16, 16, 4, 2), dtype=np.float32)
-    z = pb.RadioSignal(x, sample_rate=1*u.Hz, start_time=Time.now(),
-                       center_freq=400*u.MHz, chan_bw=10*u.MHz,
-                       freq_align='bottom')
+    z = pb.RadioSignal(
+        x,
+        sample_rate=1 * u.Hz,
+        start_time=Time.now(),
+        center_freq=400 * u.MHz,
+        chan_bw=10 * u.MHz,
+        freq_align="bottom",
+    )
 
     y = z[2:8, 2:8, 0]
     assert len(y) == 6
     assert u.isclose(y.time_length, 6 * u.s)
-    assert Time.isclose(y.start_time - 2*u.s, z.start_time)
+    assert Time.isclose(y.start_time - 2 * u.s, z.start_time)
     assert y.nchan == 6
     assert all(u.isclose(y.channel_freqs, z.channel_freqs[2:8]))
     assert y.freq_align == "center"
@@ -181,12 +211,17 @@ def test_radiosignal_slice():
 
 def test_radiosignal_slice_errors():
     x = np.ones((16, 16, 4, 2), dtype=np.float32)
-    z = pb.RadioSignal(x, sample_rate=1*u.Hz, start_time=Time.now(),
-                       center_freq=400*u.MHz, chan_bw=10*u.MHz,
-                       freq_align='bottom')
+    z = pb.RadioSignal(
+        x,
+        sample_rate=1 * u.Hz,
+        start_time=Time.now(),
+        center_freq=400 * u.MHz,
+        chan_bw=10 * u.MHz,
+        freq_align="bottom",
+    )
 
     with pytest.raises(IndexError):
-        _ = z[:, 'key']
+        _ = z[:, "key"]
 
     with pytest.raises(IndexError):
         _ = z[:, 4]
@@ -212,40 +247,46 @@ def test_fullstokes_shape():
     for shape in [(10,), (4, 8), (4, 4, 2), (12, 0, 4)]:
         with pytest.raises(ValueError):
             x = np.empty(shape, dtype=np.float32)
-            _ = pb.FullStokesSignal(x, sample_rate=1*u.Hz, center_freq=1*u.GHz,
-                                    chan_bw=1*u.MHz)
+            _ = pb.FullStokesSignal(
+                x, sample_rate=1 * u.Hz, center_freq=1 * u.GHz, chan_bw=1 * u.MHz
+            )
 
     for shape in [(8, 4, 4), (4, 4, 4, 2)]:
         x = np.empty(shape, dtype=np.float32)
-        _ = pb.FullStokesSignal(x, sample_rate=1*u.Hz, center_freq=1*u.GHz,
-                                chan_bw=1*u.MHz)
+        _ = pb.FullStokesSignal(
+            x, sample_rate=1 * u.Hz, center_freq=1 * u.GHz, chan_bw=1 * u.MHz
+        )
 
 
 def test_dualpol_shape():
-    pol = 'linear'
+    pol = "linear"
 
     for shape in [(10,), (4, 8), (4, 4, 4), (12, 0, 2)]:
         x = np.empty(shape, dtype=np.complex128)
         with pytest.raises(ValueError):
-            _ = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
-                                          center_freq=1*u.GHz)
+            _ = pb.DualPolarizationSignal(
+                x, sample_rate=1 * u.Hz, pol_type=pol, center_freq=1 * u.GHz
+            )
 
     for shape in [(8, 4, 2), (4, 4, 2, 2)]:
         x = np.empty(shape, dtype=np.complex128)
-        _ = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
-                                      center_freq=1*u.GHz)
+        _ = pb.DualPolarizationSignal(
+            x, sample_rate=1 * u.Hz, pol_type=pol, center_freq=1 * u.GHz
+        )
 
 
 def test_dualpol_pol_type():
-    for pol in ['invalid', 3, ()]:
+    for pol in ["invalid", 3, ()]:
         x = np.empty((16, 4, 2), dtype=np.complex128)
         with pytest.raises(ValueError):
-            _ = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
-                                          center_freq=1*u.GHz)
+            _ = pb.DualPolarizationSignal(
+                x, sample_rate=1 * u.Hz, pol_type=pol, center_freq=1 * u.GHz
+            )
 
-    for pol in ['linear', 'circular']:
+    for pol in ["linear", "circular"]:
         x = np.empty((16, 4, 2), dtype=np.complex128)
-        z = pb.DualPolarizationSignal(x, sample_rate=1*u.Hz, pol_type=pol,
-                                      center_freq=1*u.GHz)
+        z = pb.DualPolarizationSignal(
+            x, sample_rate=1 * u.Hz, pol_type=pol, center_freq=1 * u.GHz
+        )
         print(z)
         assert z.pol_type == pol

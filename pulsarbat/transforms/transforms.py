@@ -1,16 +1,53 @@
-"""Core signal functions."""
+"""Core signal transforms."""
 
 import numpy as np
 from numpy.core.overrides import set_module
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
+import functools
 
 __all__ = [
-    'concatenate',
-    'time_shift',
-    'fast_len',
+    "transform",
+    "concatenate",
+    "time_shift",
+    "fast_len",
 ]
+
+
+def transform(func):
+    """Wraps an array function and returns a signal transform.
+
+    The function being decorated must accept an array and return an array of the
+    same shape and dtype, and have function signature::
+
+        func(x, /, **kwargs)
+
+    where `x` is the array, and all other arguments are strictly keyword arguments.
+
+    The returned signal transform will accept a Signal object in place of `x`, and
+    will return a Signal object of the same type. If the Signal data is contained
+    within a Dask array, `func` will be applied to every chunk independently using
+    `dask.array.map_blocks`.
+    """
+
+    @functools.wraps(func)
+    def wrapper(x, /, **kwargs):
+        try:
+            import dask.array as da
+        except ImportError:
+            use_dask = False
+        else:
+            use_dask = isinstance(x.data, da.Array)
+
+        if use_dask:
+            z = da.map_blocks(func, x.data, **kwargs)
+        else:
+            z = func(x.data, **kwargs)
+
+        return type(x).like(x, z)
+
+    return wrapper
 
 
 @set_module("pulsarbat")
@@ -56,7 +93,7 @@ def concatenate(signals, /, axis=0):
         raise ValueError("Signals must have the same sample_rate!")
 
     ref_st = None
-    if axis in {0, 'time'}:
+    if axis in {0, "time"}:
         n = 0
         for s in signals:
             if s.start_time is not None:
@@ -74,14 +111,14 @@ def concatenate(signals, /, axis=0):
                 elif not Time.isclose(ref_st, s.start_time):
                     raise ValueError("Signals have different start_time.")
 
-    kw = {'start_time': ref_st}
+    kw = {"start_time": ref_st}
 
     if isinstance(signals[0], pb.RadioSignal):
         ref_cbw = signals[0].chan_bw
         if not all(u.isclose(ref_cbw, s.chan_bw) for s in signals):
             raise ValueError("RadioSignals must have the same chan_bw!")
 
-        if axis in {1, 'freq'}:
+        if axis in {1, "freq"}:
             for x, y in zip(signals, signals[1:]):
                 chan_diff = y.channel_freqs[0] - x.channel_freqs[-1]
                 if not u.isclose(chan_diff, ref_cbw):
@@ -95,10 +132,10 @@ def concatenate(signals, /, axis=0):
                 raise ValueError("Signals have different frequency channels.")
             f0, f1 = ref_cfs[0], ref_cfs[-1]
 
-        kw['center_freq'] = (f0 + f1) / 2
-        kw['freq_align'] = 'center'
+        kw["center_freq"] = (f0 + f1) / 2
+        kw["freq_align"] = "center"
 
-    elif axis == 'freq':
+    elif axis == "freq":
         err = "Signals must be pb.RadioSignal objects when axis is 'freq'."
         raise TypeError(err)
 
@@ -154,7 +191,7 @@ def time_shift(z, t, /):
     else:
         shifted = shifted.real.astype(z.dtype)
 
-    x = type(z).like(z, shifted, start_time=z.start_time - n*z.dt)
+    x = type(z).like(z, shifted, start_time=z.start_time - n * z.dt)
 
     if n >= 0:
         i = np.int64(np.ceil(n))

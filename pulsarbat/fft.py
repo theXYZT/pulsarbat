@@ -12,11 +12,20 @@ else:
 
 
 _FFT_FUNCS = [
-    'fft', 'fft2', 'fftn',
-    'ifft', 'ifft2', 'ifftn',
-    'rfft', 'rfft2', 'rfftn',
-    'irfft', 'irfft2', 'irfftn',
-    'hfft', 'ihfft'
+    "fft",
+    "fft2",
+    "fftn",
+    "ifft",
+    "ifft2",
+    "ifftn",
+    "rfft",
+    "rfft2",
+    "rfftn",
+    "irfft",
+    "irfft2",
+    "irfftn",
+    "hfft",
+    "ihfft",
 ]
 
 
@@ -35,6 +44,7 @@ def __getattr__(name):
         return _fft_func(*args, **kwargs)
 
     if HAS_DASK:
+
         @func.register(da.Array)
         def _(*args, **kwargs):
             wrapped_func = da.fft.fft_wrap(_fft_func)

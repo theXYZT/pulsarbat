@@ -2,12 +2,11 @@
 
 # flake8: noqa
 
-from . import base
-from .base import *
+from . import transforms
+from .transforms import *
 
 from . import dedispersion
 from .dedispersion import *
 
-__all__ = []
-__all__.extend(base.__all__)
-__all__.extend(dedispersion.__all__)
+__all__ = transforms.__all__.copy()
+__all__ += dedispersion.__all__

@@ -69,21 +69,23 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
     _req_dtype = ()
     _req_shape = (None,)
-    _axes_labels = {'time': 0}
+    _axes_labels = {"time": 0}
 
     def __init__(self, z, /, *, sample_rate, start_time=None, meta=None):
         min_ndim = len(self._req_shape)
 
         if z.ndim < min_ndim:
-            err = (f"Expected signal with at least {min_ndim} dimension(s), "
-                   f"got signal with {z.ndim} dimension(s) instead.")
-            raise InvalidSignalError(err)
+            raise InvalidSignalError(
+                f"Expected signal with at least {min_ndim} dimension(s), "
+                f"got signal with {z.ndim} dimension(s) instead."
+            )
 
         zipped = zip(z.shape[:min_ndim], self._req_shape)
         if not all(x == (y or x) for x, y in zipped):
-            err = (f"Signal has invalid shape. Expected {self._req_shape}, "
-                   f"got {z.shape} instead.")
-            raise InvalidSignalError(err)
+            raise InvalidSignalError(
+                f"Signal has invalid shape. Expected {self._req_shape}, "
+                f"got {z.shape} instead."
+            )
 
         if np.prod(z.shape[1:]) == 0:
             raise InvalidSignalError("Sample shape must have non-zero size!")
@@ -113,14 +115,12 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         if method != "__call__" or ufunc == np.matmul:
             return NotImplemented
 
-        in_arr = tuple((i.data if isinstance(i, Signal) else i)
-                       for i in inputs)
+        in_arr = tuple((i.data if isinstance(i, Signal) else i) for i in inputs)
 
         if out is None:
             out = (None,) * ufunc.nout
 
-        out_arr = tuple((i.data if isinstance(i, Signal) else i)
-                        for i in out)
+        out_arr = tuple((i.data if isinstance(i, Signal) else i) for i in out)
 
         results = ufunc(*in_arr, out=out_arr, **kwargs)
 
@@ -130,16 +130,19 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         if ufunc.nout == 1:
             results = (results,)
 
-        results = tuple((type(self).like(self, a) if b is None else b)
-                        for a, b in zip(results, out))
+        results = tuple(
+            (type(self).like(self, a) if b is None else b) for a, b in zip(results, out)
+        )
 
         return results[0] if len(results) == 1 else results
 
     def _attr_repr(self):
         st = "N/A" if self.start_time is None else self.start_time.isot
-        return (f"Sample rate: {self.sample_rate}\n"
-                f"Time length: {self.time_length}\n"
-                f"Start time: {st}\n")
+        return (
+            f"Sample rate: {self.sample_rate}\n"
+            f"Time length: {self.time_length}\n"
+            f"Start time: {st}\n"
+        )
 
     def __str__(self):
         signature = f"{self.__class__.__name__} @ {hex(id(self))}"
@@ -252,8 +255,10 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
             temp = sample_rate.to(u.Hz)
             assert temp.isscalar and temp > 0
         except Exception:
-            raise ValueError("Invalid sample_rate. Must be a positive scalar "
-                             "Quantity with units of Hz or equivalent.")
+            raise ValueError(
+                "Invalid sample_rate. Must be a positive scalar "
+                "Quantity with units of Hz or equivalent."
+            )
         else:
             self._sample_rate = sample_rate
 
@@ -448,14 +453,23 @@ class RadioSignal(Signal):
     on the `center_freq`.
     """
 
-    _req_shape = (None, None,)
-    _axes_labels = {'time': 0, 'freq': 1}
+    _req_shape = (None, None)
+    _axes_labels = {"time": 0, "freq": 1}
 
-    def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 chan_bw, freq_align="center", meta=None):
+    def __init__(
+        self,
+        z,
+        /,
+        *,
+        sample_rate,
+        start_time=None,
+        center_freq,
+        chan_bw,
+        freq_align="center",
+        meta=None,
+    ):
 
-        super().__init__(z, sample_rate=sample_rate, start_time=start_time,
-                         meta=meta)
+        super().__init__(z, sample_rate=sample_rate, start_time=start_time, meta=meta)
 
         self.center_freq = center_freq
         self.chan_bw = chan_bw
@@ -473,7 +487,7 @@ class RadioSignal(Signal):
         assert s.step == 1, "Does not support slice step for frequency axis"
         assert s.stop > s.start, "Empty frequency slice!"
         f = self.channel_freqs[s]
-        return {"center_freq": (f[0] + f[-1])/2, "freq_align": "center"}
+        return {"center_freq": (f[0] + f[-1]) / 2, "freq_align": "center"}
 
     def __getitem__(self, index):
         if not isinstance(index, tuple):
@@ -505,8 +519,10 @@ class RadioSignal(Signal):
             temp = center_freq.to(u.Hz)
             assert temp.isscalar
         except Exception:
-            raise ValueError("Invalid center_freq. Must be a scalar "
-                             "Quantity with units of Hz or equivalent.")
+            raise ValueError(
+                "Invalid center_freq. Must be a scalar "
+                "Quantity with units of Hz or equivalent."
+            )
         else:
             self._center_freq = center_freq
 
@@ -526,8 +542,10 @@ class RadioSignal(Signal):
             temp = chan_bw.to(u.Hz)
             assert temp.isscalar and temp > 0
         except Exception:
-            raise ValueError("Invalid chan_bw. Must be a positive scalar "
-                             "Quantity with units of Hz or equivalent.")
+            raise ValueError(
+                "Invalid chan_bw. Must be a positive scalar "
+                "Quantity with units of Hz or equivalent."
+            )
         else:
             self._chan_bw = chan_bw
 
@@ -644,7 +662,7 @@ class FullStokesSignal(IntensitySignal):
     """
 
     _req_shape = (None, None, 4)
-    _axes_labels = {'time': 0, 'freq': 1, 'pol': 2}
+    _axes_labels = {"time": 0, "freq": 1, "pol": 2}
     _stokes_ids = {"I": 0, "Q": 1, "U": 2, "V": 3}
 
     def __getitem__(self, key):
@@ -718,12 +736,27 @@ class BasebandSignal(RadioSignal):
 
     _req_dtype = (np.complex128, np.complex64)
 
-    def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 freq_align="center", meta=None):
+    def __init__(
+        self,
+        z,
+        /,
+        *,
+        sample_rate,
+        start_time=None,
+        center_freq,
+        freq_align="center",
+        meta=None,
+    ):
 
-        super().__init__(z, sample_rate=sample_rate, start_time=start_time,
-                         center_freq=center_freq, chan_bw=sample_rate,
-                         freq_align=freq_align, meta=None)
+        super().__init__(
+            z,
+            sample_rate=sample_rate,
+            start_time=start_time,
+            center_freq=center_freq,
+            chan_bw=sample_rate,
+            freq_align=freq_align,
+            meta=None,
+        )
 
     def to_intensity(self):
         """Converts baseband signal to intensities.
@@ -733,7 +766,7 @@ class BasebandSignal(RadioSignal):
         out : `~pulsarbat.IntensitySignal`
             The converted signal.
         """
-        z = self.data.real**2 + self.data.imag**2
+        z = self.data.real ** 2 + self.data.imag ** 2
         return IntensitySignal.like(self, z)
 
 
@@ -783,14 +816,29 @@ class DualPolarizationSignal(BasebandSignal):
     """
 
     _req_shape = (None, None, 2)
-    _axes_labels = {'time': 0, 'freq': 1, 'pol': 2}
+    _axes_labels = {"time": 0, "freq": 1, "pol": 2}
 
-    def __init__(self, z, /, *, sample_rate, start_time=None, center_freq,
-                 freq_align="center", pol_type, meta=None):
+    def __init__(
+        self,
+        z,
+        /,
+        *,
+        sample_rate,
+        start_time=None,
+        center_freq,
+        freq_align="center",
+        pol_type,
+        meta=None,
+    ):
 
-        super().__init__(z, sample_rate=sample_rate, start_time=start_time,
-                         center_freq=center_freq, freq_align=freq_align,
-                         meta=meta)
+        super().__init__(
+            z,
+            sample_rate=sample_rate,
+            start_time=start_time,
+            center_freq=center_freq,
+            freq_align=freq_align,
+            meta=meta,
+        )
 
         self.pol_type = pol_type
 
@@ -854,8 +902,8 @@ class DualPolarizationSignal(BasebandSignal):
             X = np.take(self.data, 0, axis=axis)
             Y = np.take(self.data, 1, axis=axis)
 
-            L = X - 1j*Y
-            R = X + 1j*Y
+            L = X - 1j * Y
+            R = X + 1j * Y
 
             z = np.stack([L, R], axis=axis) / np.sqrt(2)
         else:
@@ -878,8 +926,8 @@ class DualPolarizationSignal(BasebandSignal):
         if self.pol_type == "linear":
             X, Y = A, B
 
-            XX = X.real**2 + X.imag**2
-            YY = Y.real**2 + Y.imag**2
+            XX = X.real ** 2 + X.imag ** 2
+            YY = Y.real ** 2 + Y.imag ** 2
             XY = X.conj() * Y
 
             i = XX + YY
@@ -890,8 +938,8 @@ class DualPolarizationSignal(BasebandSignal):
         elif self.pol_type == "circular":
             L, R = A, B
 
-            LL = L.real**2 + L.imag**2
-            RR = R.real**2 + R.imag**2
+            LL = L.real ** 2 + L.imag ** 2
+            RR = R.real ** 2 + R.imag ** 2
             LR = L.conj() * R
 
             i = LL + RR

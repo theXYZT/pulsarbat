@@ -8,7 +8,7 @@ import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
 
-TEST_POLYCO = Path(__file__).parent.absolute() / 'data' / 'timing.dat'
+TEST_POLYCO = Path(__file__).parent.absolute() / "data" / "timing.dat"
 
 
 class TestPolyco:
@@ -16,26 +16,26 @@ class TestPolyco:
         p = pb.Polyco(TEST_POLYCO)
         assert np.all(pb.Polyco(p) == p)
 
-        t = Time('2018-05-06T12:00:00.000', format='isot', precision=9)
+        t = Time("2018-05-06T12:00:00.000", format="isot", precision=9)
         ph = p(t)
         assert type(ph) is pb.Phase
         assert ph.int.to_value(u.cycle).astype(np.int64) == 146726403657
         assert np.isclose(ph.frac.to_value(u.cycle), -0.151982394)
-        assert u.isclose(p(t, deriv=1), 641.97319469 * u.cycle/u.s, rtol=1E-8)
+        assert u.isclose(p(t, deriv=1), 641.97319469 * u.cycle / u.s, rtol=1e-8)
 
-        t = Time('2018-05-06T2:00:00.000', format='isot', precision=9)
+        t = Time("2018-05-06T2:00:00.000", format="isot", precision=9)
         ph = p(t)
         assert ph.int.to_value(u.cycle).astype(np.int64) == 146703292586
         assert np.isclose(ph.frac.to_value(u.cycle), +0.49273169)
-        assert u.isclose(p(t, deriv=1), 641.97469967 * u.cycle/u.s, rtol=1E-8)
+        assert u.isclose(p(t, deriv=1), 641.97469967 * u.cycle / u.s, rtol=1e-8)
 
         with pytest.raises(ValueError):
-            t = Time('2017-05-06T2:00:00.000', format='isot', precision=9)
+            t = Time("2017-05-06T2:00:00.000", format="isot", precision=9)
             _ = p(t)
 
     def test_array(self):
         sr = 1 * u.MHz
-        t0 = Time('2018-05-06T12:00:00.000', format='isot', precision=9)
+        t0 = Time("2018-05-06T12:00:00.000", format="isot", precision=9)
         ts = t0 + np.arange(4096) / sr
 
         p = pb.Polyco(TEST_POLYCO)
@@ -80,15 +80,16 @@ class TestPhase:
             assert np.int64(ph.int.value) == i
             assert np.float64(ph.frac.value) == f
 
-        assert u.allclose(pb.Phase(['49.64', '12.34']),
-                          pb.Phase([49.64, 12.34]))
+        assert u.allclose(pb.Phase(["49.64", "12.34"]), pb.Phase([49.64, 12.34]))
 
-        s = '23424249845.323429437454'
+        s = "23424249845.323429437454"
         sx = [s, f"{s}E2", f"{s}e2", f"{s}E+2", f"{s}E-2"]
-        ix = np.int64([23424249845, 2342424984532, 2342424984532,
-                       2342424984532, 234242498])
-        fx = np.float64([.323429437454, .3429437454, .3429437454,
-                         .3429437454, .45323429437454])
+        ix = np.int64(
+            [23424249845, 2342424984532, 2342424984532, 2342424984532, 234242498]
+        )
+        fx = np.float64(
+            [0.323429437454, 0.3429437454, 0.3429437454, 0.3429437454, 0.45323429437454]
+        )
 
         for s, i, f in zip(sx, ix, fx):
             check_phase(pb.Phase.from_string(s), i, f)
@@ -112,7 +113,7 @@ class TestPhase:
         b = pb.Phase(pb.Phase(0.3), pb.Phase(0.5))
         assert u.isclose(a + b, pb.Phase(2.0))
 
-        assert u.isclose(pb.Phase(100/3) + pb.Phase(10/3), pb.Phase(110/3))
+        assert u.isclose(pb.Phase(100 / 3) + pb.Phase(10 / 3), pb.Phase(110 / 3))
         assert u.isclose(np.exp(1j * pb.Phase(0.5)), -1)
         assert u.isclose(np.exp(1j * pb.Phase(1.0)), +1)
 
