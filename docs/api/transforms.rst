@@ -5,6 +5,6 @@ Signal Functions
 .. currentmodule:: pulsarbat
 
 .. autosummary::
-    :toctree: signal_functions
+    :toctree: transforms
 
     concatenate

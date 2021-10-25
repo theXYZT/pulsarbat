@@ -8,6 +8,6 @@ This API reference covers all the interfaces available to users.
     :glob:
 
     signals
-    reader
-    signal_funcs
+    readers
+    transforms
     dedispersion

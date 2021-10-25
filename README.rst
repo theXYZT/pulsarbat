@@ -23,27 +23,6 @@ Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband
 
 Documentation can be found at: https://pulsarbat.readthedocs.io
 
-Requirements
-------------
-
-`pulsarbat` has the following strict requirements:
-
-- Python_ 3.8 or later
-- Numpy_ 1.20 or later
-- Scipy_ 1.6 or later
-- Astropy_ 4.2 or later
-- Baseband_ 4.0.3 or later
-
-For optional features, `pulsarbat` also depends on:
-
-- Dask_ 2021.2 or later: Lazy execution and "embarassingly parallel" workflows.
-
-.. _Python: http://www.python.org/
-.. _Numpy: https://www.numpy.org/
-.. _Scipy: https://scipy.org/
-.. _Astropy: https://www.astropy.org/
-.. _Baseband: https://baseband.readthedocs.io/
-.. _Dask: https://dask.org/
 
 Installation
 ------------

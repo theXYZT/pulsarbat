@@ -289,4 +289,5 @@ class TestTransform:
         res = median_filter(arange(9).reshape(-1, 3), size=3, mode='constant')
         x = type(z).like(z, res)
         y = pb.transform(median_filter)(z, size=3, mode='constant')
+        assert isinstance(y.data, type(z.data))
         assert_equal_signals(x, y)
