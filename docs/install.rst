@@ -17,7 +17,7 @@ Requirements
 
 For optional features, `pulsarbat` also depends on:
 
-- `Dask <https://dask.org/>`_ 2021.9 or later: Lazy execution and
+- `Dask <https://dask.org/>`_ 2021.10 or later: Lazy execution and
   "embarassingly parallel" workflows.
 
 
