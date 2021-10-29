@@ -1,21 +1,20 @@
 """Core signal transforms."""
 
 import numpy as np
-from numpy.core.overrides import set_module
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
 import functools
 
 __all__ = [
-    "transform",
+    "signal_transform",
     "concatenate",
     "time_shift",
     "fast_len",
 ]
 
 
-def transform(func):
+def signal_transform(func):
     """Wraps an array function and returns a signal transform.
 
     The function being decorated must accept an array and return an array of the
@@ -50,7 +49,6 @@ def transform(func):
     return wrapper
 
 
-@set_module("pulsarbat")
 def concatenate(signals, /, axis=0):
     """Concatenates multiple signals along given axis.
 
@@ -143,8 +141,7 @@ def concatenate(signals, /, axis=0):
     return sig_type.like(signals[0], z, **kw)
 
 
-@set_module("pulsarbat")
-def time_shift(z, t, /):
+def time_shift(z, /, t):
     """Shift signal by given number of samples or time.
 
     This function shifts signals in time via FFT by multiplying by
@@ -203,7 +200,6 @@ def time_shift(z, t, /):
     return x
 
 
-@set_module("pulsarbat")
 def fast_len(z, /):
     """Crops signal to an efficient length for FFTs.
 

@@ -277,7 +277,7 @@ class TestFastLen:
             assert np.allclose(y.data, np.arange(4096))
 
 
-class TestTransform:
+class TestSignalTransform:
     @pytest.mark.parametrize("arange", [np.arange, da.arange])
     def test_median_filter(self, arange):
         from scipy.ndimage import median_filter
@@ -288,6 +288,6 @@ class TestTransform:
 
         res = median_filter(arange(9).reshape(-1, 3), size=3, mode='constant')
         x = type(z).like(z, res)
-        y = pb.transform(median_filter)(z, size=3, mode='constant')
+        y = pb.signal_transform(median_filter)(z, size=3, mode='constant')
         assert isinstance(y.data, type(z.data))
         assert_equal_signals(x, y)

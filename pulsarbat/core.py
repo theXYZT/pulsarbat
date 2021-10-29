@@ -6,7 +6,6 @@ import pprint
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-from numpy.core.overrides import set_module
 
 try:
     import dask.array
@@ -32,7 +31,6 @@ class InvalidSignalError(ValueError):
     pass
 
 
-@set_module("pulsarbat")
 class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     """Base class for all signals.
 
@@ -41,30 +39,23 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     be provided to specify the time stamp at the first sample of the
     signal.
 
-    The signal data (`z`) must have at least 1 dimension where the
-    zeroth axis (`axis=0`) refers to time. That is, `z[i]` is the `i`-th
-    sample of the signal, and the sample shape (`z[i].shape`) can be
-    arbitrary.
+    The signal data (``z``) must have at least 1 dimension where the
+    zeroth axis (``axis=0``) refers to time. That is, ``z[i]`` is the
+    ``i``-th sample of the signal, and the sample shape (``z[i].shape``)
+    can be arbitrary.
 
     Parameters
     ----------
     z : array
         The signal data. Must be at least 1-dimensional with shape
-        `(nsample, ...)`, and must have non-zero size.
-
-    sample_rate : `astropy.units.Quantity`
+        ``(nsample, ...)``, and must have non-zero size.
+    sample_rate : astropy.units.Quantity
         The number of samples per second. Must be in units of frequency.
-
-    start_time : `astropy.time.Time`, optional
+    start_time : astropy.time.Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal).
-
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
-
-    Notes
-    -----
-
     """
 
     _req_dtype = ()
@@ -314,7 +305,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         """Returns signal with computed data.
 
         Has no effect unless data is stored as a Dask Array. `kwargs` are
-        passed on to the `dask.compute` function.
+        passed on to the :py:func:`dask.compute` function.
         """
         if has_dask and isinstance(self.data, dask.array.Array):
             x = self.data.compute(**kwargs)
@@ -327,7 +318,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         """Returns signal with data persisted in memory.
 
         Has no effect unless data is stored as a Dask Array. `kwargs` are
-        passed on to the `dask.persist` function.
+        passed on to the :py:func:`dask.persist` function.
         """
         if has_dask and isinstance(self.data, dask.array.Array):
             x = self.data.persist(**kwargs)
@@ -336,22 +327,36 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
         return type(self).like(self, x)
 
-    def to_dask_array(self, **kwargs):
-        """Returns signal with data as a dask array.
+    def to_dask_array(self):
+        """Returns signal with data as a Dask array.
 
-        Has no effect is data is stored as a Dask Array. Otherwise,
-        `dask.array.from_array` is called on the signal data with `kwargs`
-        passed on to the function.
+        Uses :py:func:`dask.array.asanyarray` to convert signal data
+        to a Dask array.
         """
         if not has_dask:
             err = "The 'dask' module is required for this function."
             raise ImportError(err)
-        elif isinstance(self.data, dask.array.Array):
-            err = "Signal data is already stored as a dask array!"
-            raise ValueError(err)
 
-        x = dask.array.from_array(self.data, **kwargs)
-        return type(self).like(self, x)
+        return type(self).like(self, dask.array.asanyarray(self.data))
+
+    def rechunk(self, chunks=None, **kwargs):
+        """Rechunks signal data if stored as a Dask array.
+
+        If the underlying data is not a Dask array, it is converted to one first.
+        By default, there is no chunking along the first dimension and other
+        dimensions are automatically chunked based on the default chunk size set in
+        Dask's configuration. `kwargs` are passed along to
+        :py:func:`dask.array.rechunk`.
+        """
+        if not has_dask:
+            err = "The 'dask' module is required for this function."
+            raise ImportError(err)
+
+        if chunks is None:
+            chunks = (-1,) + ("auto",) * (self.ndim - 1)
+
+        x = dask.array.asanyarray(self.data)
+        return type(self).like(self, x.rechunk(chunks, **kwargs))
 
     @classmethod
     def like(cls, obj, z=None, /, **kwargs):
@@ -367,9 +372,9 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
         Parameters
         ----------
-        obj : `Signal`
+        obj : Signal
             The reference signal object.
-        z : `~numpy.ndarray`-like
+        z : array
             The signal data.
         **kwargs
             Additional keyword arguments to pass on to the target class.
@@ -388,7 +393,6 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         return cls(z, **kwargs)
 
 
-@set_module("pulsarbat")
 class RadioSignal(Signal):
     """Class for heterodyned radio signals.
 
@@ -580,7 +584,6 @@ class RadioSignal(Signal):
         return self.center_freq + self.chan_bw * chan_ids
 
 
-@set_module("pulsarbat")
 class IntensitySignal(RadioSignal):
     """Class for intensity signals.
 
@@ -618,7 +621,6 @@ class IntensitySignal(RadioSignal):
     _req_dtype = (np.float64, np.float32)
 
 
-@set_module("pulsarbat")
 class FullStokesSignal(IntensitySignal):
     """Class for full Stokes (I, Q, U, V) signals.
 
@@ -695,7 +697,6 @@ class FullStokesSignal(IntensitySignal):
         return self["V"]
 
 
-@set_module("pulsarbat")
 class BasebandSignal(RadioSignal):
     """Class for complex baseband signals.
 
@@ -770,7 +771,6 @@ class BasebandSignal(RadioSignal):
         return IntensitySignal.like(self, z)
 
 
-@set_module("pulsarbat")
 class DualPolarizationSignal(BasebandSignal):
     """Class for dual-polarization complex baseband signals.
 
@@ -782,7 +782,7 @@ class DualPolarizationSignal(BasebandSignal):
     z : `~numpy.ndarray`-like
         The signal data. Must be at least 3-dimensional with shape
         `(nsample, nchan, npol, ...)` where `npol = 2`.
-    sample_rate : `~astropy.units.Quantity`
+    sample_rate : :py:class:`astropy.units.Quantity`
         The number of samples per second. Must be in units of frequency.
     start_time : `~astropy.time.Time`, optional
         The start time of the signal (that is, the time at the first

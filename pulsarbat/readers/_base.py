@@ -312,11 +312,11 @@ class BaseReader:
         n : int
             Number of samples to read. Must be non-negative.
         **kwargs
-            Additional keyword arguments. Currently supported:
-              * `use_dask` -- Whether to use dask arrays.
-              * `chunks` -- Chunk sizes if using dask arrays.
-                            By default, there is no chunking along the
-                            zeroth dimension.
+            Currently supported keyword arguments:
+
+              * ``use_dask`` -- Whether to use dask arrays.
+              * ``chunks`` -- Chunk sizes if using dask arrays. By default,
+                there is no chunking along the zeroth dimension.
 
         Returns
         -------

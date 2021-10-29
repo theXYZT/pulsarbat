@@ -12,21 +12,22 @@ from .core import *
 from . import transforms
 from .transforms import *
 
-from . import timing
-from .timing import *
+from . import pulsar
+from .pulsar import *
 
-from . import readers
-from . import utils
-from . import misc
 from . import fft
+from . import utils
+from . import readers
+from . import contrib
+
 
 __all__ = [
-    "readers",
-    "utils",
-    "misc",
     "fft",
+    "utils",
+    "readers",
+    "contrib",
 ]
 
 __all__.extend(core.__all__)
 __all__.extend(transforms.__all__)
-__all__.extend(timing.__all__)
+__all__.extend(pulsar.__all__)

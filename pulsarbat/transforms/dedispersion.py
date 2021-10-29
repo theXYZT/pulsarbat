@@ -2,7 +2,6 @@
 
 import math
 import numpy as np
-from numpy.core.overrides import set_module
 import astropy.units as u
 import pulsarbat as pb
 
@@ -35,8 +34,9 @@ def _transfer_function(coeff, N, dt, center_freq, ref_freq, taper=False):
     return tf.astype(np.complex64)
 
 
-@set_module("pulsarbat")
 class DispersionMeasure(u.SpecificTypeQuantity):
+    """Dispersion Measure class (with default units of pc / cm^3)."""
+
     _equivalent_unit = _default_unit = u.pc / u.cm ** 3
     dispersion_constant = u.s * u.MHz ** 2 * u.cm ** 3 / u.pc / 2.41e-4
 
@@ -91,7 +91,6 @@ class DispersionMeasure(u.SpecificTypeQuantity):
 DM = DispersionMeasure
 
 
-@set_module("pulsarbat")
 def coherent_dedispersion(z, DM, /, *, ref_freq=None, chirp=None):
     """Coherently dedisperses a baseband signal.
 
@@ -146,7 +145,6 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None, chirp=None):
     return type(z).like(z, x)[start:stop]
 
 
-@set_module("pulsarbat")
 def incoherent_dedispersion(z, DM, /, *, ref_freq=None):
     """Incoherently dedisperses a signal by a given dispersion measure.
 

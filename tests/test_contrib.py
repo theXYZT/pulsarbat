@@ -35,7 +35,7 @@ class TestSTFT:
         z = pb.DualPolarizationSignal(x, **kw)
 
         for n in [33, 32, shape[0]]:
-            y = pb.misc.istft(pb.misc.stft(z, nperseg=n), nperseg=n)
+            y = pb.contrib.istft(pb.contrib.stft(z, nperseg=n), nperseg=n)
             assert isinstance(y, type(z))
             assert isinstance(y.data, type(z.data))
             assert_equal_radiosignals(z[: len(y)], y)
@@ -45,7 +45,7 @@ class TestSTFT:
         z = pb.BasebandSignal(x, sample_rate=1 * u.MHz, center_freq=1 * u.GHz)
 
         for n in [32, 64, 512, 1024]:
-            y = pb.misc.stft(z, nperseg=n)
+            y = pb.contrib.stft(z, nperseg=n)
             a = np.zeros_like(y)
             a[:, 3 * n // 4] = 1.0
             assert np.allclose(a, y.data)

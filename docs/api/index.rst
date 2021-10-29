@@ -11,3 +11,5 @@ This API reference covers all the interfaces available to users.
     readers
     transforms
     dedispersion
+    pulsar
+    contrib

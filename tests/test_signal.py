@@ -360,18 +360,35 @@ class TestSignalDaskFuncs:
     def test_to_dask(self):
         a = RAND.standard_normal((256, 16), dtype=np.float32)
         x = pb.Signal(a, sample_rate=1 * u.Hz)
-        y = x.to_dask_array(chunks=(-1, 1))
+        y = x.to_dask_array()
 
         assert isinstance(y, pb.Signal)
         assert isinstance(y.data, da.Array)
-        assert y.data.chunksize == (256, 1)
         assert np.allclose(a, y.data.compute())
-
-        x = pb.Signal(da.from_array(a), sample_rate=1 * u.Hz)
-        with pytest.raises(ValueError):
-            _ = x.to_dask_array()
 
         pb.core.has_dask = False
         with pytest.raises(ImportError):
             _ = x.to_dask_array()
+        pb.core.has_dask = True
+
+    def test_rechunk(self):
+        a = RAND.standard_normal((256, 16), dtype=np.float32)
+        x = pb.Signal(a, sample_rate=1 * u.Hz)
+        y = x.rechunk((16, 4), balance=True)
+
+        assert isinstance(y, pb.Signal)
+        assert isinstance(y.data, da.Array)
+        assert y.data.chunksize == (16, 4)
+        assert np.allclose(a, y.data.compute())
+
+        y = y.rechunk()
+
+        assert isinstance(y, pb.Signal)
+        assert isinstance(y.data, da.Array)
+        assert y.data.chunksize[0] == 256
+        assert np.allclose(a, y.data.compute())
+
+        pb.core.has_dask = False
+        with pytest.raises(ImportError):
+            _ = x.rechunk()
         pb.core.has_dask = True

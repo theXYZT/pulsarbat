@@ -16,12 +16,11 @@
    {% endblock %}
 
    {% block methods %}
-
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 
    {% for item in methods %}
-   {% if item != '__init__' %}
+   {% if not item.startswith('_') %}
    .. automethod:: {{ item }}
    {% endif %}
    {%- endfor %}

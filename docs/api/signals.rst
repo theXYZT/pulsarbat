@@ -5,6 +5,7 @@ Signals
 .. currentmodule:: pulsarbat
 
 .. autosummary::
+    :nosignatures:
     :toctree: signals
     :template: signal_class.rst
 

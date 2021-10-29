@@ -19,7 +19,7 @@ Install the latest version of Pulsarbat:
 
 .. code-block:: console
 
-    $ pip install pulsarbat
+    $ pip install pulsarbat[all]
 
 To use pulsarbat in a project::
 
@@ -33,14 +33,16 @@ To use pulsarbat in a project::
    :caption: Getting Started
 
    install.rst
-   usage.rst
-   contributing.rst
+   examples.rst
+
 
 
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: API Reference
+   :caption: Reference
 
    api/index.rst
-   history.rst
+   changelog.rst
+   contributing.rst
+   authors.rst
