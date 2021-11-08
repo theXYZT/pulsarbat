@@ -756,7 +756,7 @@ class BasebandSignal(RadioSignal):
             center_freq=center_freq,
             chan_bw=sample_rate,
             freq_align=freq_align,
-            meta=None,
+            meta=meta,
         )
 
     def to_intensity(self):
