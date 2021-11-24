@@ -282,12 +282,27 @@ class TestSignalTransform:
     def test_median_filter(self, arange):
         from scipy.ndimage import median_filter
 
-        kw = dict(sample_rate=1*u.Hz, start_time=Time.now())
-
-        z = pb.Signal(arange(9).reshape(-1, 3), **kw)
-
+        data = arange(9).reshape(-1, 3)
         res = median_filter(arange(9).reshape(-1, 3), size=3, mode='constant')
+
+        sig_med_filt = pb.signal_transform(median_filter)
+
+        t0 = Time.now()
+        z = pb.Signal(data, sample_rate=1*u.Hz, start_time=t0)
+
         x = type(z).like(z, res)
-        y = pb.signal_transform(median_filter)(z, size=3, mode='constant')
+        y = sig_med_filt(z, size=3, mode='constant')
+
         assert isinstance(y.data, type(z.data))
         assert_equal_signals(x, y)
+
+        kw = dict(center_freq=1*u.GHz, chan_bw=10*u.MHz)
+        y = sig_med_filt(z, signal_type=pb.IntensitySignal, signal_kwargs=kw,
+                         size=3, mode='constant')
+
+        assert isinstance(y, pb.IntensitySignal)
+        assert y.center_freq == kw['center_freq']
+        assert y.chan_bw == kw['chan_bw']
+
+        with pytest.raises(TypeError):
+            _ = sig_med_filt(z, signal_type=np.ndarray, size=3, mode='constant')

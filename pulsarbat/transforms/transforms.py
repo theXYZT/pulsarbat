@@ -17,21 +17,23 @@ __all__ = [
 def signal_transform(func):
     """Wraps an array function and returns a signal transform.
 
-    The function being decorated must accept an array and return an array of the
-    same shape and dtype, and have function signature::
+    The function being decorated must accept an array and return an array
+    with function signature::
 
-        func(x, /, **kwargs)
+        func(x, *args, /, **kwargs)
 
-    where `x` is the array, and all other arguments are strictly keyword arguments.
+    where `x` is the array being transformed. The decorated function will
+    accept a Signal object in place of `x` and by default return a Signal object
+    of the same type (unless a different `signal_type` is specified). The
+    properties of the returned signal can be modified via `signal_kwargs` if needed.
 
-    The returned signal transform will accept a Signal object in place of `x`, and
-    will return a Signal object of the same type. If the Signal data is contained
-    within a Dask array, `func` will be applied to every chunk independently using
-    `dask.array.map_blocks`.
+    If the Signal data is contained within a Dask array, `func` will be applied
+    to every chunk independently using `dask.array.map_blocks`. Keyword arguments
+    specific to `map_blocks` can be passed via `dask_kwargs`.
     """
-
     @functools.wraps(func)
-    def wrapper(x, /, **kwargs):
+    def wrapper(x, *args, signal_type=None, signal_kwargs=dict(),
+                dask_kwargs=dict(), **kwargs):
         try:
             import dask.array as da
         except ImportError:
@@ -39,12 +41,16 @@ def signal_transform(func):
         else:
             use_dask = isinstance(x.data, da.Array)
 
+        sig_class = type(x) if signal_type is None else signal_type
+        if not issubclass(sig_class, pb.Signal):
+            raise TypeError("Signal type must be a subclass of pulsarbat.Signal!")
+
         if use_dask:
-            z = da.map_blocks(func, x.data, **kwargs)
+            z = da.map_blocks(func, x.data, **dask_kwargs, **kwargs)
         else:
             z = func(x.data, **kwargs)
 
-        return type(x).like(x, z)
+        return sig_class.like(x, z, **signal_kwargs)
 
     return wrapper
 
