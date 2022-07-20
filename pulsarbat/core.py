@@ -625,7 +625,8 @@ class FullStokesSignal(IntensitySignal):
     """Class for full Stokes (I, Q, U, V) signals.
 
     See the documentation for `~RadioSignal` and `~IntensitySignal` for
-    more details.
+    more details. We use the PSR/IEEE convention for Stokes parameters.
+    Stokes V is positive for left-handed circular polarization.
 
     Parameters
     ----------
@@ -661,6 +662,9 @@ class FullStokesSignal(IntensitySignal):
     ----------
     Wikipedia, "Stokes Parameters",
     https://en.wikipedia.org/wiki/Stokes_parameters
+
+    van Straten et al. (2009),
+    https://doi.org/10.1071/AS09084
     """
 
     _req_shape = (None, None, 4)

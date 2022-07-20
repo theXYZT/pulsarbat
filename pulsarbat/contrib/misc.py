@@ -11,7 +11,6 @@ import pulsarbat as pb
 __all__ = [
     "stft",
     "istft",
-    "phase_deconvolution",
 ]
 
 
@@ -92,29 +91,3 @@ def istft(z, /, window="boxcar", nperseg=256, noverlap=0, nfft=None):
     x = x.reshape(out_shape)
 
     return type(z).like(z, x, sample_rate=z.sample_rate * nfft, freq_align="center")
-
-
-def phase_deconvolution(z, h):
-    """Performs a deconvolution using only the phases of an inverse filter."""
-    if not isinstance(z, pb.BasebandSignal):
-        raise ValueError("z must be a BasebandSignal.")
-
-    if not isinstance(h, pb.Signal):
-        raise ValueError("h must be a BasebandSignal.")
-
-    N, Nh = len(z), len(h)
-    if N < Nh:
-        raise ValueError("h can not be longer than z.")
-
-    if h.ndim > z.ndim:
-        raise ValueError("h can not have more dimensions than z.")
-
-    h = h[(slice(None),) * h.ndim + (None,) * (z.ndim - h.ndim)]
-
-    sig = pb.fft.fft(z.data, axis=0)
-
-    filt = pb.fft.fft(h.data, axis=0, n=N)
-    filt = np.where(np.abs(filt) > 1e-20, filt / np.abs(filt), 1)
-
-    x = pb.fft.ifft(sig / filt, axis=0)
-    return type(z).like(z, x)[: N - Nh + 1]
