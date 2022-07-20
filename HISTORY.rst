@@ -2,8 +2,8 @@
 Changelog
 =========
 
-0.1.0 (2020-??-??)
+0.1.0 (202?-??-??)
 ------------------
 
-* Minimum viable product released.
+* Minimum viable product will be released?
 

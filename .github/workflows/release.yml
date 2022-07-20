@@ -1,9 +1,15 @@
-name: Build and Publish
+name: 📦 Build and Publish
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v[0-9].*
+
 
 jobs:
-  build:
+  release:
     runs-on: "ubuntu-latest"
 
     steps:
@@ -13,18 +19,20 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v2
         with:
-          python-version: 3.10
+          python-version: "3.10.5"
 
       - name: Install build dependencies
-        run: python -m pip install build wheel
+        run: |
+          python -m pip install --upgrade pip
+          pip install build wheel
 
       - name: Build distributions
         shell: bash -l {0}
         run: python setup.py sdist bdist_wheel
 
       - name: Publish package to PyPI
-        if: github.repository == 'theXYZT/pulsarbat' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
+        if: github.repository == 'theXYZT/pulsarbat'
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
