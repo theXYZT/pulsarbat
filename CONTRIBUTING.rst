@@ -1,112 +1,35 @@
-.. highlight:: shell
-
 ============
 Contributing
 ============
 
-Contributions are welcome, and they are greatly appreciated! Every little bit
-helps, and credit will always be given.
+Contributions are welcome, and they are greatly appreciated! Every little bit helps, and credit will always be given. This page assumes the reader has some familiarity with contributing to open-source Python projects using GitHub.
 
-You can contribute in many ways:
+``pulsarbat`` could always use more documentation, especially in the form of worked examples.
 
-Types of Contributions
-----------------------
+For bug reports and feature requests, create an issue on GitHub here: https://github.com/theXYZT/pulsarbat/issues
 
-Report Bugs
-~~~~~~~~~~~
 
-Report bugs at https://github.com/theXYZT/pulsarbat/issues.
+Developer Workflow
+------------------
 
-If you are reporting a bug, please include detailed steps to reproduce the bug. If relevant, also include details about your local setup that might help in troubleshooting.
+To contribute changes (fixing bugs, adding features), we follow a typical `GitHub workflow <https://docs.github.com/en/get-started/quickstart/github-flow>`_:
 
-Fix Bugs
-~~~~~~~~
+* Create a personal fork of the repository.
+* Create a branch (preferrably, with an informative name).
+* Make changes, test your contributions and document them!
+* Open a pull request.
+* Iterate until changes pass various linters and checks.
+* Work through code review until your PR is accepted and merged.
 
-Look through the GitHub issues for bugs. Anything tagged with "bug" and "help
-wanted" is open to whoever wants to implement it.
-
-Request Features / Submit Feedback
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The best way to request a feature or send feedback is to file an issue at https://github.com/theXYZT/pulsarbat/issues.
-
-If you are proposing a feature:
-
-* Explain in detail how it would work.
-* Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that contributions are welcome :)
-
-Implement Features
-~~~~~~~~~~~~~~~~~~
-
-Look through the GitHub issues for features. Anything tagged with "enhancement"
-and "help wanted" is open to whoever wants to implement it.
-
-Write Documentation
-~~~~~~~~~~~~~~~~~~~
-
-Pulsarbat could always use more documentation, whether as part of the
-official pulsarbat docs, in docstrings, or even on the web in blog posts,
-articles, and such.
-
-A real-world example that uses pulsarbat would make for great contribution to the examples section of the documentation.
-
-Get Started!
-------------
-
-Ready to contribute? Here's how to set up `pulsarbat` for local development.
-
-1. Fork the `pulsarbat` repo on GitHub.
-2. Clone your fork locally::
-
-    $ git clone git@github.com:your_name_here/pulsarbat.git
-
-3. Install your local copy, ideally in a virtual environment::
-
-    $ cd pulsarbat
-    $ pip install -e .
-
-4. Create a branch for local development::
-
-    $ git checkout -b name-of-your-bugfix-or-feature
-
-   Now you can make your changes locally.
-
-5. When you're done making changes, check that your changes pass flake8 and the
-   tests, including testing other Python versions with tox::
-
-    $ flake8 pulsarbat tests
-    $ pytest tests
-    $ tox
-
-   To get flake8, pytest and tox, just pip or conda install them.
-
-6. Commit your changes and push your branch to GitHub::
-
-    $ git add .
-    $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
-
-7. Submit a pull request through the GitHub website.
-
-Pull Request Guidelines
------------------------
-
-Before you submit a pull request, check that it meets these guidelines:
-
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put
-   your new functionality into a function with a docstring.
-3. The pull request should work for all supported Python versions (by passing
-   checks by Github Actions).
 
 Deploying
 ---------
 
-A reminder for the maintainers on how to deploy. You will need the Python package
-`bump2version`. Make sure all your changes are committed (including an entry in
-`HISTORY.rst`).
-Then run::
+A reminder for the maintainers on how to deploy a release. A tagged commit will automatically trigger a release and publish the package to PyPI. For now, we use the ``bump2version`` package to do this. Make sure all your changes are committed (including an entry in `HISTORY.rst`).
+
+Then run:
+
+.. code-block:: console
 
     $ bumpversion patch  # possible: major / minor / patch
     $ git push

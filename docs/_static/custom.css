@@ -1,0 +1,3 @@
+.bd-search input:active, .bd-search input:focus {
+    color: var(--pst-color-text-muted);
+}
