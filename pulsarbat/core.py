@@ -6,13 +6,7 @@ import pprint
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
-
-try:
-    import dask.array
-except ImportError:
-    has_dask = False
-else:
-    has_dask = True
+import dask.array
 
 
 __all__ = [
@@ -307,7 +301,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         Has no effect unless data is stored as a Dask Array. `kwargs` are
         passed on to the :py:func:`dask.compute` function.
         """
-        if has_dask and isinstance(self.data, dask.array.Array):
+        if isinstance(self.data, dask.array.Array):
             x = self.data.compute(**kwargs)
         else:
             x = np.asarray(self.data)
@@ -320,7 +314,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         Has no effect unless data is stored as a Dask Array. `kwargs` are
         passed on to the :py:func:`dask.persist` function.
         """
-        if has_dask and isinstance(self.data, dask.array.Array):
+        if isinstance(self.data, dask.array.Array):
             x = self.data.persist(**kwargs)
         else:
             x = np.asarray(self.data)
@@ -333,10 +327,6 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         Uses :py:func:`dask.array.asanyarray` to convert signal data
         to a Dask array.
         """
-        if not has_dask:
-            err = "The 'dask' module is required for this function."
-            raise ImportError(err)
-
         return type(self).like(self, dask.array.asanyarray(self.data))
 
     def rechunk(self, chunks=None, **kwargs):
@@ -348,10 +338,6 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         Dask's configuration. `kwargs` are passed along to
         :py:func:`dask.array.rechunk`.
         """
-        if not has_dask:
-            err = "The 'dask' module is required for this function."
-            raise ImportError(err)
-
         if chunks is None:
             chunks = (-1,) + ("auto",) * (self.ndim - 1)
 

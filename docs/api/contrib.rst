@@ -10,4 +10,3 @@ Contrib
 
     stft
     istft
-    phase_deconvolution

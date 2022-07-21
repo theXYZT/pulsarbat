@@ -4,7 +4,7 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   tests:
-    name: Test on Python ${{ matrix.python }}
+    name: Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -20,18 +20,14 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install dependencies
+      - name: Install package and dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest pytest-cov
           pip install .
 
-      - name: Lint with flake8
+      - name: Testing and coverage
         run: |
-          flake8 pulsarbat tests --show-source --statistics
-
-      - name: Testing and Coverage
-        run: |
+          pip install pytest pytest-cov
           pytest --cov-report=xml --cov=pulsarbat
 
       - name: Upload coverage to Codecov

@@ -108,6 +108,6 @@ A reminder for the maintainers on how to deploy. You will need the Python packag
 `HISTORY.rst`).
 Then run::
 
-$ bumpversion patch  # possible: major / minor / patch
-$ git push
-$ git push --tags
+    $ bumpversion patch  # possible: major / minor / patch
+    $ git push
+    $ git push --tags

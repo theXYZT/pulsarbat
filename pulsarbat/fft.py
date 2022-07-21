@@ -2,13 +2,7 @@
 
 import scipy.fft
 from functools import singledispatch
-
-try:
-    import dask.array as da
-except ImportError:
-    HAS_DASK = False
-else:
-    HAS_DASK = True
+import dask.array as da
 
 
 _FFT_FUNCS = [
@@ -43,12 +37,10 @@ def __getattr__(name):
     def func(*args, **kwargs):
         return _fft_func(*args, **kwargs)
 
-    if HAS_DASK:
-
-        @func.register(da.Array)
-        def _(*args, **kwargs):
-            wrapped_func = da.fft.fft_wrap(_fft_func)
-            return wrapped_func(*args, **kwargs)
+    @func.register(da.Array)
+    def _(*args, **kwargs):
+        wrapped_func = da.fft.fft_wrap(_fft_func)
+        return wrapped_func(*args, **kwargs)
 
     func.__qualname__ = _fft_func.__qualname__
     func.__name__ = _fft_func.__name__

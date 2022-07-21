@@ -5,6 +5,7 @@ import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
 import functools
+import dask.array as da
 
 __all__ = [
     "signal_transform",
@@ -34,18 +35,12 @@ def signal_transform(func):
     @functools.wraps(func)
     def wrapper(x, *args, signal_type=None, signal_kwargs=dict(),
                 dask_kwargs=dict(), **kwargs):
-        try:
-            import dask.array as da
-        except ImportError:
-            use_dask = False
-        else:
-            use_dask = isinstance(x.data, da.Array)
 
         sig_class = type(x) if signal_type is None else signal_type
         if not issubclass(sig_class, pb.Signal):
             raise TypeError("Signal type must be a subclass of pulsarbat.Signal!")
 
-        if use_dask:
+        if isinstance(x.data, da.Array):
             z = da.map_blocks(func, x.data, **dask_kwargs, **kwargs)
         else:
             z = func(x.data, **kwargs)
@@ -168,19 +163,15 @@ def time_shift(z, /, t):
     out : `~Signal`
         Shifted signal.
     """
+    if t == 0:
+        return z
+
     if isinstance(t, u.Quantity):
         n = np.float64((t * z.sample_rate).to_value(u.one))
     else:
         n = np.float64(t)
 
-    try:
-        import dask.array as da
-    except ImportError:
-        use_dask = False
-    else:
-        use_dask = isinstance(z.data, da.Array)
-
-    if use_dask:
+    if isinstance(z.data, da.Array):
         f = da.fft.fftfreq(len(z), 1)
     else:
         f = np.fft.fftfreq(len(z), 1)

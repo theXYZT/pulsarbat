@@ -27,9 +27,9 @@ Documentation can be found at: https://pulsarbat.readthedocs.io
 Installation
 ------------
 
-You can install pulsarbat along with all optional dependencies via::
+You can install pulsarbat via::
 
-    pip install pulsarbat[all]
+    pip install pulsarbat
 
 
 License
