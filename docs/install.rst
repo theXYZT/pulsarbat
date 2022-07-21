@@ -9,26 +9,22 @@ Requirements
 
 `pulsarbat` has the following strict requirements:
 
-- **Python 3.10 or later**
+- **Python 3.9 or later**
 - `Astropy <https://www.astropy.org/>`_ 5.1 or later
 - `Numpy <https://www.numpy.org/>`_ 1.23 or later
 - `Scipy <https://scipy.org/>`_ 1.8.1 or later
 - `Baseband <https://baseband.readthedocs.io/>`_ 4.1.1 or later
-
-For optional features, `pulsarbat` also depends on:
-
-- `Dask <https://dask.org/>`_ 2022.6.1 or later: Lazy execution and
-  "embarassingly parallel" workflows.
+- `Dask <https://dask.org/>`_ 2022.6.1 or later: with Dask Array.
 
 
 Stable release
 --------------
 
-To install pulsarbat with `pip`_ along with optional dependencies, run:
+To install pulsarbat with `pip`_, run:
 
 .. code-block:: console
 
-    $ pip install pulsarbat[all]
+    $ pip install pulsarbat
 
 This is the preferred method to install pulsarbat, as it will always
 install the most recent stable release. If you don't have `pip`_
@@ -55,7 +51,7 @@ Then install with:
 .. code-block:: console
 
     $ cd pulsarbat
-    $ pip install .[all]
+    $ pip install .
 
 
 .. _Github repo: https://github.com/theXYZT/pulsarbat

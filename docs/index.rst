@@ -19,7 +19,7 @@ Install the latest version of Pulsarbat:
 
 .. code-block:: console
 
-    $ pip install pulsarbat[all]
+    $ pip install pulsarbat
 
 To use pulsarbat in a project::
 
