@@ -162,17 +162,6 @@ class TestCoherentDedispersion:
             y2 = pb.coherent_dedispersion(z, DM, ref_freq=rf, chirp=chirp)
             assert np.allclose(y1, y2)
 
-    def test_chirp_taper(self):
-        DM = pb.DM(10.0)
-        args = (1024, 1 * u.us, 1 * u.GHz, 1 * u.GHz)
-        x = DM.chirp_function(*args, taper=True)
-        y = DM.chirp_function(*args, taper=False)
-        mag = x / y
-
-        assert np.allclose(mag.imag, 0, atol=1e-6)
-        assert np.allclose(mag.real[:420], 1)
-        assert np.allclose(mag.real[-420:], 1)
-
 
 class TestIncoherentDedispersion:
     @pytest.mark.parametrize("use_dask", [True, False])
