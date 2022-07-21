@@ -78,9 +78,9 @@ html_theme_options = {
     ],
     "navbar_start": ["navbar-logo", "version-switcher"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
-    "page_sidebar_items": ["search-field", "page-toc"],
+    "page_sidebar_items": ["search-field", "page-toc", "random"],
     "switcher": {
-        "json_url": "/_static/switcher.json",
+        "json_url": "https://pulsarbat.readthedocs.io/en/dev/_static/switcher.json",
         "version_match": version_match,
     }
 }
@@ -96,6 +96,8 @@ html_sidebars = {
 
 html_context = {
     "default_mode": "light",
+    "stuff": os.environ.get("READTHEDOCS_VERSION"),
+    "stuff2": pulsarbat.__version__,
 }
 
 html_logo = "_static/pulsarbat.svg"
