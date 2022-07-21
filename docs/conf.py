@@ -1,11 +1,14 @@
+import os
 import pulsarbat
 
 project = "pulsarbat"
 copyright = "2022, Nikhil Mahajan"
 author = "Nikhil Mahajan"
-
-# The full version, including alpha/beta/rc tags
 release = pulsarbat.__version__
+
+version_match = os.environ.get("READTHEDOCS_VERSION")
+if not version_match or version_match.isdigit():
+    version_match = "dev"
 
 
 # -- Extensions --------------------------------------------------------------
@@ -73,8 +76,13 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "navbar_start": ["navbar-logo", "version-switcher"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
-    "page_sidebar_items": ["search-field", "page-toc", "edit-this-page"],
+    "page_sidebar_items": ["search-field", "page-toc"],
+    "switcher": {
+        "json_url": "/_static/switcher.json",
+        "version_match": version_match,
+    }
 }
 
 html_sidebars = {
@@ -90,11 +98,6 @@ html_context = {
     "default_mode": "light",
 }
 
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
-
-html_css_files = [
-    'custom.css',
-]
+html_logo = "_static/pulsarbat.svg"
+html_static_path = ["_static", ]
+html_css_files = ["custom.css", ]
