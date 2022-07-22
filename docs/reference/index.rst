@@ -9,3 +9,8 @@ API Reference
    :maxdepth: 2
 
    signals
+   readers
+   transforms
+   dedispersion
+   pulsar
+   contrib

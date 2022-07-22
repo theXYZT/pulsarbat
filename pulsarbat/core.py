@@ -28,8 +28,8 @@ class InvalidSignalError(ValueError):
 class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     """Base class for all signals.
 
-    A signal is sufficiently described by an array of samples (`z`),
-    and a sampling rate (`sample_rate`). Optionally, a `start_time` can
+    A signal is sufficiently described by an array of samples (``z``),
+    and a sampling rate (``sample_rate``). Optionally, a ``start_time`` can
     be provided to specify the time stamp at the first sample of the
     signal.
 
@@ -40,12 +40,12 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
     Parameters
     ----------
-    z : array
+    z : array-like
         The signal data. Must be at least 1-dimensional with shape
         ``(nsample, ...)``, and must have non-zero size.
-    sample_rate : astropy.units.Quantity
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : astropy.time.Time, optional
+    start_time : Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal).
     meta : dict, optional
@@ -298,7 +298,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     def compute(self, **kwargs):
         """Returns signal with computed data.
 
-        Has no effect unless data is stored as a Dask Array. `kwargs` are
+        Has no effect unless data is stored as a Dask Array. ``kwargs`` are
         passed on to the :py:func:`dask.compute` function.
         """
         if isinstance(self.data, dask.array.Array):
@@ -311,7 +311,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
     def persist(self, **kwargs):
         """Returns signal with data persisted in memory.
 
-        Has no effect unless data is stored as a Dask Array. `kwargs` are
+        Has no effect unless data is stored as a Dask Array. ``kwargs`` are
         passed on to the :py:func:`dask.persist` function.
         """
         if isinstance(self.data, dask.array.Array):
@@ -335,7 +335,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         If the underlying data is not a Dask array, it is converted to one first.
         By default, there is no chunking along the first dimension and other
         dimensions are automatically chunked based on the default chunk size set in
-        Dask's configuration. `kwargs` are passed along to
+        Dask's configuration. ``kwargs`` are passed along to
         :py:func:`dask.array.rechunk`.
         """
         if chunks is None:
@@ -360,7 +360,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         ----------
         obj : Signal
             The reference signal object.
-        z : array
+        z : array-like
             The signal data.
         **kwargs
             Additional keyword arguments to pass on to the target class.
@@ -383,64 +383,64 @@ class RadioSignal(Signal):
     """Class for heterodyned radio signals.
 
     A radio signal is often heterodyned, so a center frequency
-    (`center_freq`) and a channel bandwidth (`chan_bw`) must be provided
-    to determine the frequencies of each channel. Optionally,
-    `freq_align` is provided to indicate how the channel frequencies are
-    positioned. Usually, the signal data here would be the result of
-    some sort of filterbank.
+    (``center_freq``) and a channel bandwidth (``chan_bw``) must be
+    provided to determine the frequencies of each channel. Optionally,
+    ``freq_align`` is provided to indicate how the channel frequencies
+    are positioned. Usually, the signal data here would be the result
+    of some sort of filterbank.
 
-    The signal data (`z`) must have at least 2 dimensions where the
-    first two dimensions refer to time (`axis=0`) and frequency
-    (`axis=1`), respectively.
+    The signal data (``z``) must have at least 2 dimensions where the
+    first two dimensions refer to time (``axis=0``) and frequency
+    (``axis=1``), respectively.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`-like
+    z : array-like
         The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`.
-    sample_rate : `~astropy.units.Quantity`
+        ``(nsample, nchan, ...)``.
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : `~astropy.time.Time`, optional
+    start_time : Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
-    center_freq : `~astropy.units.Quantity`
+    center_freq : Quantity
         The frequency at the center of the signal's band. Must be in
         units of frequency.
-    chan_bw : `~astropy.units.Quantity`
-        The bandwidth of a channel. The total bandwidth is `chan_bw *
-        nchan`. Must be in units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of channels relative to the `center_freq`. Default
-        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
-        `'top'` only have an effect when `nchan` is even.
+    chan_bw : Quantity
+        The bandwidth of a channel. The total bandwidth is ``chan_bw *
+        nchan``. Must be in units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, default: 'center'
+        The alignment of channels relative to the ``center_freq``. Default
+        is 'center' (as with odd-length complex DFTs). 'bottom' and
+        'top' only have an effect when ``nchan`` is even.
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
     Notes
     -----
-    The input signal array must have shape `(nsample, nchan, ...)`,
-    where `nsample` is the number of time samples, and `nchan` is the
+    The input signal array must have shape ``(nsample, nchan, ...)``,
+    where ``nsample`` is the number of time samples, and ``nchan`` is the
     number of frequency channels.
 
     The channels must be adjacent in frequency and of equal channel
-    bandwidth, such that the frequency of a channel `i` is given by,::
+    bandwidth, such that the frequency of a channel ``i`` is given by,::
 
         freq_i = center_freq + chan_bw * (i + a - nchan/2)
 
-    where `i` is in `[0, ..., nchan - 1]`, `nchan` is the number of
-    channels (`z.shape[1]`), `chan_bw` is the bandwidth of a single
-    channel, and `a` is in `{0, 0.5, 1}` depending on the value of
-    `freq_align`.
+    where ``i`` is in ``[0, ..., nchan - 1]``, ``nchan`` is the number of
+    channels (``z.shape[1]``), ``chan_bw`` is the bandwidth of a single
+    channel, and ``a`` is in ``{0, 0.5, 1}`` depending on the value of
+    ``freq_align``.
 
     An even-length complex-valued DFT (as implemented in `~numpy.fft`)
-    would have `freq_align = 'bottom'` with a center frequency of 0,
-    whereas an odd-length DFT would have `freq_align = 'center'` due to
-    symmetry. `freq_align = 'top'` is used in cases where the DFT was
+    would have ``freq_align = 'bottom'`` with a center frequency of 0,
+    whereas an odd-length DFT would have ``freq_align = 'center'`` due to
+    symmetry. ``freq_align = 'top'`` is used in cases where the DFT was
     conducted on the lower sideband of the signal instead.
 
-    When `nchan` is odd, the `freq_align` attribute will internally be
-    fixed to `'center'` since the channels must be necessarily centered
-    on the `center_freq`.
+    When ``nchan`` is odd, the ``freq_align`` attribute will internally be
+    fixed to 'center' since the channels must be necessarily centered
+    on the ``center_freq``.
     """
 
     _req_shape = (None, None)
@@ -573,28 +573,28 @@ class RadioSignal(Signal):
 class IntensitySignal(RadioSignal):
     """Class for intensity signals.
 
-    See the documentation for `~RadioSignal` for more details.
+    See the documentation for :py:class:`RadioSignal` for more details.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`-like
+    z : array-like
         The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, npol, ...)`.
-    sample_rate : `~astropy.units.Quantity`
+        ``(nsample, nchan, npol, ...)``.
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : `~astropy.time.Time`, optional
+    start_time : Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
-    center_freq : `~astropy.units.Quantity`
+    center_freq : Quantity
         The frequency at the center of the signal's band. Must be in
         units of frequency.
-    chan_bw : `~astropy.units.Quantity`
-        The bandwidth of a channel. The total bandwidth is `chan_bw *
-        nchan`. Must be in units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of channels relative to the `center_freq`. Default
-        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
-        `'top'` only have an effect when `nchan` is even.
+    chan_bw : Quantity
+        The bandwidth of a channel. The total bandwidth is ``chan_bw *
+        nchan``. Must be in units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, default: 'center'
+        The alignment of channels relative to the ``center_freq``. Default
+        is 'center' (as with odd-length complex DFTs). 'bottom' and
+        'top' only have an effect when ``nchan`` is even.
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
@@ -610,31 +610,32 @@ class IntensitySignal(RadioSignal):
 class FullStokesSignal(IntensitySignal):
     """Class for full Stokes (I, Q, U, V) signals.
 
-    See the documentation for `~RadioSignal` and `~IntensitySignal` for
-    more details. We use the PSR/IEEE convention for Stokes parameters.
-    Stokes V is positive for left-handed circular polarization.
+    See the documentation for :py:class:`RadioSignal` and
+    :py:class:`IntensitySignal` for more details. We use the PSR/IEEE
+    convention for Stokes parameters. Stokes V is positive for
+    left-handed circular polarization.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`-like
+    z : array-like
         The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, nstokes, ...)` where `nstokes = 4`.
-        The order of the Stokes components is `[I, Q, U, V]`.
-    sample_rate : `~astropy.units.Quantity`
+        ``(nsample, nchan, nstokes, ...)`` where ``nstokes = 4``.
+        The order of the Stokes components is ``[I, Q, U, V]``.
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : `~astropy.time.Time`, optional
+    start_time : Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
-    center_freq : `~astropy.units.Quantity`
+    center_freq : Quantity
         The frequency at the center of the signal's band. Must be in
         units of frequency.
-    chan_bw : `~astropy.units.Quantity`
-        The bandwidth of a channel. The total bandwidth is `chan_bw *
-        nchan`. Must be in units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of channels relative to the `center_freq`. Default
-        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
-        `'top'` only have an effect when `nchan` is even.
+    chan_bw : Quantity
+        The bandwidth of a channel. The total bandwidth is ``chan_bw *
+        nchan``. Must be in units of frequency.
+    freq_align : {'bottom', 'center', 'top'}, default: 'center'
+        The alignment of channels relative to the ``center_freq``. Default
+        is 'center' (as with odd-length complex DFTs). 'bottom' and
+        'top' only have an effect when ``nchan`` is even.
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
@@ -693,29 +694,29 @@ class BasebandSignal(RadioSignal):
     Baseband signals are Nyquist-sampled analytic signals. In the
     complex baseband representation, the signal is shifted to be
     centered around zero frequency and is a complex-valued signal. As a
-    consequence, `sample_rate == chan_bw`. All frequency channels are
+    consequence, ``sample_rate == chan_bw``. All frequency channels are
     assumed to be upper side-band (that is, the signal isn't spectrally
     flipped).
 
-    See the documentation for `~RadioSignal` for more details.
+    See the documentation for :py:class:`RadioSignal` for more details.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`-like
+    z : array-like
         The signal data. Must be at least 2-dimensional with shape
         `(nsample, nchan, ...)`.
-    sample_rate : `~astropy.units.Quantity`
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : `~astropy.time.Time`, optional
+    start_time : Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
-    center_freq : `~astropy.units.Quantity`
+    center_freq : Quantity
         The frequency at the center of the signal's band. Must be in
         units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of channels relative to the `center_freq`. Default
-        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
-        `'top'` only have an effect when `nchan` is even.
+    freq_align : {'bottom', 'center', 'top'}, default: 'center'
+        The alignment of channels relative to the ``center_freq``. Default
+        is 'center' (as with odd-length complex DFTs). 'bottom' and
+        'top' only have an effect when ``nchan`` is even.
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
@@ -754,7 +755,7 @@ class BasebandSignal(RadioSignal):
 
         Returns
         -------
-        out : `~pulsarbat.IntensitySignal`
+        out : IntensitySignal
             The converted signal.
         """
         z = self.data.real ** 2 + self.data.imag ** 2
@@ -764,30 +765,30 @@ class BasebandSignal(RadioSignal):
 class DualPolarizationSignal(BasebandSignal):
     """Class for dual-polarization complex baseband signals.
 
-    See the documentation for `~RadioSignal` and `~BasebandSignal` for
-    more details.
+    See the documentation for :py:class:`RadioSignal` and
+    :py:class:`BasebandSignal` for more details.
 
     Parameters
     ----------
-    z : `~numpy.ndarray`-like
+    z : array-like
         The signal data. Must be at least 3-dimensional with shape
-        `(nsample, nchan, npol, ...)` where `npol = 2`.
-    sample_rate : :py:class:`astropy.units.Quantity`
+        ``(nsample, nchan, npol, ...)`` where ``npol = 2``.
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : `~astropy.time.Time`, optional
+    start_time : Time, optional
         The start time of the signal (that is, the time at the first
         sample of the signal). Default is None.
-    center_freq : `~astropy.units.Quantity`
+    center_freq : Quantity
         The frequency at the center of the signal's band. Must be in
         units of frequency.
-    freq_align : {'bottom', 'center', 'top'}, optional
-        The alignment of channels relative to the `center_freq`. Default
-        is `'center'` (as with odd-length complex DFTs). `'bottom'` and
-        `'top'` only have an effect when `nchan` is even.
+    freq_align : {'bottom', 'center', 'top'}, default: 'center'
+        The alignment of channels relative to the ``center_freq``. Default
+        is 'center' (as with odd-length complex DFTs). 'bottom' and
+        'top' only have an effect when ``nchan`` is even.
     pol_type : {'linear', 'circular'}
-        The polarization type of the signal. `'linear'` for linearly
-        polarized signals (with basis `[X, Y]`) or `'circular'` for
-        circularly polarized signals (with basis `[L, R]`).
+        The polarization type of the signal. 'linear' for linearly
+        polarized signals (with basis [X, Y]) or 'circular' for
+        circularly polarized signals (with basis [L, R]).
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
@@ -799,9 +800,9 @@ class DualPolarizationSignal(BasebandSignal):
 
     Notes
     -----
-    Linear polarization is assumed to have basis `[X, Y]` and circular
-    polarization is assumed to have basis `[L, R]`. For example, with
-    `pol_type='circular'`, `z[:, :, 0]` refers to the right-handed
+    Linear polarization is assumed to have basis ``[X, Y]`` and circular
+    polarization is assumed to have basis ``[L, R]``. For example, with
+    ``pol_type='circular'``, ``z[:, :, 0]`` refers to the right-handed
     circular polarization component.
     """
 
@@ -859,7 +860,7 @@ class DualPolarizationSignal(BasebandSignal):
 
         Returns
         -------
-        out : `~pulsarbat.DualPolarizationSignal`
+        out : DualPolarizationSignal
             The converted signal.
         """
         if self.pol_type == "circular":
@@ -884,7 +885,7 @@ class DualPolarizationSignal(BasebandSignal):
 
         Returns
         -------
-        out : `~pulsarbat.DualPolarizationSignal`
+        out : DualPolarizationSignal
             The converted signal.
         """
         if self.pol_type == "linear":
@@ -906,7 +907,7 @@ class DualPolarizationSignal(BasebandSignal):
 
         Returns
         -------
-        out : `~pulsarbat.StokesSignal`
+        out : FullStokesSignal
             Signal in Stokes IQUV representation.
         """
         axis = self.get_axis("pol")

@@ -6,6 +6,7 @@ Signals
 
 .. autosummary::
    :toctree: generated/
+   :template: signal_class.rst
 
     Signal
     RadioSignal

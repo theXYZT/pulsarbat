@@ -43,6 +43,17 @@ intersphinx_mapping = {
 
 # numpydoc
 numpydoc_show_class_members = False
+numpydoc_xref_param_type = True
+numpydoc_xref_aliases = {
+    # "array-like": ":term:`array-like <array_like>`",
+    # "scalar": ":term:`scalar`",
+    # "array": ":term:`array`",
+    # "ndarray": "numpy.ndarray",
+    "dtype": "numpy.dtype",
+    "Quantity": "astropy.units.Quantity",
+    "Time": "astropy.time.Time",
+    "Unit": "astropy.units.Unit",
+}
 
 
 # -- General configuration ---------------------------------------------------

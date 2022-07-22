@@ -44,26 +44,25 @@ class OutOfBoundsError(EOFError):
 class BaseReader:
     """Base class for readers.
 
-    Subclasses must either implement the `_read_array()` method if using
-    the default `.read()` implementation, or implement their own
-    `.read()` method.
+    Subclasses must either implement the ``_read_array()`` method if using
+    the default ``.read()`` implementation, or implement their own
+    ``.read()`` method.
 
     Parameters
     ----------
-    shape : tuple of ints
+    shape : tuple of int
         Signal shape.
-    dtype : data-type
+    dtype : dtype
         Data-type of signal data.
-    signal_type : class, optional
-        Type of signal that will be returned by `read()`. Default is
-        `Signal`. Accepted values are subclasses of `Signal`.
-    sample_rate : :py:class:`astropy.units.Quantity`
+    signal_type : subclass of .Signal, default: .Signal
+        Type of signal that will be returned by ``read()``.
+    sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
-    start_time : :py:class:`astropy.time.Time`, optional
+    start_time : Time, optional
         Timestamp at first sample of signal data. Default is None.
     **signal_kwargs
-        Additional `kwargs` to pass on to `signal_type` when creating a
-        Signal object.
+        Additional kwargs to pass on to ``signal_type`` when creating a
+        :py:class:`.Signal` object.
     """
 
     def __init__(
@@ -229,7 +228,7 @@ class BaseReader:
 
         Parameters
         ----------
-        t : `~astropy.units.Quantity`, or `~astropy.time.Time`
+        t : Quantity or Time
             Can be an absolute time as an astropy Time object, or an
             astropy Quantity in time units relative to the start.
 
@@ -257,13 +256,13 @@ class BaseReader:
         ----------
         offset : int
             Position in number of samples.
-        unit : `~astropy.units.Unit`, optional
+        unit : Unit, optional
             Desired unit of returned value (as an astropy unit).
             By default (None), the absolute timestamp is returned.
 
         Returns
         -------
-        t : `~astropy.units.Quantity`, or `~astropy.time.Time`
+        t : Quantity or Time
             Time relative to the start as an astropy Quantity if `unit`
             is provided, otherwise an absolute time as an astropy Time
             object.
@@ -320,8 +319,8 @@ class BaseReader:
 
         Returns
         -------
-        out : `~Signal` object or subclass
-            Signal of length `n` containing data that was read.
+        out : Signal
+            Signal of length ``n`` containing data that was read.
         """
         if (offset := operator.index(offset)) < 0:
             raise ValueError("offset must be a non-negative int.")
@@ -342,8 +341,8 @@ class BaseReader:
     def dask_read(self, offset, n, /, **kwargs):
         """Read `n` samples from given offset using Dask arrays.
 
-        A convenience method equivalent to the `read()` method with
-        `use_dask=True`.
+        A convenience method equivalent to the :py:meth:`.read()` method with
+        ``use_dask=True``.
 
         Parameters
         ----------
@@ -353,14 +352,14 @@ class BaseReader:
             Number of samples to read. Must be non-negative.
         **kwargs
             Additional keyword arguments. Currently supported:
-              * `chunks` -- Chunk sizes if using dask arrays.
-                            By default, there is no chunking along the
-                            zeroth dimension.
+              * ``chunks`` -- Chunk sizes if using dask arrays.
+                              By default, there is no chunking along
+                              the zeroth dimension.
 
         Returns
         -------
-        out : `~Signal` object or subclass
-            Signal of length `n` containing data that was read as a
+        out : Signal
+            Signal of length ``n`` containing data that was read as a
             Dask array.
         """
         return self.read(offset, n, use_dask=True, **kwargs)

@@ -82,34 +82,34 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None, chirp=None):
     """Coherently dedisperses a baseband signal.
 
     The given signal will be coherently dedispersed by a given dispersion
-    measure (DM). If a reference frequency (`ref_freq`) is not given, the
+    measure (DM). If a reference frequency (``ref_freq``) is not given, the
     center frequency of the signal will be used as reference.
 
-    Optionally, a pre-computed chirp function (`chirp`) can be provided
+    Optionally, a pre-computed chirp function (``chirp``) can be provided
     as an array. If a chirp is provided, it will not be checked against
     the given DM and reference frequency for correctness.
 
     The output signal will be cropped on both ends to avoid wrap-around
     artifacts caused by dedispersion. This depends on where the
-    reference frequency (`ref_freq`) is compared to the band of the
+    reference frequency (``ref_freq``) is compared to the band of the
     signal.
 
     Parameters
     ----------
-    z : `~pulsarbat.BasebandSignal`
+    z : BasebandSignal
         The signal to be transformed.
-    DM : `~pulsarbat.DispersionMeasure`
-        Dispersion measure by which to dedisperse `z`.
-    ref_freq : `~astropy.units.Quantity`, optional
+    DM : DispersionMeasure
+        Dispersion measure by which to dedisperse ``z``.
+    ref_freq : Quantity, optional
         Reference frequency for dedispersion. If None (default), uses
         the center frequency from signal.
     chirp : array-like, optional
         A pre-computed chirp function. Must be a 2-D array with shape
-        `z.shape[:2]`.
+        ``z.shape[:2]``.
 
     Returns
     -------
-    out : `~pulsarbat.BasebandSignal`
+    out : BasebandSignal
         The dedispersed signal.
     """
     if not isinstance(z, pb.BasebandSignal):
@@ -137,21 +137,21 @@ def incoherent_dedispersion(z, DM, /, *, ref_freq=None):
 
     The output signal will be cropped on both ends to avoid wrap-around
     artifacts caused by dedispersion. This depends on where the
-    reference frequency (`ref_freq`) compared to the band of the signal.
+    reference frequency (``ref_freq``) compared to the band of the signal.
 
     Parameters
     ----------
-    z : `~pulsarbat.RadioSignal`
+    z : RadioSignal
         The signal to be transformed.
-    DM : `~pulsarbat.DispersionMeasure`
-        Dispersion measure by which to dedisperse `z`.
-    ref_freq : `~astropy.units.Quantity`, optional
+    DM : DispersionMeasure
+        Dispersion measure by which to dedisperse ``z``.
+    ref_freq : Quantity, optional
         Reference frequency for dedispersion. If None (default), uses
         the center frequency from signal.
 
     Returns
     -------
-    out : `~pulsarbat.RadioSignal`
+    out : RadioSignal
         The dedispersed signal.
     """
     if not isinstance(z, pb.RadioSignal):
