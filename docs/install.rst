@@ -1,4 +1,4 @@
-.. highlight:: shell
+:nosearch:
 
 ============
 Installation

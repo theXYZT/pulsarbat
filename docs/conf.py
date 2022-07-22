@@ -6,9 +6,7 @@ copyright = "2022, Nikhil Mahajan"
 author = "Nikhil Mahajan"
 release = pulsarbat.__version__
 
-
-json_url = "_static/switcher.json"
-
+json_url = "/_static/switcher.json"
 version_match = os.environ.get("READTHEDOCS_VERSION")
 if not version_match or version_match.isdigit():
     version_match = "dev"
@@ -61,6 +59,7 @@ pygments_style = "sphinx"
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
+html_sourcelink_suffix = ""
 html_theme_options = {
     "collapse_navigation": True,
     "navigation_depth": 2,
@@ -79,28 +78,23 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
+    "logo": {
+        "image_light": "pulsarbat_light.svg",
+        "image_dark": "pulsarbat_dark.svg",
+    },
     "navbar_start": ["navbar-logo", "version-switcher"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
-    "page_sidebar_items": ["search-field", "page-toc"],
+    "page_sidebar_items": ["page-toc"],
     "switcher": {
         "json_url": json_url,
         "version_match": version_match,
     },
 }
 
-html_sidebars = {
-    "**": ["sidebar-nav-bs", "sidebar-ethical-ads"],
-    "index": [],
-    "install": [],
-    "tutorial": [],
-    "contributing": [],
-    "changelog": [],
-}
 
 html_context = {
     "default_mode": "light",
 }
 
-html_logo = "_static/pulsarbat.svg"
 html_static_path = ["_static", ]
 html_css_files = ["custom.css", ]

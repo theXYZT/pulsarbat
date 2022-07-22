@@ -1,4 +1,4 @@
-.. _contents:
+:nosearch:
 
 ``pulsarbat``
 =============
@@ -51,10 +51,9 @@ License
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Getting Started
 
    install
-   tutorial
-   reference
-   changelog
+   tutorial/index
+   reference/index
    contributing
+   changelog

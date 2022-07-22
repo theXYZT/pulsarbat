@@ -1,1 +1,3 @@
+:nosearch:
+
 .. include:: ../CONTRIBUTING.rst
