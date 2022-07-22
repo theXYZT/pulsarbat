@@ -2,4 +2,10 @@
 API Reference
 =============
 
-Under construction :)
+    :Release: |release|
+    :Date: |today|
+
+.. toctree::
+   :maxdepth: 2
+
+   signals

@@ -8,6 +8,10 @@ release = pulsarbat.__version__
 
 json_url = "https://pulsarbat.readthedocs.io/en/dev/_static/switcher.json"
 version_match = os.environ.get("READTHEDOCS_VERSION")
+if not version_match or version_match.isdigit():
+    json_url = "/_static/switcher.json"
+    version_match = "dev"
+
 
 # -- Extensions --------------------------------------------------------------
 

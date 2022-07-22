@@ -3,8 +3,6 @@
 ``pulsarbat``
 =============
 
-.. only:: html
-
     :Release: |release|
     :Date: |today|
 
