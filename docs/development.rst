@@ -1,8 +1,8 @@
 :nosearch:
 
-============
-Contributing
-============
+===========
+Development
+===========
 
 Contributions are welcome, and they are greatly appreciated! Every little bit helps, and credit will always be given. This page assumes the reader has some familiarity with contributing to open-source Python projects using GitHub.
 

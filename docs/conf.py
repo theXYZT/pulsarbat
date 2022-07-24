@@ -24,6 +24,8 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
+    "nb2plots",
+    "texext",
     "numpydoc",
 ]
 
@@ -109,4 +111,8 @@ html_context = {
 }
 
 html_static_path = ["_static", ]
-html_css_files = ["custom.css", ]
+
+
+def setup(app):
+    app.add_css_file("custom.css")
+    app.add_js_file("copybutton.js")

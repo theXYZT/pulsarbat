@@ -53,5 +53,5 @@ License
    install
    tutorial/index
    reference/index
-   contributing
+   development
    changelog
