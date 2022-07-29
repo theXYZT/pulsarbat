@@ -26,6 +26,8 @@ pulsarbat
 * Easy integration with Dask_ for lazily executed workflows or managing large workloads
   in an "embarassingly parallel" manner.
 
+.. _Dask: https://dask.org/
+
 Documentation can be found at: https://pulsarbat.readthedocs.io
 
 
