@@ -5,9 +5,7 @@ Contrib
 .. currentmodule:: pulsarbat.contrib
 
 .. autosummary::
-    :nosignatures:
-    :toctree: contrib
+    :toctree: generated/
 
     stft
     istft
-    phase_deconvolution

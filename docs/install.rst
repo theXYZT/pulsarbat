@@ -1,61 +1,57 @@
-.. highlight:: shell
+:nosearch:
 
 ============
 Installation
 ============
 
-Requirements
-------------
+``pulsarbat`` has the following dependencies:
 
-`pulsarbat` has the following strict requirements:
-
-- **Python 3.10 or later**
+- **Python 3.9 or later**
 - `Astropy <https://www.astropy.org/>`_ 5.1 or later
 - `Numpy <https://www.numpy.org/>`_ 1.23 or later
 - `Scipy <https://scipy.org/>`_ 1.8.1 or later
 - `Baseband <https://baseband.readthedocs.io/>`_ 4.1.1 or later
-
-For optional features, `pulsarbat` also depends on:
-
-- `Dask <https://dask.org/>`_ 2022.6.1 or later: Lazy execution and
-  "embarassingly parallel" workflows.
+- `Dask <https://dask.org/>`_ 2022.6.1 or later: with Dask Array.
 
 
-Stable release
---------------
+Released version
+----------------
 
-To install pulsarbat with `pip`_ along with optional dependencies, run:
+To install the latest released version of ``pulsarbat`` with `pip`_, run:
 
 .. code-block:: console
 
-    $ pip install pulsarbat[all]
+    $ pip install pulsarbat
 
-This is the preferred method to install pulsarbat, as it will always
-install the most recent stable release. If you don't have `pip`_
-installed, this `Python installation guide`_ can guide you through the
-process.
+If you don't have `pip`_ installed, this `Python installation guide`_ can guide you through the process.
 
 .. _pip: https://pip.pypa.io
 .. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
 
 
-From sources
-------------
+Development version
+-------------------
 
-The source code for pulsarbat can be downloaded from the `Github repo`_.
-
-You can clone the public repository:
+To install the latest development version of ``pulsarbat``, you can clone the `public repository <https://github.com/theXYZT/pulsarbat>`_ and install the package:
 
 .. code-block:: console
 
     $ git clone git://github.com/theXYZT/pulsarbat
+    $ cd pulsarbat
+    $ pip install -e .
 
-Then install with:
+The ``-e`` flag installs the package in editable mode which allows you to update the package at any time via:
 
 .. code-block:: console
 
-    $ cd pulsarbat
-    $ pip install .[all]
+    $ git pull
 
 
-.. _Github repo: https://github.com/theXYZT/pulsarbat
+Testing
+-------
+
+``pulsarbat`` uses the ``pytest`` testing package. You can test the development version of the package from the source directory with:
+
+.. code-block:: console
+
+    $ pytest

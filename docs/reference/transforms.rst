@@ -5,8 +5,7 @@ Transforms
 .. currentmodule:: pulsarbat
 
 .. autosummary::
-    :nosignatures:
-    :toctree: transforms
+    :toctree: generated/
 
     signal_transform
     concatenate

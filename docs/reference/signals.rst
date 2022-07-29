@@ -5,9 +5,8 @@ Signals
 .. currentmodule:: pulsarbat
 
 .. autosummary::
-    :nosignatures:
-    :toctree: signals
-    :template: signal_class.rst
+   :toctree: generated/
+   :template: signal_class.rst
 
     Signal
     RadioSignal

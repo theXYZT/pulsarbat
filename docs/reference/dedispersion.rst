@@ -5,7 +5,7 @@ Dedispersion
 .. currentmodule:: pulsarbat
 
 .. autosummary::
-    :toctree: dedispersion
+    :toctree: generated/
 
     DispersionMeasure
     coherent_dedispersion

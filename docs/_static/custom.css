@@ -1,0 +1,15 @@
+html[data-theme="light"] {
+    --pst-color-target: #fff8cc;
+}
+
+.bd-search input:active, .bd-search input:focus {
+    color: var(--pst-color-text-muted);
+}
+
+div.injected {
+    display: none;
+}
+
+code {
+    font-size: 100%;
+}

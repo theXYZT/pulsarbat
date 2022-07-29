@@ -4,14 +4,8 @@ import math
 import numpy as np
 import astropy.units as u
 import pulsarbat as pb
-
-try:
-    import dask
-    import dask.array as da
-except ImportError:
-    HAS_DASK = False
-else:
-    HAS_DASK = True
+import dask
+import dask.array as da
 
 
 __all__ = [
@@ -22,15 +16,10 @@ __all__ = [
 ]
 
 
-def _transfer_function(coeff, N, dt, center_freq, ref_freq, taper=False):
+def _transfer_function(coeff, N, dt, center_freq, ref_freq):
     f = center_freq.to(u.Hz) + np.fft.fftfreq(N, dt).to(u.Hz)
     phase = coeff * f * u.cycle * (1 / ref_freq - 1 / f) ** 2
     tf = np.exp(-1j * phase.to_value(u.rad))
-
-    if taper:
-        f = np.fft.fftfreq(N)
-        tf /= np.sqrt(1 + (f / 0.475) ** 80)
-
     return tf.astype(np.complex64)
 
 
@@ -52,10 +41,10 @@ class DispersionMeasure(u.SpecificTypeQuantity):
         samples = samples.to_value(u.one)
         return samples
 
-    def chirp_function(self, N, dt, center_freq, ref_freq, taper=False, use_dask=False):
+    def chirp_function(self, N, dt, center_freq, ref_freq, use_dask=False):
         """Chirp function for coherent dedispersion."""
         coeff = self.dispersion_constant * self
-        tf_args = (coeff, N, dt, center_freq, ref_freq, taper)
+        tf_args = (coeff, N, dt, center_freq, ref_freq)
 
         if use_dask:
             delayed_tf = dask.delayed(_transfer_function, pure=True)
@@ -67,21 +56,19 @@ class DispersionMeasure(u.SpecificTypeQuantity):
 
         return chirp
 
-    def chirp_from_signal(self, z, /, *, ref_freq=None, taper=False):
+    def chirp_from_signal(self, z, /, *, ref_freq=None):
         """Returns chirp function to dedisperse given baseband signal."""
         if not isinstance(z, pb.BasebandSignal):
             raise TypeError("Signal must be a BasebandSignal object.")
 
-        use_dask = HAS_DASK and isinstance(z.data, da.Array)
         ix = tuple(slice(None) if i < 2 else None for i in range(z.ndim))
-
         N, dt = len(z), z.dt
 
         if ref_freq is None:
             ref_freq = z.center_freq
 
         chirps = [
-            self.chirp_function(N, dt, f, ref_freq, taper, use_dask)
+            self.chirp_function(N, dt, f, ref_freq, isinstance(z.data, da.Array))
             for f in z.channel_freqs
         ]
 
@@ -95,34 +82,34 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None, chirp=None):
     """Coherently dedisperses a baseband signal.
 
     The given signal will be coherently dedispersed by a given dispersion
-    measure (DM). If a reference frequency (`ref_freq`) is not given, the
+    measure (DM). If a reference frequency (``ref_freq``) is not given, the
     center frequency of the signal will be used as reference.
 
-    Optionally, a pre-computed chirp function (`chirp`) can be provided
+    Optionally, a pre-computed chirp function (``chirp``) can be provided
     as an array. If a chirp is provided, it will not be checked against
     the given DM and reference frequency for correctness.
 
     The output signal will be cropped on both ends to avoid wrap-around
     artifacts caused by dedispersion. This depends on where the
-    reference frequency (`ref_freq`) is compared to the band of the
+    reference frequency (``ref_freq``) is compared to the band of the
     signal.
 
     Parameters
     ----------
-    z : `~pulsarbat.BasebandSignal`
+    z : BasebandSignal
         The signal to be transformed.
-    DM : `~pulsarbat.DispersionMeasure`
-        Dispersion measure by which to dedisperse `z`.
-    ref_freq : `~astropy.units.Quantity`, optional
+    DM : DispersionMeasure
+        Dispersion measure by which to dedisperse ``z``.
+    ref_freq : Quantity, optional
         Reference frequency for dedispersion. If None (default), uses
         the center frequency from signal.
     chirp : array-like, optional
         A pre-computed chirp function. Must be a 2-D array with shape
-        `z.shape[:2]`.
+        ``z.shape[:2]``.
 
     Returns
     -------
-    out : `~pulsarbat.BasebandSignal`
+    out : BasebandSignal
         The dedispersed signal.
     """
     if not isinstance(z, pb.BasebandSignal):
@@ -150,21 +137,21 @@ def incoherent_dedispersion(z, DM, /, *, ref_freq=None):
 
     The output signal will be cropped on both ends to avoid wrap-around
     artifacts caused by dedispersion. This depends on where the
-    reference frequency (`ref_freq`) compared to the band of the signal.
+    reference frequency (``ref_freq``) compared to the band of the signal.
 
     Parameters
     ----------
-    z : `~pulsarbat.RadioSignal`
+    z : RadioSignal
         The signal to be transformed.
-    DM : `~pulsarbat.DispersionMeasure`
-        Dispersion measure by which to dedisperse `z`.
-    ref_freq : `~astropy.units.Quantity`, optional
+    DM : DispersionMeasure
+        Dispersion measure by which to dedisperse ``z``.
+    ref_freq : Quantity, optional
         Reference frequency for dedispersion. If None (default), uses
         the center frequency from signal.
 
     Returns
     -------
-    out : `~pulsarbat.RadioSignal`
+    out : RadioSignal
         The dedispersed signal.
     """
     if not isinstance(z, pb.RadioSignal):

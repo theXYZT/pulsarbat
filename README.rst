@@ -19,29 +19,39 @@ pulsarbat
         :alt: Documentation Status
 
 
-Pulsarbat (Pulsar Baseband Analysis Tools) is a package for analysis of baseband observations of pulsars.
+``pulsarbat`` (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband signals. Although this package has a special focus on radio pulsar astronomy, it can be easily used to work with other types of radio astronomical observations (such as fast radio bursts, quasars, and so on) or any time-frequency data, in general. ``pulsarbat`` provides:
+
+* Signals: Standardized containers for signal data.
+* Functions/Transforms for manipulating signals.
+* Easy integration with Dask_ for lazily executed workflows or managing large workloads
+  in an "embarassingly parallel" manner.
 
 Documentation can be found at: https://pulsarbat.readthedocs.io
 
 
-Installation
-------------
+Quickstart
+----------
 
-You can install pulsarbat along with all optional dependencies via::
+Install the latest version of ``pulsarbat``:
 
-    pip install pulsarbat[all]
+.. code-block:: console
+
+    $ pip install pulsarbat
+
+To use ``pulsarbat`` in a project:
+
+.. code-block:: python
+
+    import pulsarbat as pb
+
+
+Citing
+------
+
+For next release, there should be a Zenodo citation!
 
 
 License
 -------
 
-Pulsarbat is licensed under the GNU General Public License v3.
-
-
-Credits
--------
-
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+``pulsarbat`` is licensed under the GNU General Public License v3.
