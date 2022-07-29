@@ -18,6 +18,9 @@ pulsarbat
         :target: https://pulsarbat.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
+.. image:: https://zenodo.org/badge/194818440.svg
+   :target: https://zenodo.org/badge/latestdoi/194818440
+
 
 ``pulsarbat`` (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband signals. Although this package has a special focus on radio pulsar astronomy, it can be easily used to work with other types of radio astronomical observations (such as fast radio bursts, quasars, and so on) or any time-frequency data, in general. ``pulsarbat`` provides:
 
