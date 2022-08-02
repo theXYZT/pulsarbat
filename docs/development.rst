@@ -31,6 +31,9 @@ A reminder for the maintainers on how to deploy a release:
 
 * Make sure all changes are committed.
 * Update changelog in ``HISTORY.rst``.
-* Update package version in ``pulsarbat/__init__.py`` either manually or using ``bump2version``.
-* Create a tagged commit with tag: ``vX.Y.Z`` and push tags to origin. A tagged commit should automatically publish the package to PyPI via Github Actions.
+* Update package version in ``pulsarbat/__init__.py`` either manually or
+  using ``bump2version``.
+* Create a tagged commit with tag: ``vX.Y.Z`` and push tags to origin.
+  A tagged commit should automatically publish the package to PyPI via
+  Github Actions.
 * Create a release on Github on the tagged commit (this will trigger Zenodo).

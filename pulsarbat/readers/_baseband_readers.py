@@ -191,9 +191,9 @@ class GUPPIRawReader(BasebandReader):
     Parameters
     ----------
     name
-        File name, filehandle, or sequence of file names to pass on to
+        Filename, filehandle, or sequence of filenames to pass on to
         `~baseband.open` to create a GUPPIStreamReader object via
-        `baseband.open(name, 'rs', format='guppi', squeeze=False)`.
+        ``baseband.open(name, 'rs', format='guppi', squeeze=False)``.
     """
 
     def __init__(self, name, /):

@@ -291,11 +291,8 @@ class BaseReader:
             z = da.from_delayed(delayed_read(offset, n, **kwargs),
                                 dtype=self.dtype, shape=_out_shape)
 
-            chunks = kwargs.get("chunks")
-            if chunks is None:
-                chunks = (-1,) + ("auto",) * len(self.sample_shape)
-            z = z.rechunk(chunks)
-
+            default_chunks = (-1,) + ("auto",) * len(self.sample_shape)
+            z = z.rechunk(kwargs.get("chunks", default_chunks))
         else:
             z = self._read_array(offset, n, **kwargs)
 
