@@ -32,8 +32,10 @@ B1937+21    7-May-18  163000.00   58245.68750000000            71.020167
  -9.15695855709336387e-20 -1.59591049042759423e-21  1.52097772879173001e-23
 """
 
+phase_tols = dict(rtol=0, atol=1E-8 * u.cycle)
 
-class TestPhasePredictor:
+
+class TestPredictor:
     def test_basic(self):
         p = pb.PhasePredictor.from_polyco(TEST_POLYCO)
         assert np.all(pb.PhasePredictor(p) == p)
@@ -45,8 +47,8 @@ class TestPhasePredictor:
         assert type(ph) is pb.Phase
         assert int(ph.int.cycle) == 146774936445
         assert np.isclose(ph.frac.cycle, 0.058161699852649296)
-        assert u.isclose(f0, 641.973647812571 * u.cycle / u.s, rtol=1E-8)
-        assert u.isclose(f1, -6.635997412662843e-08 * u.cycle / u.s**2, rtol=1E-8)
+        assert u.isclose(f0, 641.973647812571 * u.cycle / u.s, rtol=1e-8)
+        assert u.isclose(f1, -6.635997412662843e-08 * u.cycle / u.s ** 2, rtol=1e-8)
 
         ts = t + np.arange(10000) * u.us
         ph = p(ts)
@@ -65,13 +67,13 @@ class TestPhasePredictor:
         assert len(q.intervals) == 3
 
         with pytest.raises(ValueError):
-            t = Time("60000", format='mjd')
+            t = Time("60000", format="mjd")
             _ = p(t)
 
     def test_stringio(self):
         p = pb.PhasePredictor.from_polyco(StringIO(ENTRY_TEXT))
         ref = pb.Phase(146754136477, 0.666475) + (-3.17034199847385061e-07)
-        assert u.isclose(ref, p(p['tmid'][0]), rtol=0, atol=1E-8 * u.cycle)
+        assert u.isclose(ref, p(p["tmid"][0]), **phase_tols)
 
         text = "this is not a polyco"
         with pytest.raises(ValueError):
@@ -82,14 +84,39 @@ class TestPhasePredictor:
 
     def test_phasepol(self):
         p = pb.PhasePredictor.from_polyco(StringIO(ENTRY_TEXT))
-        t = p[0]['tmid']
+        t = p[0]["tmid"]
         pol, ref = p.phasepol(t)
-        assert u.isclose(p(t + 1 * u.s), ref + pol(1), rtol=0, atol=1E-8 * u.cycle)
-        assert u.isclose(p(t + 8 * u.s), ref + pol(8), rtol=0, atol=1E-8 * u.cycle)
-        assert u.isclose(p(t + 1 * u.ms), ref + pol(0.001), rtol=0, atol=1E-8 * u.cycle)
+        assert u.isclose(p(t + 1 * u.s), ref + pol(1), **phase_tols)
+        assert u.isclose(p(t + 8 * u.s), ref + pol(8), **phase_tols)
+        assert u.isclose(p(t + 1 * u.ms), ref + pol(0.001), **phase_tols)
 
         with pytest.raises(ValueError):
             _ = p.phasepol(t + np.arange(10) * u.ms)
+
+    def test_polyco_entry(self):
+        t = Time("60000", format="mjd")
+
+        entry = pb.PolycoEntry(
+            psr="Fake",
+            obs="@",
+            freq=1 * u.GHz,
+            tmid=t,
+            span=1 * u.day,
+            rphase=0,
+            poly=np.polynomial.Polynomial([0, 1]),
+        )
+
+        p = pb.PhasePredictor([entry])
+        assert u.isclose(p(t), pb.Phase(0), **phase_tols)
+        assert u.isclose(p(t + 1 * u.s), pb.Phase(1), **phase_tols)
+        assert u.isclose(p(t + 1 * u.ms), pb.Phase(0.001), **phase_tols)
+        assert u.isclose(p(t + 1 * u.hr), pb.Phase(3600), **phase_tols)
+
+        assert u.isclose(p.f0(t), 1 * u.cycle / u.s)
+        assert u.isclose(p.f0(t + 1 * u.hr), 1 * u.cycle / u.s)
+
+        assert u.isclose(p.f0(t, n=1), 0 * u.cycle / u.s**2)
+        assert u.isclose(p.f0(t + 1 * u.hr, n=1), 0 * u.cycle / u.s**2)
 
 
 class TestPhase:
