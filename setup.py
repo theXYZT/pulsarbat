@@ -9,7 +9,7 @@ setup(
         "numpy >= 1.22",
         "scipy >= 1.9",
         "baseband >= 4.1.1",
-        "dask[array] >= 2022.7.1",
+        "dask[array] >= 2022.8.1",
     ],
     tests_require=["pytest >= 7.1.2"],
 )

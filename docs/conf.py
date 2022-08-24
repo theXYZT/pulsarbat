@@ -118,6 +118,9 @@ html_theme_options = {
     },
 }
 
+html_sidebars = {
+    "**": ["search-field", "sidebar-nav-bs"],
+}
 
 html_context = {
     "default_mode": "light",
