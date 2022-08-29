@@ -11,5 +11,5 @@ setup(
         "baseband >= 4.1.1",
         "dask[array] >= 2022.8.1",
     ],
-    tests_require=["pytest >= 7.1.2"],
+    tests_require=["pytest >= 7.1.2", "cloudpickle >= 2.1.0"],
 )

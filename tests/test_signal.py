@@ -6,6 +6,7 @@ import dask.array as da
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
+import cloudpickle
 
 RAND = np.random.default_rng(seed=42)
 
@@ -15,6 +16,9 @@ RAND = np.random.default_rng(seed=42)
 def test_signal_basic(fn, shape):
     for x in [fn(shape), fn(shape) + 1j * fn(shape)]:
         z = pb.Signal(x, sample_rate=1 * u.Hz)
+
+        # Test picklability
+        _ = cloudpickle.loads(cloudpickle.dumps(z))
 
         assert isinstance(z, pb.Signal)
         assert z.shape == shape
@@ -120,6 +124,10 @@ def test_dtype_constraints():
     for dtype in [np.int8, np.int16]:
         x = np.zeros(shape, dtype=dtype)
         z = ArbitrarySignal(x, sample_rate=1 * u.Hz, foo="bar")
+
+        # Test picklability
+        _ = cloudpickle.loads(cloudpickle.dumps(z))
+
         assert z.dtype == np.int16
 
     for dtype in [np.float32, np.int64]:
