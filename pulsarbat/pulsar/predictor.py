@@ -3,7 +3,6 @@
 import operator
 import functools
 from dataclasses import dataclass, asdict
-import collections
 import numpy as np
 from numpy.polynomial import Polynomial
 from astropy import units as u
