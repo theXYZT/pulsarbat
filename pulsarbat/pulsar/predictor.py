@@ -3,11 +3,12 @@
 import operator
 import functools
 from dataclasses import dataclass, asdict
+import collections
 import numpy as np
 from numpy.polynomial import Polynomial
 from astropy import units as u
 from astropy.time import Time
-from astropy.table import QTable, Table
+from astropy.table import QTable
 import pulsarbat as pb
 
 __all__ = ["PolycoEntry", "PhasePredictor"]
@@ -65,9 +66,12 @@ class PhasePredictor(QTable):
     }
 
     def __init__(self, data=None, *args, **kwargs):
-        if not (data is None or isinstance(data, Table)):
+        try:
             data = [asdict(x) for x in data]
             data = sorted(data, key=operator.itemgetter("tmid"))
+        except (TypeError, KeyError):
+            pass
+        else:
             kwargs.setdefault("descriptions", self._descriptions)
 
         super().__init__(data, *args, **kwargs)
