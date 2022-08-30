@@ -7,6 +7,7 @@ import numpy as np
 import astropy.units as u
 from astropy.time import Time
 import pulsarbat as pb
+import cloudpickle
 
 TEST_POLYCO = Path(__file__).parent.absolute() / "data" / "timing.dat"
 
@@ -40,6 +41,9 @@ class TestPredictor:
         p = pb.PhasePredictor.from_polyco(TEST_POLYCO)
         assert np.all(pb.PhasePredictor(p) == p)
         assert len(p.intervals) == 1
+
+        q = cloudpickle.loads(cloudpickle.dumps(p))
+        assert np.all(q == p)
 
         t = Time("58245.375", format="mjd", precision=9)
         ph, f0, f1 = p(t), p.f0(t), p.f0(t, n=1)
