@@ -1,5 +1,5 @@
 sphinx>=5.1.1
-pydata-sphinx-theme==0.9
+pydata-sphinx-theme==0.10.1
 numpydoc>=1.4.0
 nb2plots>=0.6.1
 
