@@ -3,6 +3,6 @@
 # flake8: noqa
 
 from .phase import FractionalPhase, Phase
-from .predictor import Polyco
+from .predictor import PolycoEntry, PhasePredictor
 
-__all__ = ["Polyco", "Phase", "FractionalPhase"]
+__all__ = ["PolycoEntry", "PhasePredictor", "Phase", "FractionalPhase"]

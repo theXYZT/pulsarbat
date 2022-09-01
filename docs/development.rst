@@ -27,12 +27,13 @@ To contribute changes (fixing bugs, adding features), we follow a typical `GitHu
 Deploying
 ---------
 
-A reminder for the maintainers on how to deploy a release. A tagged commit will automatically trigger a release and publish the package to PyPI. For now, we use the ``bump2version`` package to do this. Make sure all your changes are committed (including an entry in `HISTORY.rst`).
+A reminder for the maintainers on how to deploy a release:
 
-Then run:
-
-.. code-block:: console
-
-    $ bumpversion patch  # possible: major / minor / patch
-    $ git push
-    $ git push --tags
+* Make sure all changes are committed.
+* Update changelog in ``HISTORY.rst``.
+* Update package version in ``pulsarbat/__init__.py`` either manually or
+  using ``bump2version``.
+* Create a tagged commit with tag: ``vX.Y.Z`` and push tags to origin.
+  A tagged commit should automatically publish the package to PyPI via
+  Github Actions.
+* Create a release on Github on the tagged commit (this will trigger Zenodo).

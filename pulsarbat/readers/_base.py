@@ -82,6 +82,8 @@ class BaseReader:
 
         self._signal_type = signal_type
         self._signal_kwargs = signal_kwargs
+        for key in signal_kwargs:
+            setattr(self, key, signal_kwargs[key])
 
         self._dtype = np.dtype(dtype)
         self._shape = tuple(operator.index(a) for a in shape)
@@ -123,11 +125,6 @@ class BaseReader:
         sig = f"{self._signal_type.__name__}({info})"
         s = f"{self.__class__.__name__}<{sig}> @ {hex(id(self))}"
         return s
-
-    def __getattr__(self, name):
-        if name in self._signal_kwargs:
-            return self._signal_kwargs[name]
-        return super().__getattribute__(name)
 
     def __dir__(self):
         members = set(object.__dir__(self))
@@ -291,11 +288,8 @@ class BaseReader:
             z = da.from_delayed(delayed_read(offset, n, **kwargs),
                                 dtype=self.dtype, shape=_out_shape)
 
-            chunks = kwargs.get("chunks")
-            if chunks is None:
-                chunks = (-1,) + ("auto",) * len(self.sample_shape)
-            z = z.rechunk(chunks)
-
+            default_chunks = (-1,) + ("auto",) * len(self.sample_shape)
+            z = z.rechunk(kwargs.get("chunks", default_chunks))
         else:
             z = self._read_array(offset, n, **kwargs)
 

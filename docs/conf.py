@@ -1,5 +1,6 @@
 import os
 import pulsarbat
+import warnings
 
 project = "pulsarbat"
 copyright = "2022, Nikhil Mahajan"
@@ -16,18 +17,30 @@ if not version_match or version_match.isdigit():
 # -- Extensions --------------------------------------------------------------
 
 extensions = [
-    "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
-    "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.mathjax",
-    "sphinx.ext.todo",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
+    "matplotlib.sphinxext.plot_directive",
     "nb2plots",
     "texext",
     "numpydoc",
 ]
+
+
+doctest_global_setup = plot_pre_code = """
+import numpy as np
+np.random.seed(123)
+"""
+
+# Plot
+plot_include_source = True
+plot_formats = [('png', 96)]
+plot_html_show_formats = False
+plot_html_show_source_link = False
 
 # Autosummary
 autosummary_generate = True
@@ -105,12 +118,23 @@ html_theme_options = {
     },
 }
 
+html_sidebars = {
+    "**": ["search-field", "sidebar-nav-bs"],
+}
 
 html_context = {
     "default_mode": "light",
 }
 
 html_static_path = ["_static", ]
+
+
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message="Matplotlib is currently using agg, which is a"
+    " non-GUI backend, so cannot show the figure.",
+)
 
 
 def setup(app):

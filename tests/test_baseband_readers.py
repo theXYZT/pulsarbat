@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
+import cloudpickle
 import pulsarbat as pb
 import pulsarbat.readers as pbr
 
@@ -24,6 +25,9 @@ class TestBasebandReader:
         r = pbr.BasebandReader(DATA_DIR / "sample.vdif", squeeze=False)
         assert r.shape == (20000, 8, 1)
 
+        # Test picklability
+        _ = cloudpickle.loads(cloudpickle.dumps(r))
+
     def test_dada(self):
         r = pbr.BasebandReader(DATA_DIR / "sample.dada")
         assert r.shape == (16000, 2)
@@ -35,6 +39,9 @@ class TestBasebandReader:
 
         r = pbr.BasebandReader(DATA_DIR / "sample.dada", squeeze=False)
         assert r.shape == (16000, 2, 1)
+
+        # Test picklability
+        _ = cloudpickle.loads(cloudpickle.dumps(r))
 
     def test_sideband(self):
         f = DATA_DIR / "sample.vdif"
@@ -84,6 +91,9 @@ class TestGUPPIRawReader:
         fs = sorted(DATA_DIR.glob("fake.*.raw"))
         r = pbr.GUPPIRawReader(fs)
         assert len(r) == 8192 * len(fs)
+
+        # Test picklability
+        _ = cloudpickle.loads(cloudpickle.dumps(r))
 
         assert u.isclose(r.center_freq, 344.1875 * u.MHz)
         assert r.pol_type == "linear"

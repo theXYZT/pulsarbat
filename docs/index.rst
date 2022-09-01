@@ -37,7 +37,9 @@ To use ``pulsarbat`` in a project:
 Citing
 ------
 
-For next release, there should be a Zenodo citation!
+``pulsarbat`` has a DOI via Zenodo: https://doi.org/10.5281/zenodo.6934355
+
+This DOI represents all versions, and will always resolve to the latest one. To cite a specific version, follow the link and find the version you want to cite on Zenodo.
 
 
 License
