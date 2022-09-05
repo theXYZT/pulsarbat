@@ -121,6 +121,7 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None, chirp=None):
     if chirp is None:
         chirp = DM.chirp_from_signal(z, ref_freq=ref_freq)
 
+    chirp = chirp[(slice(None),) * chirp.ndim + (None,) * (z.ndim - chirp.ndim)]
     x = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * chirp, axis=0)
 
     delay_top = DM.sample_delay(z.max_freq, ref_freq, z.sample_rate)

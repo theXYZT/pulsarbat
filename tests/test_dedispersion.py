@@ -141,7 +141,7 @@ class TestCoherentDedispersion:
     @pytest.mark.parametrize("use_dask", [True, False])
     @pytest.mark.parametrize("DM", [pb.DM(10), pb.DM(20), pb.DM(50)])
     def test_chirp(self, use_dask, DM):
-        shape = (8192, 4)
+        shape = (8192, 4, 2)
 
         if use_dask:
             f = da.random.standard_normal
@@ -155,6 +155,7 @@ class TestCoherentDedispersion:
 
         y1 = pb.coherent_dedispersion(z, DM)
         y2 = pb.coherent_dedispersion(z, DM, chirp=chirp)
+        _ = pb.coherent_dedispersion(z, DM, chirp=chirp.squeeze())
 
         for rf in [z.min_freq, z.max_freq]:
             chirp = DM.chirp_from_signal(z, ref_freq=rf)
