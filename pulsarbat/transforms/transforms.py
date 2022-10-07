@@ -33,13 +33,11 @@ def signal_transform(func):
     to every chunk independently using `dask.array.map_blocks`. Keyword arguments
     specific to `map_blocks` can be passed via `dask_kwargs`.
     """
+
     @functools.wraps(func)
-    def wrapper(x,
-                *args,
-                signal_type=None,
-                signal_kwargs=dict(),
-                dask_kwargs=dict(),
-                **kwargs):
+    def wrapper(
+        x, *args, signal_type=None, signal_kwargs=dict(), dask_kwargs=dict(), **kwargs
+    ):
 
         sig_class = type(x) if signal_type is None else signal_type
         if not issubclass(sig_class, pb.Signal):
@@ -221,7 +219,7 @@ def freq_shift(z, /, shift):
     if shift.isscalar:
         shift = shift[None]
 
-    ix = (slice(None), ) * shift.ndim + (None, ) * (z.ndim - shift.ndim - 1)
+    ix = (slice(None),) * shift.ndim + (None,) * (z.ndim - shift.ndim - 1)
     ft = (shift[ix] * z.dt).to_value(u.one)
 
     ix = tuple(slice(None) if j == 0 else None for j in range(z.ndim))
@@ -230,14 +228,14 @@ def freq_shift(z, /, shift):
     x = pb.fft.fft(z.data * ph, axis=0)
     m = (len(x) + 1) // 2
 
-    it = np.nditer(ft * len(x), flags=['multi_index'])
+    it = np.nditer(ft * len(x), flags=["multi_index"])
     for a in it:
         if a < 0:
             a = int(np.floor(a))
-            ix = (np.s_[m + a:m], ) + it.multi_index
+            ix = (np.s_[m + a : m],) + it.multi_index
         else:
             a = int(np.ceil(a))
-            ix = (np.s_[m:m + a], ) + it.multi_index
+            ix = (np.s_[m : m + a],) + it.multi_index
 
         x[ix] = 0
 
