@@ -11,6 +11,7 @@ __all__ = [
     "signal_transform",
     "concatenate",
     "time_shift",
+    "freq_shift",
     "fast_len",
 ]
 
@@ -33,8 +34,12 @@ def signal_transform(func):
     specific to `map_blocks` can be passed via `dask_kwargs`.
     """
     @functools.wraps(func)
-    def wrapper(x, *args, signal_type=None, signal_kwargs=dict(),
-                dask_kwargs=dict(), **kwargs):
+    def wrapper(x,
+                *args,
+                signal_type=None,
+                signal_kwargs=dict(),
+                dask_kwargs=dict(),
+                **kwargs):
 
         sig_class = type(x) if signal_type is None else signal_type
         if not issubclass(sig_class, pb.Signal):
@@ -195,6 +200,48 @@ def time_shift(z, /, t):
         x = x[:i]
 
     return x
+
+
+def freq_shift(z, /, shift):
+    """Shift a signal in frequency.
+
+    Parameters
+    ----------
+    z : `~BasebandSignal`
+        Input signal.
+    shift : `~astropy.units.Quantity`
+        Shift amount in units of frequency. Should be a scalar or
+        be have length equal to `z.nchan`.
+
+    Returns
+    -------
+    out : `~BasebandSignal`
+        Frequency-shifted signal.
+    """
+    if shift.isscalar:
+        shift = shift[None]
+
+    ix = (slice(None), ) * shift.ndim + (None, ) * (z.ndim - shift.ndim - 1)
+    ft = (shift[ix] * z.dt).to_value(u.one)
+
+    ix = tuple(slice(None) if j == 0 else None for j in range(z.ndim))
+    ph = np.exp(2j * np.pi * ft * np.arange(len(z))[ix]).astype(z.dtype)
+
+    x = pb.fft.fft(z.data * ph, axis=0)
+    m = (len(x) + 1) // 2
+
+    it = np.nditer(ft * len(x), flags=['multi_index'])
+    for a in it:
+        if a < 0:
+            a = int(np.floor(a))
+            ix = (np.s_[m + a:m], ) + it.multi_index
+        else:
+            a = int(np.ceil(a))
+            ix = (np.s_[m:m + a], ) + it.multi_index
+
+        x[ix] = 0
+
+    return type(z).like(z, pb.fft.ifft(x, axis=0))
 
 
 def fast_len(z, /):
