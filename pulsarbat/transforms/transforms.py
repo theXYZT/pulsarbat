@@ -1,5 +1,6 @@
 """Core signal transforms."""
 
+import operator
 import numpy as np
 import astropy.units as u
 from astropy.time import Time
@@ -10,6 +11,7 @@ import dask.array as da
 __all__ = [
     "signal_transform",
     "concatenate",
+    "snippet",
     "time_shift",
     "fast_len",
 ]
@@ -140,6 +142,74 @@ def concatenate(signals, /, axis=0):
 
     z = np.concatenate([s.data for s in signals], axis=axis)
     return sig_type.like(signals[0], z, **kw)
+
+
+def snippet(z, /, t, n):
+    """Extracts a snippet of a signal.
+
+    If `t` corresponds to non-integer number of samples from the
+    start of `z`, time-shifting via FFT (by applying a phase gradient
+    in the Fourier domain) is used. This usually only makes sense if
+    `z` is a `BasebandSignal`. For non-baseband signals, the output
+    might not be meaningful.
+
+    Parameters
+    ----------
+    z : `~Signal`
+        Input signal.
+    t : int, float, Quantity, or Time
+        Start location of snippet. Given as either a number of
+        samples (int or float) or a Quantity (units of time) relative
+        to the start of the signal, or a Time object specifying the
+        start time of the snippet.
+    n : int
+        Length of snippet in number of samples. Must be an integer.
+
+    Returns
+    -------
+    out : `~Signal`
+        Snippet of `z` starting at `t` with length `n`.
+
+    Notes
+    -----
+    Since an FFT is used, it is efficient to provide a signal with a
+    fast-length via `pb.fast_len(z)`.
+    """
+    if (n := operator.index(n)) < 0:
+        raise ValueError("n must be a non-negative integer.")
+
+    if isinstance(t, Time):
+        t = (t - z.start_time).to(u.s)
+
+    if isinstance(t, u.Quantity):
+        t = (t * z.sample_rate).to_value(u.one)
+
+    if (t < 0) or (len(z) < t + n):
+        raise ValueError("Requested snippet goes out of bounds.")
+
+    if (i := int(t)) < t:
+        shift = i - t
+
+        if isinstance(z.data, da.Array):
+            f = da.fft.fftfreq(len(z), 1)
+        else:
+            f = np.fft.fftfreq(len(z), 1)
+
+        ph = np.exp(-2j * np.pi * shift * f).astype(np.complex64)
+
+        ix = (slice(None),) + (None,) * (z.ndim - 1)
+        shifted = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * ph[ix], axis=0)
+        shifted = shifted if np.iscomplexobj(z.data) else shifted.real
+        shifted = shifted.astype(z.dtype)
+
+        if z.start_time is None:
+            new_start = None
+        else:
+            new_start = z.start_time - shift * z.dt
+
+        z = type(z).like(z, shifted, start_time=new_start)
+
+    return z[i:i+n]
 
 
 def time_shift(z, /, t):
