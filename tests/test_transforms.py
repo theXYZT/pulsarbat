@@ -21,6 +21,13 @@ def assert_equal_radiosignals(x, y):
     assert u.allclose(x.channel_freqs, y.channel_freqs)
 
 
+def impulse(N, t0):
+    """Generate noisy impulse at t0, with given S/N."""
+    n = (np.arange(N) - N // 2) / N
+    x = np.exp(-2j * np.pi * t0 * n)
+    return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex64)
+
+
 class TestConcatenate:
     @pytest.mark.parametrize("use_dask", [True, False])
     def test_basic(self, use_dask):
@@ -74,10 +81,10 @@ class TestConcatenate:
 
     def test_valid_signal(self):
         """
-             🡒 t
+              → t
            ┏━━━┳━━━┓
            ┃ A ┃ B ┃
-         ⭣ ┣━━━╋━━━┫
+         ↓ ┣━━━╋━━━┫
          x ┃ C ┃ D ┃
            ┗━━━┻━━━┛
         valid along t = AB, AD, CB, CD
@@ -130,12 +137,13 @@ class TestConcatenate:
 
     def test_valid_radiosignal(self):
         """
-             🡒 t
+              → t
            ┏━━━┳━━━┓
            ┃ A ┃ B ┃
-         ⭣ ┣━━━╋━━━┫
+         ↓ ┣━━━╋━━━┫
          f ┃ C ┃ D ┃
            ┗━━━┻━━━┛
+
         valid along t = AB, CD
         valid along f = AC, BD
         """
@@ -222,6 +230,61 @@ class TestConcatenate:
 
         with pytest.raises(TypeError):
             _ = pb.concatenate([z[:8], z[8:].data])
+
+
+class TestSnippet:
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_basic(self, use_dask):
+        for t0 in [1.2, 10.5, 15.9]:
+            z = pb.Signal(impulse(1024, t0), sample_rate=1*u.Hz)
+            if use_dask:
+                z = z.to_dask_array()
+
+            for n in [8, 16, 100]:
+                x = pb.snippet(z, t0, 8)
+                assert isinstance(x.data, da.Array if use_dask else np.ndarray)
+                y = np.zeros_like(x.data)
+                y[0] = 1
+
+                assert np.allclose(x.data, y, atol=1E-6)
+                assert x.sample_rate == z.sample_rate
+
+    @pytest.mark.parametrize("t0", [Time.now(), None])
+    def test_time(self, t0):
+        for t in [15.2, 25.6, 11.1]:
+            z = pb.Signal(impulse(1024, 512), sample_rate=1*u.Hz,
+                          start_time=t0)
+
+            y = pb.snippet(z, t, 8)
+
+            if t0 is None:
+                assert y.start_time is None
+            else:
+                assert Time.isclose(y.start_time, z.start_time + t * z.dt)
+
+    def test_errors(self):
+        z = pb.Signal(impulse(1024, 512), sample_rate=1*u.Hz)
+
+        oob_tn = [
+            (-100, 100),
+            (-100, -100),
+            (1000, 50),
+            (1000, -50),
+            (2000, 20),
+            (2000, -20)
+        ]
+
+        # Out of bounds
+        for t, n in oob_tn:
+            with pytest.raises(ValueError):
+                _ = pb.snippet(z, t, n)
+
+        # Bad arguments
+        with pytest.raises(TypeError):
+            _ = pb.snippet(z, t, np.arange(4))
+
+        with pytest.raises(ValueError):
+            _ = pb.snippet(z, np.arange(10), 10)
 
 
 class TestTimeShift:
