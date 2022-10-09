@@ -28,6 +28,12 @@ def impulse(N, t0):
     return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex64)
 
 
+def sinusoid(N, f0):
+    """Generate a complex sinusoid at frequency f0."""
+    n = np.arange(N) / N
+    return np.exp(2j * np.pi * f0 * n).astype(np.complex128)
+
+
 class TestConcatenate:
     @pytest.mark.parametrize("use_dask", [True, False])
     def test_basic(self, use_dask):
@@ -236,7 +242,7 @@ class TestSnippet:
     @pytest.mark.parametrize("use_dask", [True, False])
     def test_basic(self, use_dask):
         for t0 in [1.2, 10.5, 15.9]:
-            z = pb.Signal(impulse(1024, t0), sample_rate=1*u.Hz)
+            z = pb.Signal(impulse(1024, t0), sample_rate=1 * u.Hz)
             if use_dask:
                 z = z.to_dask_array()
 
@@ -246,14 +252,13 @@ class TestSnippet:
                 y = np.zeros_like(x.data)
                 y[0] = 1
 
-                assert np.allclose(x.data, y, atol=1E-6)
+                assert np.allclose(x.data, y, atol=1e-6)
                 assert x.sample_rate == z.sample_rate
 
     @pytest.mark.parametrize("t0", [Time.now(), None])
     def test_time(self, t0):
         for t in [15.2, 25.6, 11.1]:
-            z = pb.Signal(impulse(1024, 512), sample_rate=1*u.Hz,
-                          start_time=t0)
+            z = pb.Signal(impulse(1024, 512), sample_rate=1 * u.Hz, start_time=t0)
 
             y = pb.snippet(z, t, 8)
 
@@ -263,7 +268,7 @@ class TestSnippet:
                 assert Time.isclose(y.start_time, z.start_time + t * z.dt)
 
     def test_errors(self):
-        z = pb.Signal(impulse(1024, 512), sample_rate=1*u.Hz)
+        z = pb.Signal(impulse(1024, 512), sample_rate=1 * u.Hz)
 
         oob_tn = [
             (-100, 100),
@@ -271,7 +276,7 @@ class TestSnippet:
             (1000, 50),
             (1000, -50),
             (2000, 20),
-            (2000, -20)
+            (2000, -20),
         ]
 
         # Out of bounds
@@ -330,6 +335,76 @@ class TestTimeShift:
             assert np.allclose(np.array(z), imp2)
 
 
+class TestFreqShift:
+    @pytest.mark.parametrize("nband", [1, 4, 8])
+    @pytest.mark.parametrize("npol", [1, 2])
+    def test_int_roll(self, nband, npol):
+        N = 1024
+        sig = np.array([[sinusoid(N, 0)] * nband] * npol).T
+        x = pb.BasebandSignal(
+            sig, sample_rate=1 * u.Hz, center_freq=1 * u.kHz, start_time=Time.now()
+        )
+        for _ in range(20):
+            shifts = np.random.choice(np.arange(-N // 2, N // 2), x.sample_shape)
+            y = pb.freq_shift(x, shifts * x.sample_rate / len(x))
+            a = abs(np.fft.fft(y, axis=0))
+            assert (
+                np.nonzero(~np.isclose(a, 0))[0] == sorted(shifts.flatten() % N)
+            ).all()
+
+    @pytest.mark.parametrize("nband", [1, 4, 8])
+    @pytest.mark.parametrize("npol", [1, 2])
+    def test_subsample_roll(self, nband, npol):
+        N = 1024
+        for _ in range(20):
+            shifts = np.random.uniform(-N // 2, N // 2 - 1, (nband, npol))
+            sig_1 = np.zeros((N, nband, npol), dtype=complex)
+            for band in range(nband):
+                for pol in range(npol):
+                    sig_1[:, band, pol] = sinusoid(N, shifts[band, pol])
+            sig_2 = np.array([[sinusoid(N, 0)] * nband] * npol).T
+            x = pb.BasebandSignal(
+                sig_1,
+                sample_rate=1 * u.Hz,
+                center_freq=1 * u.kHz,
+                start_time=Time.now(),
+            )
+            y = pb.freq_shift(x, -shifts * x.sample_rate / len(x))
+            print(shifts)
+            assert np.allclose(np.array(y), sig_2)
+
+    @pytest.mark.parametrize("nband", [1, 4, 8])
+    @pytest.mark.parametrize("npol", [1, 2])
+    @pytest.mark.parametrize("use_dask", [True, False])
+    @pytest.mark.parametrize("use_complex", [True, False])
+    def test_zeroing(self, use_dask, use_complex, nband, npol):
+        N = 1024
+        if use_dask:
+            f = da.random.standard_normal
+        else:
+            f = np.random.standard_normal
+
+        shape = (N, nband, npol)
+
+        if use_complex:
+            x = (f(shape) + 1j * f(shape)).astype(np.complex128)
+        else:
+            x = f(shape).astype(np.float64)
+
+        z = pb.BasebandSignal(
+            x,
+            sample_rate=1 * u.kHz,
+            center_freq=1 * u.kHz,
+            start_time=Time.now(),
+        )
+        for _ in range(20):
+            shifts = np.random.uniform(-N * 2, N * 2, (nband, npol))
+            y = pb.freq_shift(z, shifts * z.sample_rate / len(z))
+            a = abs(np.fft.fft(y, axis=0))
+            shifts[abs(shifts) > N] = N
+            assert np.count_nonzero(np.isclose(a, 0)) == np.ceil(abs(shifts)).sum()
+
+
 class TestFastLen:
     def test_fast(self):
         for N in [4096, 4100, 4111]:
@@ -346,26 +421,27 @@ class TestSignalTransform:
         from scipy.ndimage import median_filter
 
         data = arange(9).reshape(-1, 3)
-        res = median_filter(arange(9).reshape(-1, 3), size=3, mode='constant')
+        res = median_filter(arange(9).reshape(-1, 3), size=3, mode="constant")
 
         sig_med_filt = pb.signal_transform(median_filter)
 
         t0 = Time.now()
-        z = pb.Signal(data, sample_rate=1*u.Hz, start_time=t0)
+        z = pb.Signal(data, sample_rate=1 * u.Hz, start_time=t0)
 
         x = type(z).like(z, res)
-        y = sig_med_filt(z, size=3, mode='constant')
+        y = sig_med_filt(z, size=3, mode="constant")
 
         assert isinstance(y.data, type(z.data))
         assert_equal_signals(x, y)
 
-        kw = dict(center_freq=1*u.GHz, chan_bw=10*u.MHz)
-        y = sig_med_filt(z, signal_type=pb.IntensitySignal, signal_kwargs=kw,
-                         size=3, mode='constant')
+        kw = dict(center_freq=1 * u.GHz, chan_bw=10 * u.MHz)
+        y = sig_med_filt(
+            z, signal_type=pb.IntensitySignal, signal_kwargs=kw, size=3, mode="constant"
+        )
 
         assert isinstance(y, pb.IntensitySignal)
-        assert y.center_freq == kw['center_freq']
-        assert y.chan_bw == kw['chan_bw']
+        assert y.center_freq == kw["center_freq"]
+        assert y.chan_bw == kw["chan_bw"]
 
         with pytest.raises(TypeError):
-            _ = sig_med_filt(z, signal_type=np.ndarray, size=3, mode='constant')
+            _ = sig_med_filt(z, signal_type=np.ndarray, size=3, mode="constant")

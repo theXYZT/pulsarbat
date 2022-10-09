@@ -212,7 +212,7 @@ def snippet(z, /, t, n):
 
         z = type(z).like(z, shifted, start_time=new_start)
 
-    return z[i:i+n]
+    return z[i : i + n]
 
 
 def time_shift(z, /, t):
@@ -271,15 +271,15 @@ def time_shift(z, /, t):
 
 
 def freq_shift(z, /, shift):
-    """Shift a signal in frequency.
+    """Shift signal data in frequency by given amount.
 
     Parameters
     ----------
     z : `~BasebandSignal`
         Input signal.
     shift : `~astropy.units.Quantity`
-        Shift amount in units of frequency. Should be a scalar or
-        be have length equal to `z.nchan`.
+        Shift amount in units of frequency. Should have shape `z.sample_shape[:n]`
+        for `0 <= n`.
 
     Returns
     -------
@@ -295,21 +295,22 @@ def freq_shift(z, /, shift):
     ix = tuple(slice(None) if j == 0 else None for j in range(z.ndim))
     ph = np.exp(2j * np.pi * ft * np.arange(len(z))[ix]).astype(z.dtype)
 
-    x = pb.fft.fft(z.data * ph, axis=0)
-    m = (len(x) + 1) // 2
+    x = np.fft.fftshift(pb.fft.fft(z.data * ph, axis=0), axes=(0,))
 
     it = np.nditer(ft * len(x), flags=["multi_index"])
     for a in it:
         if a < 0:
             a = int(np.floor(a))
-            ix = (np.s_[m + a : m],) + it.multi_index
+            print(a)
+            ix = (np.s_[a:],) + it.multi_index
         else:
             a = int(np.ceil(a))
-            ix = (np.s_[m : m + a],) + it.multi_index
+            print(a)
+            ix = (np.s_[:a],) + it.multi_index
 
         x[ix] = 0
 
-    return type(z).like(z, pb.fft.ifft(x, axis=0))
+    return type(z).like(z, pb.fft.ifft(np.fft.ifftshift(x, axes=(0,)), axis=0))
 
 
 def fast_len(z, /):
