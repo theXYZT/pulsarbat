@@ -25,7 +25,7 @@ def impulse(N, t0):
     """Generate noisy impulse at t0, with given S/N."""
     n = (np.arange(N) - N // 2) / N
     x = np.exp(-2j * np.pi * t0 * n)
-    return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex64)
+    return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex128)
 
 
 def sinusoid(N, f0):
@@ -336,73 +336,104 @@ class TestTimeShift:
 
 
 class TestFreqShift:
-    @pytest.mark.parametrize("nband", [1, 4, 8])
-    @pytest.mark.parametrize("npol", [1, 2])
-    def test_int_roll(self, nband, npol):
-        N = 1024
-        sig = np.array([[sinusoid(N, 0)] * nband] * npol).T
-        x = pb.BasebandSignal(
-            sig, sample_rate=1 * u.Hz, center_freq=1 * u.kHz, start_time=Time.now()
-        )
-        for _ in range(20):
-            shifts = np.random.choice(np.arange(-N // 2, N // 2), x.sample_shape)
-            y = pb.freq_shift(x, shifts * x.sample_rate / len(x))
-            a = abs(np.fft.fft(y, axis=0))
-            assert (
-                np.nonzero(~np.isclose(a, 0))[0] == sorted(shifts.flatten() % N)
-            ).all()
-
-    @pytest.mark.parametrize("nband", [1, 4, 8])
-    @pytest.mark.parametrize("npol", [1, 2])
-    def test_subsample_roll(self, nband, npol):
-        N = 1024
-        for _ in range(20):
-            shifts = np.random.uniform(-N // 2, N // 2 - 1, (nband, npol))
-            sig_1 = np.zeros((N, nband, npol), dtype=complex)
-            for band in range(nband):
-                for pol in range(npol):
-                    sig_1[:, band, pol] = sinusoid(N, shifts[band, pol])
-            sig_2 = np.array([[sinusoid(N, 0)] * nband] * npol).T
-            x = pb.BasebandSignal(
-                sig_1,
-                sample_rate=1 * u.Hz,
-                center_freq=1 * u.kHz,
-                start_time=Time.now(),
-            )
-            y = pb.freq_shift(x, -shifts * x.sample_rate / len(x))
-            print(shifts)
-            assert np.allclose(np.array(y), sig_2)
-
-    @pytest.mark.parametrize("nband", [1, 4, 8])
-    @pytest.mark.parametrize("npol", [1, 2])
+    @pytest.mark.parametrize("N", [1023, 1024])
     @pytest.mark.parametrize("use_dask", [True, False])
-    @pytest.mark.parametrize("use_complex", [True, False])
-    def test_zeroing(self, use_dask, use_complex, nband, npol):
-        N = 1024
-        if use_dask:
-            f = da.random.standard_normal
-        else:
-            f = np.random.standard_normal
+    def test_basic(self, N, use_dask):
+        for target in [-50, 0, 50]:
+            for f0 in [-200, -100, 0, 100, 200]:
+                x = pb.BasebandSignal(
+                    sinusoid(N, f0)[:, None],
+                    sample_rate=N * u.Hz,
+                    center_freq=1 * u.MHz,
+                )
 
-        shape = (N, nband, npol)
+                if use_dask:
+                    x = x.to_dask_array()
 
-        if use_complex:
-            x = (f(shape) + 1j * f(shape)).astype(np.complex128)
-        else:
-            x = f(shape).astype(np.float64)
+                y = pb.freq_shift(x, (target - f0) * u.Hz)
+                assert isinstance(x.data, da.Array if use_dask else np.ndarray)
+                assert isinstance(y, pb.BasebandSignal)
+                assert x.center_freq == y.center_freq
+                assert x.freq_align == y.freq_align
+                assert x.sample_rate == y.sample_rate
+                assert x.start_time == y.start_time
 
-        z = pb.BasebandSignal(
-            x,
-            sample_rate=1 * u.kHz,
-            center_freq=1 * u.kHz,
-            start_time=Time.now(),
+                y = np.asarray(y.data)
+                z = sinusoid(N, target)[:, None]
+                assert np.allclose(y, z)
+
+    @pytest.mark.parametrize("N", [1023, 1024])
+    def test_correctness(self, N):
+        # Shifting to DC and non-integer fs
+        fs = np.array([[-52, -45.4], [-25.5, 34], [14, -36.9], [45.1, 27]])
+        x = pb.BasebandSignal(
+            sinusoid(N, fs[None].T).T, sample_rate=N * u.Hz, center_freq=1 * u.MHz
         )
-        for _ in range(20):
-            shifts = np.random.uniform(-N * 2, N * 2, (nband, npol))
-            y = pb.freq_shift(z, shifts * z.sample_rate / len(z))
-            a = abs(np.fft.fft(y, axis=0))
-            shifts[abs(shifts) > N] = N
-            assert np.count_nonzero(np.isclose(a, 0)) == np.ceil(abs(shifts)).sum()
+
+        y = pb.freq_shift(x, -fs * u.Hz)
+        assert np.allclose(y.data, 1)
+
+        # Shifting by constants and various shapes
+        fs = np.array([[-52, -45], [-25, 34], [14, -36], [45, 27]])
+        x = pb.BasebandSignal(
+            sinusoid(N, fs[None].T).T, sample_rate=N * u.Hz, center_freq=1 * u.MHz
+        )
+
+        for shift in [49, np.array([[4, 1]]), np.array([5, 6, 7, 8])]:
+            y = pb.freq_shift(x, shift * u.Hz)
+
+            shift = np.array(shift)
+            ix = (slice(None),) * shift.ndim + (None,) * (fs.ndim - shift.ndim)
+            z = sinusoid(N, (fs + shift[ix])[None].T).T
+            assert np.allclose(y.data, z)
+
+    def test_errors(self):
+        N = 1024
+        x = pb.Signal(np.zeros((N, 4, 2)), sample_rate=N * u.Hz)
+        with pytest.raises(TypeError):
+            _ = pb.freq_shift(x, 0 * u.Hz)
+
+        x = pb.BasebandSignal(
+            np.zeros((N, 4, 2)), sample_rate=N * u.Hz, center_freq=1 * u.MHz
+        )
+        for shift in ["Boo", 50, 50 * u.s]:
+            with pytest.raises(ValueError):
+                _ = pb.freq_shift(x, shift)
+
+        _ = pb.freq_shift(x, 50 / u.s)  # This should work.
+
+        # Check shift shapes
+        for bad_shape in [(2, 2), (2,), (4, 2, 4), (1024, 4, 2), (1, 4, 2)]:
+            with pytest.raises(ValueError):
+                _ = pb.freq_shift(x, np.ones(bad_shape) * u.Hz)
+
+        for good_shape in [(), (1,), (1, 1), (4,), (4, 2), (1, 2)]:
+            _ = pb.freq_shift(x, np.ones(good_shape) * u.Hz)
+
+    @pytest.mark.parametrize("N", [1023, 1024])
+    def test_zeroing(self, N):
+        shape = (N, 4, 2)
+        x = np.zeros(shape, dtype=np.complex128)
+        x[0] = 1
+        x = pb.BasebandSignal(x, sample_rate=N * u.Hz, center_freq=1 * u.MHz)
+
+        shift = np.array([[10, -10], [20.5, -20.5], [-600, 600], [2000, -2000]])
+        y = pb.freq_shift(x, shift * u.Hz)
+        y = np.fft.fftshift(np.abs(pb.fft.fft(y.data, axis=0)), axes=(0,))
+
+        for i in range(shape[1]):
+            for j in range(shape[2]):
+                a = y[:, i, j]
+                s = shift[i, j]
+
+                if s < 0:
+                    s = int(np.floor(s))
+                    assert np.allclose(a[s:], 0)
+                    assert np.allclose(a[:s], 1)
+                else:
+                    s = int(np.ceil(s))
+                    assert np.allclose(a[:s], 0)
+                    assert np.allclose(a[s:], 1)
 
 
 class TestFastLen:

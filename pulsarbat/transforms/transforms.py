@@ -273,21 +273,43 @@ def time_shift(z, /, t):
 def freq_shift(z, /, shift):
     """Shift signal data in frequency by given amount.
 
+    A frequency shift is achieved by mixing the signal with a sinusoid.
+    The "out-of-band" portion of the signal is filled with zeros after
+    the frequency shift is applied to prevent erroneous data from
+    appearing in the wrong places due to wrap-around effects.
+
+    Shifting by more than a channel bandwidth will not return an error,
+    but a zero signal instead (since all the data shifted out of band).
+
     Parameters
     ----------
     z : `~BasebandSignal`
         Input signal.
     shift : `~astropy.units.Quantity`
-        Shift amount in units of frequency. Should have shape `z.sample_shape[:n]`
-        for `0 <= n`.
+        Shift amount in units of frequency. Should be a scalar or
+        have shape `z.sample_shape[:n]` for `0 <= n`.
 
     Returns
     -------
     out : `~BasebandSignal`
         Frequency-shifted signal.
     """
+    if not isinstance(z, pb.BasebandSignal):
+        raise TypeError("Signal must be a BasebandSignal object.")
+
+    try:
+        shift = shift.to(u.Hz)
+    except Exception:
+        raise ValueError("shift must be a Quantity with units of frequency.")
+
     if shift.isscalar:
         shift = shift[None]
+
+    if shift.ndim >= z.ndim:
+        raise ValueError(
+            f"shift has too many dimensions. Expected <= {z.ndim - 1} dimensions, "
+            f"got {shift.ndim} dimensions!"
+        )
 
     ix = (slice(None),) * shift.ndim + (None,) * (z.ndim - shift.ndim - 1)
     ft = (shift[ix] * z.dt).to_value(u.one)
@@ -301,11 +323,9 @@ def freq_shift(z, /, shift):
     for a in it:
         if a < 0:
             a = int(np.floor(a))
-            print(a)
             ix = (np.s_[a:],) + it.multi_index
         else:
             a = int(np.ceil(a))
-            print(a)
             ix = (np.s_[:a],) + it.multi_index
 
         x[ix] = 0
