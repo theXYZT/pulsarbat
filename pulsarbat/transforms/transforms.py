@@ -13,6 +13,7 @@ __all__ = [
     "concatenate",
     "snippet",
     "time_shift",
+    "freq_shift",
     "fast_len",
 ]
 
@@ -34,9 +35,11 @@ def signal_transform(func):
     to every chunk independently using `dask.array.map_blocks`. Keyword arguments
     specific to `map_blocks` can be passed via `dask_kwargs`.
     """
+
     @functools.wraps(func)
-    def wrapper(x, *args, signal_type=None, signal_kwargs=dict(),
-                dask_kwargs=dict(), **kwargs):
+    def wrapper(
+        x, *args, signal_type=None, signal_kwargs=dict(), dask_kwargs=dict(), **kwargs
+    ):
 
         sig_class = type(x) if signal_type is None else signal_type
         if not issubclass(sig_class, pb.Signal):
@@ -209,7 +212,7 @@ def snippet(z, /, t, n):
 
         z = type(z).like(z, shifted, start_time=new_start)
 
-    return z[i:i+n]
+    return z[i : i + n]
 
 
 def time_shift(z, /, t):
@@ -265,6 +268,69 @@ def time_shift(z, /, t):
         x = x[:i]
 
     return x
+
+
+def freq_shift(z, /, shift):
+    """Shift signal data in frequency by given amount.
+
+    A frequency shift is achieved by mixing the signal with a sinusoid.
+    The "out-of-band" portion of the signal is filled with zeros after
+    the frequency shift is applied to prevent erroneous data from
+    appearing in the wrong places due to wrap-around effects.
+
+    Shifting by more than a channel bandwidth will not return an error,
+    but a zero signal instead (since all the data shifted out of band).
+
+    Parameters
+    ----------
+    z : `~BasebandSignal`
+        Input signal.
+    shift : `~astropy.units.Quantity`
+        Shift amount in units of frequency. Should be a scalar or
+        have shape `z.sample_shape[:n]` for `0 <= n`.
+
+    Returns
+    -------
+    out : `~BasebandSignal`
+        Frequency-shifted signal.
+    """
+    if not isinstance(z, pb.BasebandSignal):
+        raise TypeError("Signal must be a BasebandSignal object.")
+
+    try:
+        shift = shift.to(u.Hz)
+    except Exception:
+        raise ValueError("shift must be a Quantity with units of frequency.")
+
+    if shift.isscalar:
+        shift = shift[None]
+
+    if shift.ndim >= z.ndim:
+        raise ValueError(
+            f"shift has too many dimensions. Expected <= {z.ndim - 1} dimensions, "
+            f"got {shift.ndim} dimensions!"
+        )
+
+    ix = (slice(None),) * shift.ndim + (None,) * (z.ndim - shift.ndim - 1)
+    ft = (shift[ix] * z.dt).to_value(u.one)
+
+    ix = tuple(slice(None) if j == 0 else None for j in range(z.ndim))
+    ph = np.exp(2j * np.pi * ft * np.arange(len(z))[ix]).astype(z.dtype)
+
+    x = np.fft.fftshift(pb.fft.fft(z.data * ph, axis=0), axes=(0,))
+
+    it = np.nditer(ft * len(x), flags=["multi_index"])
+    for a in it:
+        if a < 0:
+            a = int(np.floor(a))
+            ix = (np.s_[a:],) + it.multi_index
+        else:
+            a = int(np.ceil(a))
+            ix = (np.s_[:a],) + it.multi_index
+
+        x[ix] = 0
+
+    return type(z).like(z, pb.fft.ifft(np.fft.ifftshift(x, axes=(0,)), axis=0))
 
 
 def fast_len(z, /):
