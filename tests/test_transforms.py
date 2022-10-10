@@ -239,33 +239,39 @@ class TestConcatenate:
 
 
 class TestSnippet:
+    @pytest.mark.parametrize("N", [1024, 1023])
     @pytest.mark.parametrize("use_dask", [True, False])
-    def test_basic(self, use_dask):
-        for t0 in [1.2, 10.5, 15.9]:
-            z = pb.Signal(impulse(1024, t0), sample_rate=1 * u.Hz)
-            if use_dask:
-                z = z.to_dask_array()
+    @pytest.mark.parametrize("start_time", [Time.now(), None])
+    def test_correctness(self, N, use_dask, start_time):
+        for sr in [1 * u.Hz, 10 * u.Hz]:
+            for t0 in [20.0, 10.5, 15.9]:
+                x = pb.Signal(impulse(N, t0), sample_rate=sr, start_time=start_time)
+                if use_dask:
+                    x = x.to_dask_array()
 
-            for n in [8, 16, 100]:
-                x = pb.snippet(z, t0, 8)
-                assert isinstance(x.data, da.Array if use_dask else np.ndarray)
-                y = np.zeros_like(x.data)
-                y[0] = 1
+                for n in [8, 16, 25]:
+                    ts = [t0, t0 * x.dt]
+                    if start_time is not None:
+                        ts.append(start_time + t0 * x.dt)
 
-                assert np.allclose(x.data, y, atol=1e-6)
-                assert x.sample_rate == z.sample_rate
+                    for t in ts:
+                        y = pb.snippet(x, t, n)
 
-    @pytest.mark.parametrize("t0", [Time.now(), None])
-    def test_time(self, t0):
-        for t in [15.2, 25.6, 11.1]:
-            z = pb.Signal(impulse(1024, 512), sample_rate=1 * u.Hz, start_time=t0)
+                        if use_dask:
+                            assert isinstance(y.data, da.Array)
+                        else:
+                            assert isinstance(y.data, np.ndarray)
 
-            y = pb.snippet(z, t, 8)
+                        z = np.zeros_like(y.data)
+                        z[0] = 1
 
-            if t0 is None:
-                assert y.start_time is None
-            else:
-                assert Time.isclose(y.start_time, z.start_time + t * z.dt)
+                        assert np.allclose(np.asarray(y.data), z)
+                        assert x.sample_rate == y.sample_rate
+
+                        if x.start_time is None:
+                            assert y.start_time is None
+                        else:
+                            assert Time.isclose(y.start_time, x.start_time + t0 * x.dt)
 
     def test_errors(self):
         z = pb.Signal(impulse(1024, 512), sample_rate=1 * u.Hz)
@@ -290,6 +296,9 @@ class TestSnippet:
 
         with pytest.raises(ValueError):
             _ = pb.snippet(z, np.arange(10), 10)
+
+        with pytest.raises(ValueError):
+            _ = pb.snippet(z, Time.now(), 10)
 
 
 class TestTimeShift:

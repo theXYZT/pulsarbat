@@ -182,6 +182,9 @@ def snippet(z, /, t, n):
         raise ValueError("n must be a non-negative integer.")
 
     if isinstance(t, Time):
+        if z.start_time is None:
+            raise ValueError("t is a Time object, but signal has no start time.")
+
         t = (t - z.start_time).to(u.s)
 
     if isinstance(t, u.Quantity):
