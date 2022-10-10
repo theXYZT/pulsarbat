@@ -1,8 +1,9 @@
-sphinx>=5.1.1
-pydata-sphinx-theme==0.9
-numpydoc>=1.4.0
-nb2plots>=0.6.1
+sphinx==5.2.3
+pydata-sphinx-theme==0.11
+numpydoc==1.4.0
 
-nbsphinx>=0.8.9
-ipython>=8.4.0
-matplotlib>=3.5.3
+nb2plots==0.6.1
+nbsphinx==0.8.9
+
+ipython==8.5.0
+matplotlib==3.6.0

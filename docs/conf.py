@@ -7,11 +7,12 @@ copyright = "2022, Nikhil Mahajan"
 author = "Nikhil Mahajan"
 release = pulsarbat.__version__
 
-json_url = "https://pulsarbat.readthedocs.io/en/dev/_static/switcher.json"
+json_url = "https://pulsarbat.readthedocs.io/en/latest/_static/switcher.json"
 version_match = os.environ.get("READTHEDOCS_VERSION")
 if not version_match or version_match.isdigit():
-    json_url = "/_static/switcher.json"
-    version_match = "dev"
+    if "dev" in release or "rc" in release:
+        version_match = "latest"
+        json_url = "_static/switcher.json"
 
 
 # -- Extensions --------------------------------------------------------------
@@ -24,6 +25,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
+    "sphinx.ext.extlinks",
     "matplotlib.sphinxext.plot_directive",
     "nb2plots",
     "texext",
@@ -91,26 +93,20 @@ html_theme_options = {
     "collapse_navigation": True,
     "navigation_depth": 2,
     "show_prev_next": False,
+    "github_url": "https://github.com/theXYZT/pulsarbat",
     "icon_links": [
         {
-            "name": "Home Page",
-            "url": "https://pulsarbat.readthedocs.io/",
-            "icon": "fas fa-home",
-            "type": "fontawesome",
-        },
-        {
-            "name": "GitHub",
-            "url": "https://github.com/theXYZT/pulsarbat",
-            "icon": "fab fa-github-square",
-            "type": "fontawesome",
+            "name": "PyPI",
+            "url": "https://pypi.org/project/pulsarbat/",
+            "icon": "fa-solid fa-box",
         },
     ],
     "logo": {
         "image_light": "pulsarbat_light.svg",
         "image_dark": "pulsarbat_dark.svg",
+        "alt_text": "pulsarbat",
     },
     "navbar_start": ["navbar-logo", "version-switcher"],
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "page_sidebar_items": ["page-toc"],
     "switcher": {
         "json_url": json_url,
@@ -119,11 +115,15 @@ html_theme_options = {
 }
 
 html_sidebars = {
-    "**": ["search-field", "sidebar-nav-bs"],
+    "**": ["sidebar-nav-bs"],
 }
 
 html_context = {
     "default_mode": "light",
+    "github_user": "theXYZT",
+    "github_repo": "pulsarbat",
+    "github_version": "master",
+    "doc_path": "docs",
 }
 
 html_static_path = ["_static", ]
@@ -135,6 +135,12 @@ warnings.filterwarnings(
     message="Matplotlib is currently using agg, which is a"
     " non-GUI backend, so cannot show the figure.",
 )
+
+
+extlinks = {
+    "issue": ("https://github.com/theXYZT/pulsarbat/issues/%s", "#%s"),
+    "pr": ("https://github.com/theXYZT/pulsarbat/pull/%s", "PR #%s"),
+}
 
 
 def setup(app):
