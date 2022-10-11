@@ -18,25 +18,24 @@ if not version_match or version_match.isdigit():
 # -- Extensions --------------------------------------------------------------
 
 extensions = [
+    "IPython.sphinxext.ipython_directive",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "matplotlib.sphinxext.plot_directive",
+    "numpydoc",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.mathjax",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
+    "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "sphinx.ext.extlinks",
-    "matplotlib.sphinxext.plot_directive",
-    "nb2plots",
-    "texext",
-    "numpydoc",
+    "sphinx_copybutton",
+    "sphinx_toggleprompt",
+    "myst_nb"
 ]
 
-
-doctest_global_setup = plot_pre_code = """
-import numpy as np
-np.random.seed(123)
-"""
 
 # Plot
 plot_include_source = True
@@ -119,7 +118,7 @@ html_sidebars = {
 }
 
 html_context = {
-    "default_mode": "light",
+    "default_mode": "auto",
     "github_user": "theXYZT",
     "github_repo": "pulsarbat",
     "github_version": "master",
@@ -142,7 +141,19 @@ extlinks = {
     "pr": ("https://github.com/theXYZT/pulsarbat/pull/%s", "PR #%s"),
 }
 
+toggleprompt_offset_right = 35
+
+
+myst_enable_extensions = [
+    "amsmath",
+    "dollarmath",
+    "colon_fence",
+    "html_image",
+    "deflist",
+]
+
+nb_execution_mode = "off"
+
 
 def setup(app):
     app.add_css_file("custom.css")
-    app.add_js_file("copybutton.js")

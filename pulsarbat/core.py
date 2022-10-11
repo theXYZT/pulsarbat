@@ -139,7 +139,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         if self.meta is not None:
             s += "\nMeta\n----\n"
             s += pprint.pformat(self.meta, sort_dicts=False, depth=2)
-        return s
+        return s.strip()
 
     def __repr__(self):
         info = f"shape={self.shape}, dtype={self.dtype}"
