@@ -33,13 +33,13 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx_copybutton",
     "sphinx_toggleprompt",
-    "myst_nb"
+    "myst_nb",
 ]
 
 
 # Plot
 plot_include_source = True
-plot_formats = [('png', 96)]
+plot_formats = [("png", 96)]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 
@@ -60,8 +60,9 @@ intersphinx_mapping = {
 # numpydoc
 numpydoc_show_class_members = False
 numpydoc_xref_param_type = True
+numpydoc_xref_ignore = "all"
 numpydoc_xref_aliases = {
-    # "array-like": ":term:`array-like <array_like>`",
+    "array-like": ":term:`array-like <array_like>`",
     # "scalar": ":term:`scalar`",
     # "array": ":term:`array`",
     # "ndarray": "numpy.ndarray",
@@ -69,6 +70,12 @@ numpydoc_xref_aliases = {
     "Quantity": "astropy.units.Quantity",
     "Time": "astropy.time.Time",
     "Unit": "astropy.units.Unit",
+    "Signal": "pulsarbat.Signal",
+    "RadioSignal": "pulsarbat.RadioSignal",
+    "BasebandSignal": "pulsarbat.BasebandSignal",
+    "IntensitySignal": "pulsarbat.IntensitySignal",
+    "FullStokesSignal": "pulsarbat.FullStokesSignal",
+    "DispersionMeasure": "pulsarbat.DispersionMeasure",
 }
 
 
@@ -107,10 +114,7 @@ html_theme_options = {
     },
     "navbar_start": ["navbar-logo", "version-switcher"],
     "page_sidebar_items": ["page-toc"],
-    "switcher": {
-        "json_url": json_url,
-        "version_match": version_match,
-    },
+    "switcher": {"json_url": json_url, "version_match": version_match,},
 }
 
 html_sidebars = {
@@ -125,7 +129,9 @@ html_context = {
     "doc_path": "docs",
 }
 
-html_static_path = ["_static", ]
+html_static_path = [
+    "_static",
+]
 
 
 warnings.filterwarnings(

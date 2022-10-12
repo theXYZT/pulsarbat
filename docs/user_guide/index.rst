@@ -1,6 +1,6 @@
-========
-Tutorial
-========
+==========
+User Guide
+==========
 
 .. Note:: This section is under construction.
 
@@ -13,6 +13,9 @@ To use Pulsarbat in a project:
 
 
 .. toctree::
+   :caption: Tutorials
    :maxdepth: 1
 
-   waterfall
+   getting_started
+   signals
+   readers

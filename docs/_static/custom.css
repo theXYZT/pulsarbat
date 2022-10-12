@@ -1,3 +1,10 @@
 pre {
     font-size: 100%;
 }
+
+code.xref, a code.literal {
+    font-size: 100%;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}

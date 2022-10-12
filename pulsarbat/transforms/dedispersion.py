@@ -109,7 +109,7 @@ def coherent_dedispersion(z, DM, /, *, ref_freq=None, chirp=None):
 
     Returns
     -------
-    out : BasebandSignal
+    BasebandSignal
         The dedispersed signal.
     """
     if not isinstance(z, pb.BasebandSignal):
@@ -152,7 +152,7 @@ def incoherent_dedispersion(z, DM, /, *, ref_freq=None):
 
     Returns
     -------
-    out : RadioSignal
+    RadioSignal
         The dedispersed signal.
     """
     if not isinstance(z, pb.RadioSignal):

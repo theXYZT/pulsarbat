@@ -16,30 +16,29 @@ __all__ = [
 
 
 class BasebandReader(BaseReader):
-    """Wrapper around StreamReader from the `~baseband` package.
+    """Wrapper around StreamReader from the ``baseband`` package.
 
     Parameters
     ----------
     name, **kwargs
-        Arguments to pass on to `~baseband.open` to create a StreamReader
-        object via `baseband.open(name, 'rs', **kwargs)`.
-    signal_type : class, optional
-        Type of signal that will be returned by `read()`. Default is
-        `Signal`. Accepted values are subclasses of `Signal`.
+        Arguments to pass on to :py:func:`baseband.open` to create a
+        reader via ``baseband.open(name, 'rs', **kwargs)``.
+    signal_type : subclass of Signal, default: Signal
+        Type of signal that will be returned by :py:meth:`.read()`.
     signal_kwargs : dict, optional
-        Additional `kwargs` to pass on to `signal_type` when creating a
-        Signal object. Must not include `sample_rate` or `start_time` as
+        Additional ``kwargs`` to pass on to ``signal_type`` when creating a
+        Signal object. Must not include ``sample_rate`` or ``start_time`` as
         dictionary fields.
     intensity : bool, optional
-        Whether the data is intensity data. If `signal_type` is a
-        subclass of `pb.IntensitySignal`, assumed to be True. If
-        `signal_type` is a subclass of `pb.BasebandSignal`, assumed to be
-        False. Default is False.
+        Whether the data is intensity data. If ``signal_type`` is a
+        subclass of :py:class:`.IntensitySignal`, assumed to be True. If
+        ``signal_type`` is a subclass of :py:class:`.BasebandSignal`, assumed
+        to be False. Default is False.
     lower_sideband : bool or array-like, optional
         Whether the data is lower-sideband (LSB) data. Default is False.
         If not a boolean, must be an array-like of booleans with the
-        same shape as `sample_shape` of original data as read by
-        `StreamReader` in the `baseband` package.
+        same shape as the ``sample_shape`` of original data as read by
+        the ``baseband`` StreamReader.
     """
 
     def __init__(
@@ -163,7 +162,7 @@ class BasebandReader(BaseReader):
         return self._read_baseband(offset, n, **kwargs)
 
     def read(self, offset, n, /, **kwargs):
-        """Read `n` samples from given offset.
+        """Read n samples from given offset.
 
         Parameters
         ----------
@@ -172,15 +171,18 @@ class BasebandReader(BaseReader):
         n : int
             Number of samples to read. Must be non-negative.
         **kwargs
-            Additional keyword arguments. Currently supported are:
-              * `use_dask` -- Whether to use dask arrays.
-              * `lock` -- A lock object to prevent concurrent reads.
-                          Must be a context manager.
+            Currently supported keyword arguments:
+
+              * ``use_dask`` -- Whether to use dask arrays.
+              * ``chunks`` -- Chunk sizes if using dask arrays. By default,
+                there is no chunking along the zeroth dimension.
+              * ``lock`` -- A lock object to prevent concurrent reads.
+                Must be a context manager.
 
         Returns
         -------
-        out : `~Signal` object or subclass
-            Signal of length `n` containing data that was read.
+        Signal
+            Signal of length n containing data that was read.
         """
         return super().read(offset, n, **kwargs)
 
@@ -192,7 +194,7 @@ class GUPPIRawReader(BasebandReader):
     ----------
     name
         Filename, filehandle, or sequence of filenames to pass on to
-        `~baseband.open` to create a GUPPIStreamReader object via
+        :py:func:`baseband.open` to create a GUPPIStreamReader object via
         ``baseband.open(name, 'rs', format='guppi', squeeze=False)``.
     """
 
@@ -231,7 +233,7 @@ class DADAStokesReader(BasebandReader):
     ----------
     name
         File name, filehandle, or sequence of file names to pass on to
-        `~baseband.open` to create a DADAStreamReader object via
+        :py:func:`baseband.open` to create a DADAStreamReader object via
         `baseband.open(name, 'rs', format='dada')`.
     """
 

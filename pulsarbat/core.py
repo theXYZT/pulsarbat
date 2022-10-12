@@ -176,7 +176,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
         return type(self).like(self, self.data[index], **kw)
 
     def get_axis(self, axis):
-        """Returns axis from an integer or axis label."""
+        """Axis number from an integer or axis label."""
         try:
             axis = operator.index(axis)
         except TypeError:
@@ -249,7 +249,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
     @property
     def dt(self):
-        """Sample spacing of the signal (1 / sample_rate)."""
+        """Sample spacing of the signal (``1 / sample_rate``)."""
         return (1 / self.sample_rate).to(u.s)
 
     @property
@@ -346,7 +346,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
     @classmethod
     def like(cls, obj, z=None, /, **kwargs):
-        """Creates a signal object "like" another signal object.
+        """Returns a signal object "like" given signal object.
 
         This classmethod inspects the class signature and creates a
         signal object like the given reference object. The signal data
@@ -358,7 +358,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
 
         Parameters
         ----------
-        obj : Signal
+        obj : :py:class:`Signal`
             The reference signal object.
         z : array-like
             The signal data.
@@ -416,6 +416,10 @@ class RadioSignal(Signal):
     meta : dict, optional
         Any metadata that the user might want to attach to the signal.
 
+    See Also
+    --------
+    Signal
+
     Notes
     -----
     The input signal array must have shape ``(nsample, nchan, ...)``,
@@ -432,7 +436,7 @@ class RadioSignal(Signal):
     channel, and ``a`` is in ``{0, 0.5, 1}`` depending on the value of
     ``freq_align``.
 
-    An even-length complex-valued DFT (as implemented in `~numpy.fft`)
+    An even-length complex-valued DFT (as implemented in :py:func:`numpy.fft.fft`)
     would have ``freq_align = 'bottom'`` with a center frequency of 0,
     whereas an odd-length DFT would have ``freq_align = 'center'`` due to
     symmetry. ``freq_align = 'top'`` is used in cases where the DFT was
@@ -564,7 +568,7 @@ class RadioSignal(Signal):
 
     @property
     def channel_freqs(self):
-        """Returns a list of frequencies corresponding to all channels."""
+        """Center frequencies of all channels."""
         _align = {"bottom": 0, "center": 0.5, "top": 1}[self.freq_align]
         chan_ids = np.arange(self.nchan) + _align - self.nchan / 2
         return self.center_freq + self.chan_bw * chan_ids
@@ -645,6 +649,11 @@ class FullStokesSignal(IntensitySignal):
     RadioSignal
     IntensitySignal
 
+    Notes
+    -----
+    The individual Stokes parameters can also be accessed by ``x["I"]``,
+    ``x["Q"]``, ``x["U"]``, and ``x["V"]`` where ``x`` is the signal object.
+
     References
     ----------
     Wikipedia, "Stokes Parameters",
@@ -673,18 +682,22 @@ class FullStokesSignal(IntensitySignal):
 
     @property
     def stokesI(self):
+        """Stokes I."""
         return self["I"]
 
     @property
     def stokesQ(self):
+        """Stokes Q."""
         return self["Q"]
 
     @property
     def stokesU(self):
+        """Stokes U."""
         return self["U"]
 
     @property
     def stokesV(self):
+        """Stokes V."""
         return self["V"]
 
 
@@ -704,7 +717,7 @@ class BasebandSignal(RadioSignal):
     ----------
     z : array-like
         The signal data. Must be at least 2-dimensional with shape
-        `(nsample, nchan, ...)`.
+        ``(nsample, nchan, ...)``.
     sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
     start_time : Time, optional
@@ -751,12 +764,11 @@ class BasebandSignal(RadioSignal):
         )
 
     def to_intensity(self):
-        """Converts baseband signal to intensities.
+        """Absolute square of signal.
 
         Returns
         -------
-        out : IntensitySignal
-            The converted signal.
+        IntensitySignal
         """
         z = self.data.real ** 2 + self.data.imag ** 2
         return IntensitySignal.like(self, z)
@@ -804,6 +816,21 @@ class DualPolarizationSignal(BasebandSignal):
     polarization is assumed to have basis ``[L, R]``. For example, with
     ``pol_type='circular'``, ``z[:, :, 0]`` refers to the right-handed
     circular polarization component.
+
+    We use the PSR/IEEE convention. The circular and linear bases are
+    related by::
+
+        L = X - i Y
+        R = X + i Y
+
+    The linear basis is converted to Stokes representation by::
+
+        I = X X* + Y Y*
+        Q = X X* - Y Y*
+        U = 2 Re(X* Y)
+        V = 2 Im(X* Y)
+
+    where ``*`` denotes a complex conjugate.
     """
 
     _req_shape = (None, None, 2)
@@ -860,8 +887,7 @@ class DualPolarizationSignal(BasebandSignal):
 
         Returns
         -------
-        out : DualPolarizationSignal
-            The converted signal.
+        DualPolarizationSignal
         """
         if self.pol_type == "circular":
             axis = self.get_axis("pol")
@@ -885,8 +911,7 @@ class DualPolarizationSignal(BasebandSignal):
 
         Returns
         -------
-        out : DualPolarizationSignal
-            The converted signal.
+        DualPolarizationSignal
         """
         if self.pol_type == "linear":
             axis = self.get_axis("pol")
@@ -907,8 +932,7 @@ class DualPolarizationSignal(BasebandSignal):
 
         Returns
         -------
-        out : FullStokesSignal
-            Signal in Stokes IQUV representation.
+        FullStokesSignal
         """
         axis = self.get_axis("pol")
         A = np.take(self.data, 0, axis=axis)

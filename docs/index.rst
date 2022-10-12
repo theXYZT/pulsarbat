@@ -1,7 +1,7 @@
 :html_theme.sidebar_secondary.remove:
 :nosearch:
 
-
+=========
 Pulsarbat
 =========
 
@@ -55,7 +55,7 @@ Pulsarbat is licensed under the GNU General Public License v3.
    :hidden:
 
    install
-   tutorial/index
+   user_guide/index
    reference/index
    development
    changelog

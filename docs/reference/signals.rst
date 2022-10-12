@@ -11,6 +11,6 @@ Signals
     Signal
     RadioSignal
     IntensitySignal
-    BasebandSignal
     FullStokesSignal
+    BasebandSignal
     DualPolarizationSignal
