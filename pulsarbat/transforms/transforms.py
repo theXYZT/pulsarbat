@@ -197,7 +197,7 @@ def snippet(z, /, t, n):
         shift = i - t
 
         if isinstance(z.data, da.Array):
-            f = da.fft.fftfreq(len(z), 1)
+            f = da.fft.fftfreq(len(z), 1, chunks=(-1,))
         else:
             f = np.fft.fftfreq(len(z), 1)
 
