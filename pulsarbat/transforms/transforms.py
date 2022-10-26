@@ -227,9 +227,9 @@ def time_shift(z, /, t):
 
     Parameters
     ----------
-    z : `~Signal`
+    z : Signal
         Input signal.
-    t : int, float or `~astropy.units.Quantity`
+    t : int, float or Quantity
         Shift amount. If a number (int or float), the signal is shifted
         by that number of samples. An astropy Quantity with units of
         time can also be passed, in which case the signal will be
@@ -237,7 +237,7 @@ def time_shift(z, /, t):
 
     Returns
     -------
-    out : `~Signal`
+    out : Signal
         Shifted signal.
     """
     if t == 0:

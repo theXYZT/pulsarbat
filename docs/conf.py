@@ -114,7 +114,7 @@ html_theme_options = {
     },
     "navbar_start": ["navbar-logo", "version-switcher"],
     "page_sidebar_items": ["page-toc"],
-    "switcher": {"json_url": json_url, "version_match": version_match,},
+    "switcher": {"json_url": json_url, "version_match": version_match},
 }
 
 html_sidebars = {
