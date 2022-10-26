@@ -1,12 +1,14 @@
+:html_theme.sidebar_secondary.remove:
 :nosearch:
 
-``pulsarbat``
-=============
+=========
+Pulsarbat
+=========
 
     :Release: |release|
     :Date: |today|
 
-``pulsarbat`` (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband signals. Although this package has a special focus on radio pulsar astronomy, it can also be used to work with other types of radio astronomical observations (such as fast radio bursts, quasars, and so on) or any time-frequency data, in general. ``pulsarbat`` provides:
+Pulsarbat (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband signals. Although this package has a special focus on radio pulsar astronomy, it can also be used to work with other types of radio astronomical observations (such as fast radio bursts, quasars, and so on) or any time-frequency data, in general. Pulsarbat provides:
 
 * Signals: Standardized containers for signal data.
 * Functions/Transforms for manipulating signals.
@@ -21,13 +23,13 @@ The source code can be found on GitHub: https://github.com/theXYZT/pulsarbat
 Quickstart
 ----------
 
-Install the latest version of ``pulsarbat``:
+Install the latest version of Pulsarbat:
 
 .. code-block:: console
 
     $ pip install pulsarbat
 
-To use ``pulsarbat`` in a project:
+To use Pulsarbat in a project:
 
 .. code-block:: python
 
@@ -37,7 +39,7 @@ To use ``pulsarbat`` in a project:
 Citing
 ------
 
-``pulsarbat`` has a DOI via Zenodo: https://doi.org/10.5281/zenodo.6934355
+Pulsarbat has a DOI via Zenodo: https://doi.org/10.5281/zenodo.6934355
 
 This DOI represents all versions, and will always resolve to the latest one. To cite a specific version, follow the link and find the version you want to cite on Zenodo.
 
@@ -45,7 +47,7 @@ This DOI represents all versions, and will always resolve to the latest one. To 
 License
 -------
 
-``pulsarbat`` is licensed under the GNU General Public License v3.
+Pulsarbat is licensed under the GNU General Public License v3.
 
 
 .. toctree::
@@ -53,7 +55,7 @@ License
    :hidden:
 
    install
-   tutorial/index
+   user_guide/index
    reference/index
    development
    changelog

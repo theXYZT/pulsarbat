@@ -1,10 +1,11 @@
+:html_theme.sidebar_secondary.remove:
 :nosearch:
 
 ============
 Installation
 ============
 
-``pulsarbat`` has the following dependencies:
+Pulsarbat has the following dependencies:
 
 - **Python 3.9 or later**
 - `Astropy <https://www.astropy.org/>`_ 5.1 or later
@@ -17,7 +18,7 @@ Installation
 Released version
 ----------------
 
-To install the latest released version of ``pulsarbat`` with `pip`_, run:
+To install the latest released version of Pulsarbat with `pip`_, run:
 
 .. code-block:: console
 
@@ -32,7 +33,7 @@ If you don't have `pip`_ installed, this `Python installation guide`_ can guide 
 Development version
 -------------------
 
-To install the latest development version of ``pulsarbat``, you can clone the `public repository <https://github.com/theXYZT/pulsarbat>`_ and install the package:
+To install the latest development version of Pulsarbat, you can clone the `public repository <https://github.com/theXYZT/pulsarbat>`_ and install the package:
 
 .. code-block:: console
 
@@ -50,8 +51,10 @@ The ``-e`` flag installs the package in editable mode which allows you to update
 Testing
 -------
 
-``pulsarbat`` uses the ``pytest`` testing package. You can test the development version of the package from the source directory with:
+Pulsarbat uses `pytest`_ for testing. You can test the development version of the package from the source directory with:
 
 .. code-block:: console
 
     $ pytest
+
+.. _pytest: https://docs.pytest.org/

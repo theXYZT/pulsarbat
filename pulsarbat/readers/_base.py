@@ -54,15 +54,15 @@ class BaseReader:
         Signal shape.
     dtype : dtype
         Data-type of signal data.
-    signal_type : subclass of .Signal, default: .Signal
-        Type of signal that will be returned by ``read()``.
+    signal_type : subclass of Signal, default: Signal
+        Type of signal that will be returned by :py:meth:`.read()`.
     sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
     start_time : Time, optional
         Timestamp at first sample of signal data. Default is None.
     **signal_kwargs
         Additional kwargs to pass on to ``signal_type`` when creating a
-        :py:class:`.Signal` object.
+        Signal object.
     """
 
     def __init__(
@@ -199,7 +199,7 @@ class BaseReader:
 
     @property
     def dt(self):
-        """Sample spacing (1 / sample_rate)."""
+        """Sample spacing (``1 / sample_rate``)."""
         return (1 / self.sample_rate).to(u.s)
 
     @property
@@ -231,7 +231,7 @@ class BaseReader:
 
         Returns
         -------
-        offset : int
+        int
             The nearest integer position (in number of samples).
         """
         try:
@@ -259,7 +259,7 @@ class BaseReader:
 
         Returns
         -------
-        t : Quantity or Time
+        Quantity or Time
             Time relative to the start as an astropy Quantity if `unit`
             is provided, otherwise an absolute time as an astropy Time
             object.
@@ -313,7 +313,7 @@ class BaseReader:
 
         Returns
         -------
-        out : Signal
+        Signal
             Signal of length ``n`` containing data that was read.
         """
         if (offset := operator.index(offset)) < 0:
@@ -345,14 +345,11 @@ class BaseReader:
         n : int
             Number of samples to read. Must be non-negative.
         **kwargs
-            Additional keyword arguments. Currently supported:
-              * ``chunks`` -- Chunk sizes if using dask arrays.
-                              By default, there is no chunking along
-                              the zeroth dimension.
+            See :py:meth:`.read()` for list of supported kwargs.
 
         Returns
         -------
-        out : Signal
+        Signal
             Signal of length ``n`` containing data that was read as a
             Dask array.
         """

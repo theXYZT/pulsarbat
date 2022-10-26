@@ -2,5 +2,12 @@
 Pulsar
 ======
 
-.. automodule:: pulsarbat.pulsar
-    :members:
+.. currentmodule:: pulsarbat
+
+.. autosummary::
+    :toctree: generated/
+
+    PolycoEntry
+    PhasePredictor
+    Phase
+    FractionalPhase

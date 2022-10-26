@@ -25,6 +25,14 @@ if errorlevel 9009 (
 
 if "%1" == "" goto help
 
+if "%1" == "clean" (
+	for /d %%i in (reference\generated\*) do rmdir /q /s %%i
+	del /q /s reference\generated\*
+	for /d %%i in (%BUILDDIR%\*) do rmdir /q /s %%i
+	del /q /s %BUILDDIR%\*
+	goto end
+)
+
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 

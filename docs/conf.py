@@ -7,38 +7,39 @@ copyright = "2022, Nikhil Mahajan"
 author = "Nikhil Mahajan"
 release = pulsarbat.__version__
 
-json_url = "https://pulsarbat.readthedocs.io/en/dev/_static/switcher.json"
+json_url = "https://pulsarbat.readthedocs.io/en/latest/_static/switcher.json"
 version_match = os.environ.get("READTHEDOCS_VERSION")
 if not version_match or version_match.isdigit():
-    json_url = "/_static/switcher.json"
-    version_match = "dev"
+    if "dev" in release or "rc" in release:
+        version_match = "latest"
+        json_url = "_static/switcher.json"
 
 
 # -- Extensions --------------------------------------------------------------
 
 extensions = [
+    "IPython.sphinxext.ipython_directive",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "matplotlib.sphinxext.plot_directive",
+    "numpydoc",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.mathjax",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
+    "sphinx.ext.todo",
     "sphinx.ext.viewcode",
-    "matplotlib.sphinxext.plot_directive",
-    "nb2plots",
-    "texext",
-    "numpydoc",
+    "sphinx.ext.extlinks",
+    "sphinx_copybutton",
+    "sphinx_toggleprompt",
+    "myst_nb",
 ]
 
 
-doctest_global_setup = plot_pre_code = """
-import numpy as np
-np.random.seed(123)
-"""
-
 # Plot
 plot_include_source = True
-plot_formats = [('png', 96)]
+plot_formats = [("png", 96)]
 plot_html_show_formats = False
 plot_html_show_source_link = False
 
@@ -59,8 +60,9 @@ intersphinx_mapping = {
 # numpydoc
 numpydoc_show_class_members = False
 numpydoc_xref_param_type = True
+numpydoc_xref_ignore = "all"
 numpydoc_xref_aliases = {
-    # "array-like": ":term:`array-like <array_like>`",
+    "array-like": ":term:`array-like <array_like>`",
     # "scalar": ":term:`scalar`",
     # "array": ":term:`array`",
     # "ndarray": "numpy.ndarray",
@@ -68,6 +70,12 @@ numpydoc_xref_aliases = {
     "Quantity": "astropy.units.Quantity",
     "Time": "astropy.time.Time",
     "Unit": "astropy.units.Unit",
+    "Signal": "pulsarbat.Signal",
+    "RadioSignal": "pulsarbat.RadioSignal",
+    "BasebandSignal": "pulsarbat.BasebandSignal",
+    "IntensitySignal": "pulsarbat.IntensitySignal",
+    "FullStokesSignal": "pulsarbat.FullStokesSignal",
+    "DispersionMeasure": "pulsarbat.DispersionMeasure",
 }
 
 
@@ -91,42 +99,39 @@ html_theme_options = {
     "collapse_navigation": True,
     "navigation_depth": 2,
     "show_prev_next": False,
+    "github_url": "https://github.com/theXYZT/pulsarbat",
     "icon_links": [
         {
-            "name": "Home Page",
-            "url": "https://pulsarbat.readthedocs.io/",
-            "icon": "fas fa-home",
-            "type": "fontawesome",
-        },
-        {
-            "name": "GitHub",
-            "url": "https://github.com/theXYZT/pulsarbat",
-            "icon": "fab fa-github-square",
-            "type": "fontawesome",
+            "name": "PyPI",
+            "url": "https://pypi.org/project/pulsarbat/",
+            "icon": "fa-solid fa-box",
         },
     ],
     "logo": {
         "image_light": "pulsarbat_light.svg",
         "image_dark": "pulsarbat_dark.svg",
+        "alt_text": "pulsarbat",
     },
     "navbar_start": ["navbar-logo", "version-switcher"],
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "page_sidebar_items": ["page-toc"],
-    "switcher": {
-        "json_url": json_url,
-        "version_match": version_match,
-    },
+    "switcher": {"json_url": json_url, "version_match": version_match},
 }
 
 html_sidebars = {
-    "**": ["search-field", "sidebar-nav-bs"],
+    "**": ["sidebar-nav-bs"],
 }
 
 html_context = {
-    "default_mode": "light",
+    "default_mode": "auto",
+    "github_user": "theXYZT",
+    "github_repo": "pulsarbat",
+    "github_version": "master",
+    "doc_path": "docs",
 }
 
-html_static_path = ["_static", ]
+html_static_path = [
+    "_static",
+]
 
 
 warnings.filterwarnings(
@@ -137,6 +142,24 @@ warnings.filterwarnings(
 )
 
 
+extlinks = {
+    "issue": ("https://github.com/theXYZT/pulsarbat/issues/%s", "#%s"),
+    "pr": ("https://github.com/theXYZT/pulsarbat/pull/%s", "PR #%s"),
+}
+
+toggleprompt_offset_right = 35
+
+
+myst_enable_extensions = [
+    "amsmath",
+    "dollarmath",
+    "colon_fence",
+    "html_image",
+    "deflist",
+]
+
+nb_execution_mode = "off"
+
+
 def setup(app):
     app.add_css_file("custom.css")
-    app.add_js_file("copybutton.js")

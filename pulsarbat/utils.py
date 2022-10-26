@@ -24,7 +24,7 @@ def real_to_complex(z, axis=0):
 
     Parameters
     ----------
-    z : `~numpy.ndarray`
+    z : numpy.ndarray
         Input signal. Must be real.
     axis : int, optional
         Axis over which to convert the signal. This will be the axis
@@ -32,7 +32,7 @@ def real_to_complex(z, axis=0):
 
     Returns
     -------
-    out : np.ndarray
+    numpy.ndarray
         The complex baseband representation of the input signal.
     """
     z = np.asarray(z)

@@ -26,14 +26,15 @@ def signal_transform(func):
 
         func(x, *args, /, **kwargs)
 
-    where `x` is the array being transformed. The decorated function will
-    accept a Signal object in place of `x` and by default return a Signal object
-    of the same type (unless a different `signal_type` is specified). The
-    properties of the returned signal can be modified via `signal_kwargs` if needed.
+    where ``x`` is the array being transformed. The decorated function will
+    accept a Signal object in place of ``x`` and by default return a Signal object
+    of the same type (unless a different ``signal_type`` is specified). The
+    properties of the returned signal can be modified via ``signal_kwargs`` if needed.
 
-    If the Signal data is contained within a Dask array, `func` will be applied
-    to every chunk independently using `dask.array.map_blocks`. Keyword arguments
-    specific to `map_blocks` can be passed via `dask_kwargs`.
+    If the Signal data is contained within a Dask array, ``func`` will be applied
+    to every chunk independently using :py:func:`dask.array.map_blocks`.
+    Keyword arguments specific to :py:func:`~dask.array.map_blocks` can be passed
+    via ``dask_kwargs``.
     """
 
     @functools.wraps(func)
@@ -59,26 +60,26 @@ def concatenate(signals, /, axis=0):
     """Concatenates multiple signals along given axis.
 
     Signals must be contiguous along the axis of concatenation. The
-    concatenated signal will inherit attributes from given `kwargs` and
-    then from the first signal in the sequence, `signals[0]`, except for
-    `center_freq` and `freq_align` when concatenating along frequency
+    concatenated signal will inherit attributes from given ``kwargs`` and
+    then from the first signal in the sequence, ``signals[0]``, except for
+    ``center_freq`` and ``freq_align`` when concatenating along frequency
     (which must be computed accordingly).
 
     Parameters
     ----------
-    signals : sequence of `~Signal`-like
+    signals : sequence of Signal
         Sequence of signals to concatenate. All signals must be Signal
-        objects and have the same type and `sample_rate`. If concatenating
-        along frequency, then they must also have the same `chan_bw`.
+        objects and have the same type and ``sample_rate``. If concatenating
+        along frequency, then they must also have the same ``chan_bw``.
     axis : int or 'time' or 'freq', optional
-        Axis along which to concatenate signals. Default is `0`. `time`
-        is an alias for `0` (concatenating along time). `freq` implies
-        `axis=1` (concatenating along frequency) and requires that
+        Axis along which to concatenate signals. Default is 0. ``time``
+        is an alias for 0 (concatenating along time). ``freq`` implies
+        ``axis=1`` (concatenating along frequency) and requires that
         signals are instances of RadioSignal.
 
     Returns
     -------
-    out : `~Signal`-like
+    Signal
         Concatenated signal of same type as input signals.
     """
     try:
@@ -150,15 +151,15 @@ def concatenate(signals, /, axis=0):
 def snippet(z, /, t, n):
     """Extracts a snippet of a signal.
 
-    If `t` corresponds to non-integer number of samples from the
-    start of `z`, time-shifting via FFT (by applying a phase gradient
+    If ``t`` corresponds to non-integer number of samples from the
+    start of ``z``, time-shifting via FFT (by applying a phase gradient
     in the Fourier domain) is used. This usually only makes sense if
-    `z` is a `BasebandSignal`. For non-baseband signals, the output
-    might not be meaningful.
+    ``z`` is a :py:class:`.BasebandSignal`. For non-baseband signals,
+    the output might not be meaningful.
 
     Parameters
     ----------
-    z : `~Signal`
+    z : Signal
         Input signal.
     t : int, float, Quantity, or Time
         Start location of snippet. Given as either a number of
@@ -170,13 +171,13 @@ def snippet(z, /, t, n):
 
     Returns
     -------
-    out : `~Signal`
-        Snippet of `z` starting at `t` with length `n`.
+    Signal
+        Snippet of ``z`` starting at ``t`` with length ``n``.
 
     Notes
     -----
     Since an FFT is used, it is efficient to provide a signal with a
-    fast-length via `pb.fast_len(z)`.
+    fast FFT length via :py:func:`pulsarbat.fast_len`.
     """
     if (n := operator.index(n)) < 0:
         raise ValueError("n must be a non-negative integer.")
@@ -226,9 +227,9 @@ def time_shift(z, /, t):
 
     Parameters
     ----------
-    z : `~Signal`
+    z : Signal
         Input signal.
-    t : int, float or `~astropy.units.Quantity`
+    t : int, float or Quantity
         Shift amount. If a number (int or float), the signal is shifted
         by that number of samples. An astropy Quantity with units of
         time can also be passed, in which case the signal will be
@@ -236,7 +237,7 @@ def time_shift(z, /, t):
 
     Returns
     -------
-    out : `~Signal`
+    out : Signal
         Shifted signal.
     """
     if t == 0:
@@ -286,15 +287,15 @@ def freq_shift(z, /, shift):
 
     Parameters
     ----------
-    z : `~BasebandSignal`
+    z : BasebandSignal
         Input signal.
-    shift : `~astropy.units.Quantity`
+    shift : Quantity
         Shift amount in units of frequency. Should be a scalar or
-        have shape `z.sample_shape[:n]` for `0 <= n`.
+        have shape ``z.sample_shape[:n]`` for ``0 <= n``.
 
     Returns
     -------
-    out : `~BasebandSignal`
+    BasebandSignal
         Frequency-shifted signal.
     """
     if not isinstance(z, pb.BasebandSignal):
@@ -344,12 +345,12 @@ def fast_len(z, /):
 
     Parameters
     ----------
-    z : `~Signal`
+    z : Signal
         Input signal.
 
     Returns
     -------
-    out : `~Signal`
+    Signal
         Cropped signal.
     """
     N = len(z)
