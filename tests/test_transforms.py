@@ -12,8 +12,12 @@ from astropy.time import Time
 
 def assert_equal_signals(x, y):
     assert np.allclose(np.array(x), np.array(y), atol=1e-6)
-    assert Time.isclose(x.start_time, y.start_time)
     assert u.isclose(x.sample_rate, y.sample_rate)
+
+    if x.start_time is None:
+        assert y.start_time is None
+    else:
+        assert Time.isclose(x.start_time, y.start_time)
 
 
 def assert_equal_radiosignals(x, y):
@@ -304,7 +308,8 @@ class TestSnippet:
 class TestTimeShift:
     @pytest.mark.parametrize("use_dask", [True, False])
     @pytest.mark.parametrize("use_complex", [True, False])
-    def test_int_roll(self, use_dask, use_complex):
+    @pytest.mark.parametrize("start_time", [Time.now(), None])
+    def test_int_roll(self, use_dask, use_complex, start_time):
         if use_dask:
             f = da.random.standard_normal
         else:
@@ -317,31 +322,43 @@ class TestTimeShift:
         else:
             x = f(shape).astype(np.float64)
 
-        z = pb.Signal(x, sample_rate=1 * u.kHz, start_time=Time.now())
+        z = pb.Signal(x, sample_rate=1 * u.kHz, start_time=start_time)
 
-        for n in [1, 10, 55, 211]:
+        for n in [1, 10, 55]:
             assert_equal_signals(z[:-n], pb.time_shift(z, n))
             assert_equal_signals(z[:-n], pb.time_shift(z, n * u.ms))
 
             assert_equal_signals(z[n:], pb.time_shift(z, -n))
             assert_equal_signals(z[n:], pb.time_shift(z, -n * u.ms))
 
-    def test_subsample_roll(self):
-        def impulse(N, t0):
-            """Generate noisy impulse at t0, with given S/N."""
-            n = (np.arange(N) - N // 2) / N
-            x = np.exp(-2j * np.pi * t0 * n)
-            return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex128)
+        assert_equal_signals(z, pb.time_shift(z, 0))
 
+    def test_subsample_roll(self):
         N = 1024
-        for shift in [16.5, 32.25, 50.1, 60.9, 466.666]:
-            imp1 = impulse(N, shift)
-            imp2 = impulse(N - math.ceil(shift), 0)
-            x = pb.Signal(imp1, sample_rate=1 * u.kHz, start_time=Time.now())
-            y = pb.time_shift(x, -shift)
-            assert np.allclose(np.array(y), imp2)
-            z = pb.time_shift(x, -shift * u.ms)
-            assert np.allclose(np.array(z), imp2)
+
+        t0 = Time.now()
+        for shift in [-20.4, -10.666, -4.99, 10.33, 2.9, 5.5]:
+            if shift < 0:
+                x = pb.Signal(
+                    impulse(N, -shift),
+                    sample_rate=1 * u.Hz,
+                    start_time=t0 + shift * u.s,
+                )
+            else:
+                x = pb.Signal(
+                    impulse(N, np.ceil(shift) - shift),
+                    sample_rate=1 * u.Hz,
+                    start_time=t0 - (np.ceil(shift) - shift) * u.s,
+                )
+
+            y = pb.time_shift(x, shift)
+
+            z = np.zeros_like(y.data)
+            z[0] = 1
+
+            assert np.allclose(np.asarray(y.data), z)
+            assert x.sample_rate == y.sample_rate
+            assert Time.isclose(t0, y.start_time)
 
 
 class TestFreqShift:

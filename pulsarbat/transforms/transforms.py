@@ -149,7 +149,7 @@ def concatenate(signals, /, axis=0):
 
 
 def snippet(z, /, t, n):
-    """Extracts a snippet of a signal.
+    """Extracts a snippet of a signal in time.
 
     If ``t`` corresponds to non-integer number of samples from the
     start of ``z``, time-shifting via FFT (by applying a phase gradient
@@ -196,25 +196,7 @@ def snippet(z, /, t, n):
 
     if (i := int(t)) < t:
         shift = i - t
-
-        if isinstance(z.data, da.Array):
-            f = da.fft.fftfreq(len(z), 1, chunks=(-1,))
-        else:
-            f = np.fft.fftfreq(len(z), 1)
-
-        ph = np.exp(-2j * np.pi * shift * f).astype(np.complex64)
-
-        ix = (slice(None),) + (None,) * (z.ndim - 1)
-        shifted = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * ph[ix], axis=0)
-        shifted = shifted if np.iscomplexobj(z.data) else shifted.real
-        shifted = shifted.astype(z.dtype)
-
-        if z.start_time is None:
-            new_start = None
-        else:
-            new_start = z.start_time - shift * z.dt
-
-        z = type(z).like(z, shifted, start_time=new_start)
+        z = time_shift(z, shift)
 
     return z[i : i + n]
 
@@ -223,7 +205,9 @@ def time_shift(z, /, t):
     """Shift signal by given number of samples or time.
 
     This function shifts signals in time via FFT by multiplying by
-    a phase gradient in frequency domain.
+    a phase gradient in frequency domain. This usually only makes sense if
+    ``z`` is a :py:class:`.BasebandSignal`. For non-baseband signals,
+    the output might not be meaningful.
 
     Parameters
     ----------
@@ -233,42 +217,56 @@ def time_shift(z, /, t):
         Shift amount. If a number (int or float), the signal is shifted
         by that number of samples. An astropy Quantity with units of
         time can also be passed, in which case the signal will be
-        shifted by `t * z.sample_rate` samples.
+        shifted by `dt * z.sample_rate` samples.
 
     Returns
     -------
     out : Signal
-        Shifted signal.
+        Shifted signal, with out-of-bounds data cropped out. The output signal
+        will usually have a length smaller than the input signal as a result.
+        See notes for cropping behavior.
+
+    Notes
+    -----
+    Since an FFT is used, it is efficient to provide a signal with a
+    fast FFT length via :py:func:`pulsarbat.fast_len`.
+
+    The primary use-case for this function is when shift is between
+    -1 and 0, which is useful for sub-sample shifting of large baseband
+    signals. A large positive shift (for example, 10) simply returns a
+    cropped signal (``x[10:]``). A non-integer positive shift, such as 5.6,
+    has the same effect as a of -0.4, but with more unnecessary cropping of
+    the signal.
     """
     if t == 0:
         return z
 
     if isinstance(t, u.Quantity):
-        n = np.float64((t * z.sample_rate).to_value(u.one))
-    else:
-        n = np.float64(t)
+        t = (t * z.sample_rate).to_value(u.one)
 
     if isinstance(z.data, da.Array):
-        f = da.fft.fftfreq(len(z), 1)
+        f = da.fft.fftfreq(len(z), 1, chunks=(-1,))
     else:
         f = np.fft.fftfreq(len(z), 1)
 
-    ix = tuple(slice(None) if i == 0 else None for i in range(z.ndim))
-    ph = np.exp(-2j * np.pi * n * f).astype(np.complex64)[ix]
+    ix = (slice(None),) + (None,) * (z.ndim - 1)
+    ph = np.exp(-2j * np.pi * t * f).astype(np.complex64)[ix]
+
     shifted = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * ph, axis=0)
+    shifted = shifted if np.iscomplexobj(z.data) else shifted.real
 
-    if np.iscomplexobj(z.data):
-        shifted = shifted.astype(z.dtype)
+    if z.start_time is None:
+        new_start = None
     else:
-        shifted = shifted.real.astype(z.dtype)
+        new_start = z.start_time - t * z.dt
 
-    x = type(z).like(z, shifted, start_time=z.start_time - n * z.dt)
+    x = type(z).like(z, shifted, start_time=new_start)
 
-    if n >= 0:
-        i = np.int64(np.ceil(n))
+    if t >= 0:
+        i = np.int64(np.ceil(t))
         x = x[i:]
     else:
-        i = np.int64(np.floor(n))
+        i = np.int64(np.floor(t))
         x = x[:i]
 
     return x
