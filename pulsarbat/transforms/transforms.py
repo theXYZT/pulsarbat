@@ -235,7 +235,7 @@ def time_shift(z, /, shift, crop=False):
     out : Signal
         Shifted signal. If the ``crop`` parameter is ``False``, will have
         the same shape and ``start_time`` as input signal. If ``crop`` is
-        ``True``, ``start_time`` will change by ``max(0, shift.max())``.
+        ``True``, ``start_time`` will change by ``max(0, shift.max()) * z.dt``.
 
     Notes
     -----

@@ -12,7 +12,7 @@ Pulsarbat has the following dependencies:
 - `Numpy <https://www.numpy.org/>`_ 1.23 or later
 - `Scipy <https://scipy.org/>`_ 1.10 or later
 - `Baseband <https://baseband.readthedocs.io/>`_ 4.1.1 or later
-- `Dask <https://dask.org/>`_ 2023.1.0 or later: with Dask Array.
+- `Dask <https://dask.org/>`_ 2023.2.1 or later: with Dask Array.
 
 
 Released version
