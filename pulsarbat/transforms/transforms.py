@@ -196,15 +196,22 @@ def snippet(z, /, t, n):
 
     if (i := int(t)) < t:
         shift = i - t
-        z = time_shift(z, shift)
+
+        if z.start_time is None:
+            new_start = None
+        else:
+            new_start = z.start_time - shift * z.dt
+
+        shifted = pb.time_shift(z, shift, crop=True).data
+        z = type(z).like(z, shifted, start_time=new_start)
 
     return z[i : i + n]
 
 
-def time_shift(z, /, t):
-    """Shift signal by given number of samples or time.
+def time_shift(z, /, shift, crop=False):
+    """Shift signal data by given number of samples or time.
 
-    This function shifts signals in time via FFT by multiplying by
+    This function shifts the signal data in time via FFT by multiplying by
     a phase gradient in frequency domain. This usually only makes sense if
     ``z`` is a :py:class:`.BasebandSignal`. For non-baseband signals,
     the output might not be meaningful.
@@ -213,61 +220,75 @@ def time_shift(z, /, t):
     ----------
     z : Signal
         Input signal.
-    t : int, float or Quantity
+    shift : int, float, array-like or Quantity
         Shift amount. If a number (int or float), the signal is shifted
         by that number of samples. An astropy Quantity with units of
         time can also be passed, in which case the signal will be
-        shifted by `dt * z.sample_rate` samples.
+        shifted by `dt * z.sample_rate` samples. If an array, must have
+        shape such that axes with length more than 1 match ``z.sample_shape``.
+    crop : bool, optional
+        Whether the returned signal is cropped to eliminate out-of-bounds
+        data. Default is False.
 
     Returns
     -------
     out : Signal
-        Shifted signal, with out-of-bounds data cropped out. The output signal
-        will usually have a length smaller than the input signal as a result.
-        See notes for cropping behavior.
+        Shifted signal. If the ``crop`` parameter is ``False``, will have
+        the same shape and ``start_time`` as input signal. If ``crop`` is
+        ``True``, ``start_time`` will change by ``max(0, shift.max())``.
 
     Notes
     -----
     Since an FFT is used, it is efficient to provide a signal with a
     fast FFT length via :py:func:`pulsarbat.fast_len`.
-
-    The primary use-case for this function is when shift is between
-    -1 and 0, which is useful for sub-sample shifting of large baseband
-    signals. A large positive shift (for example, 10) simply returns a
-    cropped signal (``x[10:]``). A non-integer positive shift, such as 5.6,
-    has the same effect as a of -0.4, but with more unnecessary cropping of
-    the signal.
     """
-    if t == 0:
+    if isinstance(shift, u.Quantity):
+        shift = (shift * z.sample_rate).to_value(u.one)
+
+    shift = np.array(shift)
+
+    if shift.ndim >= z.ndim:
+        raise ValueError(
+            f"shift has too many dimensions. Expected <= {z.ndim - 1} dimensions, "
+            f"got {shift.ndim} dimensions!"
+        )
+
+    # If shifts are zero, do nothing
+    if np.allclose(shift, 0):
         return z
 
-    if isinstance(t, u.Quantity):
-        t = (t * z.sample_rate).to_value(u.one)
+    if shift.ndim > 0:
+        ix = (slice(None),) * shift.ndim + (None,) * (z.ndim - shift.ndim - 1)
+        shift = shift[ix]
 
+    f_ix = tuple(slice(None) if j == 0 else None for j in range(z.ndim))
     if isinstance(z.data, da.Array):
-        f = da.fft.fftfreq(len(z), 1, chunks=(-1,))
+        f = da.fft.fftfreq(len(z), 1, chunks=(-1,))[f_ix]
     else:
-        f = np.fft.fftfreq(len(z), 1)
+        f = np.fft.fftfreq(len(z), 1)[f_ix]
 
-    ix = (slice(None),) + (None,) * (z.ndim - 1)
-    ph = np.exp(-2j * np.pi * t * f).astype(np.complex64)[ix]
-
+    ph = np.exp(-2j * np.pi * shift * f).astype(np.complex64)
     shifted = pb.fft.ifft(pb.fft.fft(z.data, axis=0) * ph, axis=0)
     shifted = shifted if np.iscomplexobj(z.data) else shifted.real
 
-    if z.start_time is None:
-        new_start = None
-    else:
-        new_start = z.start_time - t * z.dt
+    start, stop = 0, 0
+    it = np.nditer(shift, flags=["multi_index"])
+    for a in it:
+        if a < 0:
+            a = int(np.floor(a))
+            ix = (np.s_[a:],) + it.multi_index
+            stop = min(stop, a)
+        else:
+            a = int(np.ceil(a))
+            ix = (np.s_[:a],) + it.multi_index
+            start = max(start, a)
 
-    x = type(z).like(z, shifted, start_time=new_start)
+        shifted[ix] = 0
 
-    if t >= 0:
-        i = np.int64(np.ceil(t))
-        x = x[i:]
-    else:
-        i = np.int64(np.floor(t))
-        x = x[:i]
+    x = type(z).like(z, shifted)
+
+    if crop:
+        x = x[start:len(x) + stop]
 
     return x
 
@@ -288,8 +309,8 @@ def freq_shift(z, /, shift):
     z : BasebandSignal
         Input signal.
     shift : Quantity
-        Shift amount in units of frequency. Should be a scalar or
-        have shape ``z.sample_shape[:n]`` for ``0 <= n``.
+        Shift amount in units of frequency. Should be a scalar or have
+        shape that such that axes with length more than 1 match ``z.sample_shape``.
 
     Returns
     -------
@@ -316,8 +337,13 @@ def freq_shift(z, /, shift):
     ix = (slice(None),) * shift.ndim + (None,) * (z.ndim - shift.ndim - 1)
     ft = (shift[ix] * z.dt).to_value(u.one)
 
+    if isinstance(z.data, da.Array):
+        n = da.arange(len(z), chunks=(-1,))
+    else:
+        n = np.arange(len(z))
+
     ix = tuple(slice(None) if j == 0 else None for j in range(z.ndim))
-    ph = np.exp(2j * np.pi * ft * np.arange(len(z))[ix]).astype(z.dtype)
+    ph = np.exp(2j * np.pi * ft * n[ix]).astype(z.dtype)
 
     x = np.fft.fftshift(pb.fft.fft(z.data * ph, axis=0), axes=(0,))
 

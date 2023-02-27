@@ -1,6 +1,5 @@
 """Tests for core signal functions."""
 
-import math
 import pytest
 import itertools
 import numpy as np
@@ -29,13 +28,19 @@ def impulse(N, t0):
     """Generate noisy impulse at t0, with given S/N."""
     n = (np.arange(N) - N // 2) / N
     x = np.exp(-2j * np.pi * t0 * n)
-    return np.fft.ifft(np.fft.ifftshift(x)).astype(np.complex128)
+    return np.fft.ifft(np.fft.ifftshift(x, axes=(-1,))).astype(np.complex128)
 
 
 def sinusoid(N, f0):
     """Generate a complex sinusoid at frequency f0."""
     n = np.arange(N) / N
     return np.exp(2j * np.pi * f0 * n).astype(np.complex128)
+
+
+def noise(shape):
+    """Generate complex Gaussian noise."""
+    f = np.random.default_rng().standard_normal
+    return (f(shape) + 1j * f(shape)) / np.sqrt(2)
 
 
 class TestConcatenate:
@@ -309,56 +314,83 @@ class TestTimeShift:
     @pytest.mark.parametrize("use_dask", [True, False])
     @pytest.mark.parametrize("use_complex", [True, False])
     @pytest.mark.parametrize("start_time", [Time.now(), None])
-    def test_int_roll(self, use_dask, use_complex, start_time):
-        if use_dask:
-            f = da.random.standard_normal
-        else:
-            f = np.random.standard_normal
+    def test_int_scalar(self, use_dask, use_complex, start_time):
+        kw = dict(sample_rate=1 * u.kHz, start_time=start_time)
 
-        shape = (4096, 4, 2)
-
-        if use_complex:
-            x = (f(shape) + 1j * f(shape)).astype(np.complex128)
-        else:
-            x = f(shape).astype(np.float64)
-
-        z = pb.Signal(x, sample_rate=1 * u.kHz, start_time=start_time)
-
-        for n in [1, 10, 55]:
-            assert_equal_signals(z[:-n], pb.time_shift(z, n))
-            assert_equal_signals(z[:-n], pb.time_shift(z, n * u.ms))
-
-            assert_equal_signals(z[n:], pb.time_shift(z, -n))
-            assert_equal_signals(z[n:], pb.time_shift(z, -n * u.ms))
-
-        assert_equal_signals(z, pb.time_shift(z, 0))
-
-    def test_subsample_roll(self):
-        N = 1024
-
-        t0 = Time.now()
-        for shift in [-20.4, -10.666, -4.99, 10.33, 2.9, 5.5]:
-            if shift < 0:
-                x = pb.Signal(
-                    impulse(N, -shift),
-                    sample_rate=1 * u.Hz,
-                    start_time=t0 + shift * u.s,
-                )
+        for shape in [(4096, 4, 2), (4096, 4), (4096,)]:
+            if use_complex:
+                z = pb.Signal(noise(shape), **kw)
             else:
-                x = pb.Signal(
-                    impulse(N, np.ceil(shift) - shift),
-                    sample_rate=1 * u.Hz,
-                    start_time=t0 - (np.ceil(shift) - shift) * u.s,
-                )
+                z = pb.Signal(noise(shape).real, **kw)
 
-            y = pb.time_shift(x, shift)
+            if use_dask:
+                z = z.to_dask_array()
 
-            z = np.zeros_like(y.data)
-            z[0] = 1
+            for n in [-12, -7, -3, 0, 4, 8, 13]:
+                for s in [n, n * u.ms]:
+                    y = pb.time_shift(z, s)
 
-            assert np.allclose(np.asarray(y.data), z)
-            assert x.sample_rate == y.sample_rate
-            assert Time.isclose(t0, y.start_time)
+                    if z.start_time is None:
+                        assert y.start_time is None
+                    else:
+                        assert Time.isclose(z.start_time, y.start_time)
+
+                    if n < 0:
+                        assert np.allclose(np.array(y[:n]), np.array(z[-n:]), atol=1E-6)
+                        assert np.allclose(np.array(y[n:]), 0)
+                    elif n > 0:
+                        assert np.allclose(np.array(y[n:]), np.array(z[:-n]), atol=1E-6)
+                        assert np.allclose(np.array(y[:n]), 0)
+                    else:
+                        assert np.allclose(np.array(y), np.array(z))
+
+    @pytest.mark.parametrize("use_dask", [True, False])
+    def test_advanced(self, use_dask):
+        N = 4096
+
+        for shape in [(4096, 4, 2), (4096, 4), (4096,)]:
+            shifts = np.concatenate(
+                [
+                    np.random.uniform(-20, 20, (4,) + shape[1:]),
+                    np.random.uniform(0, 20, (3,) + shape[1:]),
+                    np.random.uniform(-20, 0, (3,) + shape[1:])
+                ],
+                axis=0
+            )
+
+            for shift in shifts:
+                x = impulse(N, 100 - shift[..., None])
+                x = np.moveaxis(x, -1, 0)
+
+                z = pb.Signal(x, sample_rate=1 * u.kHz)
+
+                if use_dask:
+                    z = z.to_dask_array()
+
+                y1 = pb.time_shift(z, shift, crop=False)
+                y2 = pb.time_shift(z, shift, crop=True)
+
+                x = np.zeros_like(y1.data)
+                x[100] = 1.0
+
+                a = max(0, int(np.ceil(shift.max())))
+                b = len(x) + min(0, int(np.floor(shift.min())))
+
+                assert np.allclose(np.asarray(y1), x)
+                assert np.allclose(np.asarray(y2), x[a:b])
+
+    def test_shape_errors(self):
+        x = pb.Signal(noise((4096, 4, 2)), sample_rate=1 * u.kHz)
+
+        for shape in [(1,), (1, 2), (4,), (4, 1), (4, 2)]:
+            shift = np.random.uniform(-20, 20, shape)
+            _ = pb.time_shift(x, shift)
+
+        for shape in [(2,), (5, 2), (4, 5), (1, 4), (2, 1)]:
+            shift = np.random.uniform(-20, 20, shape)
+
+            with pytest.raises(ValueError):
+                _ = pb.time_shift(x, shift)
 
 
 class TestFreqShift:
@@ -460,6 +492,20 @@ class TestFreqShift:
                     s = int(np.ceil(s))
                     assert np.allclose(a[:s], 0)
                     assert np.allclose(a[s:], 1)
+
+    def test_shape_errors(self):
+        x = pb.BasebandSignal(noise((4096, 4, 2)), sample_rate=1 * u.kHz,
+                              center_freq=1 * u.MHz)
+
+        for shape in [(1,), (1, 2), (4,), (4, 1), (4, 2)]:
+            shift = np.random.uniform(-20, 20, shape) * u.mHz
+            _ = pb.freq_shift(x, shift)
+
+        for shape in [(2,), (5, 2), (4, 5), (1, 4), (2, 1)]:
+            shift = np.random.uniform(-20, 20, shape) * u.mHz
+
+            with pytest.raises(ValueError):
+                _ = pb.freq_shift(x, shift)
 
 
 class TestFastLen:
