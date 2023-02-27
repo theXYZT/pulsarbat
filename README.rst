@@ -55,7 +55,19 @@ Citing
 
 ``pulsarbat`` has a DOI via Zenodo: https://doi.org/10.5281/zenodo.6934355
 
-This DOI represents all versions, and will always resolve to the latest one. To cite a specific version, follow the link and find the version you want to cite on Zenodo.
+This DOI link represents all versions, and will always resolve to the latest one.
+Use the following Bibtex entry to cite this work:
+
+.. code-block::
+
+    @software{pulsarbat,
+      author       = {Nikhil Mahajan and Rebecca Lin},
+      title        = {pulsarbat: PULSAR Baseband Analysis Tools},
+      year         = {2023},
+      publisher    = {Zenodo},
+      doi          = {10.5281/zenodo.6934355},
+      url          = {https://doi.org/10.5281/zenodo.6934355}
+    }
 
 
 License
