@@ -13,5 +13,6 @@
     ],
 
     "license": "GPL-3.0-or-later",
-    "title": "pulsarbat: PULSAR Baseband Analysis Tools"
+    "title": "pulsarbat: PULSAR Baseband Analysis Tools",
+    "description": "Pulsarbat (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband signals. While this package has a special focus on radio pulsar astronomy, it can also be used to work with other types of radio astronomical observations (such as fast radio bursts, quasars, and so on) or any time-frequency data."
 }
