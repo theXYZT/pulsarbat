@@ -2,7 +2,7 @@
 Release Notes
 =============
 
-0.0.9 (2022-10-??)
+0.0.9 (2023-02-27)
 ------------------
 
 - Added a frequency-shift function ``pulsarbat.freq_shift`` (:pr:`52`)
