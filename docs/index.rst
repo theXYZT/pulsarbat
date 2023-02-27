@@ -42,9 +42,7 @@ Citing
 Pulsarbat has a DOI via Zenodo: https://doi.org/10.5281/zenodo.6934355
 
 This DOI link represents all versions, and will always resolve to the latest one.
-Use the following Bibtex entry to cite this work:
-
-.. code-block::
+Use the following Bibtex entry to cite this work::
 
     @software{pulsarbat,
       author       = {Nikhil Mahajan and Rebecca Lin},
