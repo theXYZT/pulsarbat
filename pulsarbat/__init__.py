@@ -4,7 +4,7 @@
 
 __author__ = """Nikhil Mahajan"""
 __email__ = "mahajan@astro.utoronto.ca"
-__version__ = "__version__ = "0.0.10-dev1""
+__version__ = "0.0.10-dev1"
 
 from . import core
 from .core import *
