@@ -10,5 +10,8 @@
             "name": "Rebecca Lin",
             "orcid": "0000-0003-4530-4254"
         }
-    ]
+    ],
+
+    "license": "GPL-3.0-or-later",
+    "title": "pulsarbat: PULSAR Baseband Analysis Tools"
 }
