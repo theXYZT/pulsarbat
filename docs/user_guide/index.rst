@@ -16,6 +16,5 @@ To use Pulsarbat in a project:
    :caption: Tutorials
    :maxdepth: 1
 
-   getting_started
-   signals
-   readers
+   waterfall.ipynb
+

@@ -500,7 +500,7 @@ class RadioSignal(Signal):
     @property
     def nchan(self):
         """Number of frequency channels."""
-        return self.shape[1]
+        return self.shape[self.get_axis("freq")]
 
     @property
     def center_freq(self):
@@ -582,8 +582,8 @@ class IntensitySignal(RadioSignal):
     Parameters
     ----------
     z : array-like
-        The signal data. Must be at least 3-dimensional with shape
-        ``(nsample, nchan, npol, ...)``.
+        The signal data. Must be at least 2-dimensional with shape
+        ``(nsample, nchan, ...)``.
     sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
     start_time : Time, optional
