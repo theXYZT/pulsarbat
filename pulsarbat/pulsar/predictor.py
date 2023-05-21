@@ -174,7 +174,7 @@ class PhasePredictor(QTable):
         return f * unit
 
     def time_at(self, phase, guess=None):
-        """Returns timestamp at given phase."""
+        """Returns timestamp at given phase via root-finding."""
         def func(x):
             return (self(guess + x * u.s) - phase).value
 
@@ -193,7 +193,7 @@ class PhasePredictor(QTable):
             guess = self["tmid"][index]
 
         x = scipy.optimize.root_scalar(func, x0=0, fprime=fprime)
-        return guess + x * u.s
+        return guess + x.root * u.s
 
     @classmethod
     def from_polyco(cls, path):

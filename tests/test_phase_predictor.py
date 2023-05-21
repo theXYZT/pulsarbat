@@ -97,6 +97,24 @@ class TestPredictor:
         with pytest.raises(ValueError):
             _ = p.phasepol(t + np.arange(10) * u.ms)
 
+    def test_time_at(self):
+        p = pb.PhasePredictor.from_polyco(TEST_POLYCO)
+
+        guess = Time("2018-05-07T02:32:13.500", format="isot")
+
+        ph0 = np.int64(146760000000)
+        fracs = np.array([0.0, 0.3, 0.5, 0.99])
+        phases = pb.Phase(ph0 + np.arange(10), fracs[:, None]).flatten()
+
+        for ph in phases:
+            t1 = p.time_at(ph)
+            t2 = p.time_at(ph, guess=guess)
+            assert u.isclose(p(t1), ph, **phase_tols)
+            assert u.isclose(p(t2), ph, **phase_tols)
+
+        with pytest.raises(ValueError):
+            _ = p.time_at(1000)
+
     def test_polyco_entry(self):
         t = Time("60000", format="mjd")
 
