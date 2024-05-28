@@ -105,3 +105,5 @@ ENV/
 
 # custom
 todo_list.txt
+.vscode/
+*.code-workspace
