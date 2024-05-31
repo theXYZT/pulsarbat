@@ -1,6 +1,7 @@
 """Pulsar phase prediction."""
 
 import operator
+import scipy
 import functools
 from dataclasses import dataclass, asdict
 import numpy as np
@@ -171,6 +172,28 @@ class PhasePredictor(QTable):
                 s = index == i
                 f[s] = self["poly"][i].deriv(n + 1)(dt[s])
         return f * unit
+
+    def time_at(self, phase, guess=None):
+        """Returns timestamp at given phase via root-finding."""
+        def func(x):
+            return (self(guess + x * u.s) - phase).value
+
+        def fprime(x):
+            return self.f0(guess + x * u.s).to_value(u.cycle / u.s)
+
+        check = ((self(a) < phase) & (phase < self(b)) for a, b in self.intervals)
+        check = functools.reduce(operator.or_, check)
+
+        if not np.all(check):
+            raise ValueError("Given phase seems to be outside predictor range!")
+
+        if guess is None:
+            ph_end = (self(self["tmid"] + self["span"] / 2) - phase).value
+            index = np.searchsorted(ph_end, 0)
+            guess = self["tmid"][index]
+
+        x = scipy.optimize.root_scalar(func, x0=0, fprime=fprime)
+        return guess + x.root * u.s
 
     @classmethod
     def from_polyco(cls, path):

@@ -1,3 +1,5 @@
+:html_theme.breadcrumbs.remove:
+
 =============
 Release Notes
 =============

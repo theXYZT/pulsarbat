@@ -125,7 +125,7 @@ class BasebandReader(BaseReader):
 
     @lower_sideband.setter
     def lower_sideband(self, s):
-        if type(s) != bool:
+        if type(s) is not bool:
             s = np.array(s).astype(bool)
             if s.shape != self._in_sample_shape:
                 err = f"Got {s.shape}, expected {self._in_sample_shape}"

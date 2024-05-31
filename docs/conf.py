@@ -3,7 +3,7 @@ import pulsarbat
 import warnings
 
 project = "pulsarbat"
-copyright = "2022, Nikhil Mahajan"
+copyright = "2024, Nikhil Mahajan"
 author = "Nikhil Mahajan"
 release = pulsarbat.__version__
 
@@ -76,6 +76,7 @@ numpydoc_xref_aliases = {
     "IntensitySignal": "pulsarbat.IntensitySignal",
     "FullStokesSignal": "pulsarbat.FullStokesSignal",
     "DispersionMeasure": "pulsarbat.DispersionMeasure",
+    "PhasePredictor": "pulsarbat.PhasePredictor",
 }
 
 
@@ -113,12 +114,17 @@ html_theme_options = {
         "alt_text": "pulsarbat",
     },
     "navbar_start": ["navbar-logo", "version-switcher"],
-    "page_sidebar_items": ["page-toc"],
+    "article_header_start": ["breadcrumbs_custom"],
+    "secondary_sidebar_items": ["page-toc"],
+    "primary_sidebar_end": [],
     "switcher": {"json_url": json_url, "version_match": version_match},
 }
 
 html_sidebars = {
     "**": ["sidebar-nav-bs"],
+    "install": [],
+    "development": [],
+    "changelog": [],
 }
 
 html_context = {
@@ -129,10 +135,8 @@ html_context = {
     "doc_path": "docs",
 }
 
-html_static_path = [
-    "_static",
-]
-
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 
 warnings.filterwarnings(
     "ignore",
@@ -141,14 +145,12 @@ warnings.filterwarnings(
     " non-GUI backend, so cannot show the figure.",
 )
 
-
 extlinks = {
     "issue": ("https://github.com/theXYZT/pulsarbat/issues/%s", "#%s"),
     "pr": ("https://github.com/theXYZT/pulsarbat/pull/%s", "PR #%s"),
 }
 
 toggleprompt_offset_right = 35
-
 
 myst_enable_extensions = [
     "amsmath",
@@ -159,7 +161,3 @@ myst_enable_extensions = [
 ]
 
 nb_execution_mode = "off"
-
-
-def setup(app):
-    app.add_css_file("custom.css")

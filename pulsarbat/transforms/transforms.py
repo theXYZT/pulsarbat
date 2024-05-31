@@ -90,7 +90,7 @@ def concatenate(signals, /, axis=0):
         if not issubclass(sig_type, pb.Signal):
             raise TypeError("Signals must be pulsarbat.Signal objects.")
 
-        if not all(type(s) == sig_type for s in signals):
+        if not all(type(s) is sig_type for s in signals):
             raise TypeError("All signals must have same type!")
 
     ref_sr = signals[0].sample_rate

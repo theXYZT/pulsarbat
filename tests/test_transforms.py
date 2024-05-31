@@ -386,7 +386,7 @@ class TestTimeShift:
             shift = np.random.uniform(-20, 20, shape)
             _ = pb.time_shift(x, shift)
 
-        for shape in [(2,), (5, 2), (4, 5), (1, 4), (2, 1)]:
+        for shape in [(2,), (5, 2), (4, 5), (1, 4), (2, 1), (4, 2, 2)]:
             shift = np.random.uniform(-20, 20, shape)
 
             with pytest.raises(ValueError):

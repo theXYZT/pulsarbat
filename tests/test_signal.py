@@ -256,7 +256,7 @@ class TestSignalUfuncs:
         b = pb.Signal(y, sample_rate=5 * u.Hz)
 
         for s in [a + 2, a + y, 2 + a, y + a, a + b]:
-            assert type(s) == type(a)
+            assert type(s) is type(a)
             assert s.sample_rate == a.sample_rate
 
         assert np.allclose(np.array(a + 2), np.array(x + 2))
@@ -284,7 +284,7 @@ class TestSignalUfuncs:
         a = pb.Signal(x, sample_rate=1 * u.Hz)
         b, c = np.modf(a)
 
-        assert type(a) == type(b) == type(c)
+        assert type(a) is type(b) is type(c)
         assert a.sample_rate == b.sample_rate == c.sample_rate
         assert np.allclose(b.data, y) and np.allclose(c.data, z)
 
@@ -294,7 +294,7 @@ class TestSignalUfuncs:
         bb, cc = np.modf(a, b, c)
 
         assert bb is b and cc is c
-        assert type(a) == type(bb) == type(cc)
+        assert type(a) is type(bb) is type(cc)
         assert bb.sample_rate == 2 * u.Hz and cc.sample_rate == 5 * u.Hz
         assert np.allclose(bb.data, y) and np.allclose(cc.data, z)
 
@@ -304,7 +304,7 @@ class TestSignalUfuncs:
         bb, cc = np.modf(a, b)
 
         assert bb is b and cc is not c
-        assert type(a) == type(bb) == type(cc)
+        assert type(a) is type(bb) is type(cc)
         assert bb.sample_rate == 2 * u.Hz and cc.sample_rate == a.sample_rate
         assert np.allclose(bb.data, y) and np.allclose(cc.data, z)
 
@@ -314,7 +314,7 @@ class TestSignalUfuncs:
         bb, cc = np.modf(a, out=(None, c))
 
         assert bb is not b and cc is c
-        assert type(a) == type(bb) == type(cc)
+        assert type(a) is type(bb) is type(cc)
         assert bb.sample_rate == a.sample_rate and cc.sample_rate == 5 * u.Hz
         assert np.allclose(bb.data, y) and np.allclose(cc.data, z)
 

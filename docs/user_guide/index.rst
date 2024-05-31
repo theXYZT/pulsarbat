@@ -11,11 +11,10 @@ To use Pulsarbat in a project:
 
     import pulsarbat as pb
 
+..
+   .. toctree::
+      :caption: Tutorials
+      :maxdepth: 1
 
-.. toctree::
-   :caption: Tutorials
-   :maxdepth: 1
+      waterfall.ipynb
 
-   getting_started
-   signals
-   readers

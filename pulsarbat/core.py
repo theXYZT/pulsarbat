@@ -288,7 +288,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
             return np.zeros(t.shape, bool) if t.shape else False
 
         t0, t1 = self.start_time, self.stop_time
-        edge = ~Time.isclose(t, t1) | Time.isclose(t, t0)
+        edge = ~np.bool_(Time.isclose(t, t1)) | np.bool_(Time.isclose(t, t0))
         return edge & (t0 <= t) & (t < t1)
 
     def __contains__(self, t):
@@ -500,7 +500,7 @@ class RadioSignal(Signal):
     @property
     def nchan(self):
         """Number of frequency channels."""
-        return self.shape[1]
+        return self.shape[self.get_axis("freq")]
 
     @property
     def center_freq(self):
@@ -582,8 +582,8 @@ class IntensitySignal(RadioSignal):
     Parameters
     ----------
     z : array-like
-        The signal data. Must be at least 3-dimensional with shape
-        ``(nsample, nchan, npol, ...)``.
+        The signal data. Must be at least 2-dimensional with shape
+        ``(nsample, nchan, ...)``.
     sample_rate : Quantity
         The number of samples per second. Must be in units of frequency.
     start_time : Time, optional

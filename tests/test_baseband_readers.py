@@ -129,7 +129,7 @@ class TestDADAStokesReader:
         assert r.shape == (16, 2048, 4)
 
         z = r.read(0, 4, use_dask=use_dask)
-        assert type(z) == pb.FullStokesSignal
+        assert type(z) is pb.FullStokesSignal
         assert u.isclose(z.center_freq, 7 * u.GHz)
         assert u.isclose(z.bandwidth, 2 * u.GHz)
         assert u.isclose(z.dt, 131072 * u.ns)
