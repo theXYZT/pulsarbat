@@ -1,9 +1,9 @@
-sphinx==5.3.0
-pydata-sphinx-theme==0.13.3
+sphinx==7.3.7
+pydata-sphinx-theme==0.15.3
 sphinx-copybutton==0.5.2
-sphinx-design==0.4.1
+sphinx-design==0.5.0
 sphinx-toggleprompt==0.2.0
-numpydoc==1.5.0
-myst-nb==0.17.2
-ipython==8.13.2
-matplotlib==3.7.1
+numpydoc==1.7.0
+myst-nb==1.1.0
+ipython==8.24.0
+matplotlib==3.8.4

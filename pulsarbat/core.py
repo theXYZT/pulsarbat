@@ -288,7 +288,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
             return np.zeros(t.shape, bool) if t.shape else False
 
         t0, t1 = self.start_time, self.stop_time
-        edge = ~Time.isclose(t, t1) | Time.isclose(t, t0)
+        edge = ~np.bool_(Time.isclose(t, t1)) | np.bool_(Time.isclose(t, t0))
         return edge & (t0 <= t) & (t < t1)
 
     def __contains__(self, t):

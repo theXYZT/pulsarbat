@@ -8,12 +8,12 @@ Installation
 
 Pulsarbat has the following dependencies:
 
-- **Python 3.9 or later**
-- `Astropy <https://www.astropy.org/>`_ 5.2 or later
-- `Numpy <https://www.numpy.org/>`_ 1.23 or later
-- `Scipy <https://scipy.org/>`_ 1.10 or later
-- `Baseband <https://baseband.readthedocs.io/>`_ 4.1.2 or later
-- `Dask <https://dask.org/>`_ 2023.4 or later: with Dask Array.
+- **Python 3.10 or later**
+- `Astropy <https://www.astropy.org/>`_ 6.1 or later
+- `Numpy <https://www.numpy.org/>`_ 1.26 or later
+- `Scipy <https://scipy.org/>`_ 1.13 or later
+- `Baseband <https://baseband.readthedocs.io/>`_ 4.1.3 or later
+- `Dask <https://dask.org/>`_ 2024.5 or later: with Dask Array.
 
 
 Released version

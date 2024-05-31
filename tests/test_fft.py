@@ -50,14 +50,14 @@ class TestFFT:
             x = sp_fft_func(a)
 
             y = pb_fft_func(a)
-            assert type(a) == type(y)
+            assert type(a) is type(y)
             assert x.dtype == y.dtype
             assert np.allclose(x, y)
 
             b = da.arange(N, dtype=d) + 1j * da.arange(N, dtype=d)
 
             z = pb_fft_func(b)
-            assert type(b) == type(z)
+            assert type(b) is type(z)
             assert x.dtype == z.dtype
             assert np.allclose(x, np.array(z))
 
@@ -71,13 +71,13 @@ class TestFFT:
             x = sp_fft_func(a)
 
             y = pb_fft_func(a)
-            assert type(a) == type(y)
+            assert type(a) is type(y)
             assert x.dtype == y.dtype
             assert np.allclose(x, y)
 
             b = da.arange(N, dtype=d)
 
             z = pb_fft_func(b)
-            assert type(b) == type(z)
+            assert type(b) is type(z)
             assert x.dtype == z.dtype
             assert np.allclose(x, np.array(z))

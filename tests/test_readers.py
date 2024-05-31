@@ -82,7 +82,7 @@ class TestBaseReader:
             assert Time.isclose(t, t0 + offset / SR)
 
             x = r.read(offset, n)
-            assert type(x) == pb.Signal
+            assert type(x) is pb.Signal
             assert x.dtype == dtype
             assert x.sample_shape == r.sample_shape
             assert np.allclose(np.array(x), np.arange(offset, offset + n)[:, None])
@@ -150,7 +150,7 @@ class TestBaseReader:
         offset, n = 5, 17
         x = r.read(offset, n)
 
-        assert type(x) == sigtype
+        assert type(x) is sigtype
         assert u.allclose(x.center_freq, sigkw["center_freq"])
         assert x.start_time is None
 
