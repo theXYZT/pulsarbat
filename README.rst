@@ -2,25 +2,9 @@
 pulsarbat
 =========
 
-.. image:: https://img.shields.io/pypi/v/pulsarbat.svg
-        :target: https://pypi.python.org/pypi/pulsarbat
+.. container::
 
-.. image:: https://img.shields.io/pypi/pyversions/pulsarbat.svg
-        :target: https://pypi.python.org/pypi/pulsarbat
-
-.. image:: https://github.com/theXYZT/pulsarbat/workflows/Tests/badge.svg
-        :target: https://github.com/theXYZT/pulsarbat/actions
-
-.. image:: https://codecov.io/gh/theXYZT/pulsarbat/branch/master/graph/badge.svg?token=Ia6qdZNhHE
-        :target: https://codecov.io/gh/theXYZT/pulsarbat
-
-.. image:: https://readthedocs.org/projects/pulsarbat/badge/?version=latest
-        :target: https://pulsarbat.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
-
-.. image:: https://zenodo.org/badge/194818440.svg
-   :target: https://zenodo.org/badge/latestdoi/194818440
-
+    |PyPI Status| |Python Versions| |Actions Status| |Coverage Status| |Documentation Status| |Zenodo|
 
 ``pulsarbat`` (PULSAR Baseband Analysis Tools) is a Python package for analysis of radio baseband signals. Although this package has a special focus on radio pulsar astronomy, it can be easily used to work with other types of radio astronomical observations (such as fast radio bursts, quasars, and so on) or any time-frequency data, in general. ``pulsarbat`` provides:
 
@@ -74,3 +58,28 @@ License
 -------
 
 ``pulsarbat`` is licensed under the GNU General Public License v3.
+
+
+.. |PyPI Status| image:: https://img.shields.io/pypi/v/pulsarbat.svg
+    :target: https://pypi.python.org/pypi/pulsarbat
+    :alt: PyPI Status
+
+.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/pulsarbat.svg
+    :target: https://pypi.python.org/pypi/pulsarbat
+    :alt: Python versions supported
+
+.. |Actions Status| image:: https://github.com/theXYZT/pulsarbat/workflows/Tests/badge.svg
+    :target: https://github.com/theXYZT/pulsarbat/actions
+    :alt: GitHub Actions Status
+
+.. |Coverage Status| image:: https://codecov.io/gh/theXYZT/pulsarbat/branch/master/graph/badge.svg?token=Ia6qdZNhHE
+    :target: https://codecov.io/gh/theXYZT/pulsarbat
+    :alt: Coverage Status
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/pulsarbat/badge/?version=latest
+    :target: https://pulsarbat.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
+.. |Zenodo| image:: https://zenodo.org/badge/194818440.svg
+    :target: https://zenodo.org/badge/latestdoi/194818440
+    :alt: Zenodo DOI
