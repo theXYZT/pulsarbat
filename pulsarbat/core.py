@@ -65,7 +65,7 @@ class Signal(np.lib.mixins.NDArrayOperatorsMixin):
                 f"got signal with {z.ndim} dimension(s) instead."
             )
 
-        zipped = zip(z.shape[:min_ndim], self._req_shape)
+        zipped = zip(z.shape, self._req_shape)
         if not all(x == (y or x) for x, y in zipped):
             raise InvalidSignalError(
                 f"Signal has invalid shape. Expected {self._req_shape}, "
